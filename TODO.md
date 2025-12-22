@@ -9,6 +9,7 @@
 5. Make the AI with Sonnet 4.5 check for security conserns
 6. Make SSO login
 7. Make Backup to cloud, or whatever?
+8. Lav federe favicon. Måske noget skygge under linket, mv? en skrig grøn omkring? og måske en helt mørk, ud over dette?
 
 Use this prompt:
 
