@@ -32,7 +32,7 @@ If you didn't request this, you can safely ignore this email.
         
         // For development: just log the link
         if (DEBUG_MODE) {
-            error_log("Magic link for $email: $magicLink");
+            error_log("Magic link for $email: { $magicLink }");
             return true;
         }
         
