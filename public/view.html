@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>View Link - HiddenLinks</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script
+      defer
+      src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"
+    ></script>
+  </head>
+  <body class="bg-gray-50 min-h-screen">
+    <div x-data="viewApp()" x-init="init()">
+      <div class="max-w-4xl mx-auto px-4 py-12">
+        <!-- Loading State -->
+        <div x-show="loading" class="text-center">
+          <p class="text-gray-600">Loading...</p>
+        </div>
+
+        <!-- Error State -->
+        <div x-show="error" class="bg-red-50 text-red-600 p-6 rounded-lg">
+          <h2 class="text-xl font-bold mb-2">Error</h2>
+          <p x-text="error"></p>
+        </div>
+
+        <!-- Link Display -->
+        <div
+          x-show="link && !loading && !error"
+          class="bg-white rounded-lg shadow-md p-8"
+        >
+          <div class="mb-6">
+            <div class="flex items-start justify-between mb-4">
+              <h1
+                class="text-3xl font-bold text-gray-900"
+                x-text="link?.title"
+              ></h1>
+              <span
+                class="px-3 py-1 bg-green-100 text-green-700 text-sm rounded-full"
+              >
+                Public Link
+              </span>
+            </div>
+
+            <p
+              class="text-gray-600 mb-6"
+              x-text="link?.description || 'No description provided'"
+            ></p>
+
+            <div class="mb-6">
+              <label class="block text-sm font-medium text-gray-700 mb-2"
+                >URL:</label
+              >
+              <a
+                :href="link?.url"
+                target="_blank"
+                class="text-blue-600 hover:underline break-all text-lg"
+                x-text="link?.url"
+              >
+              </a>
+            </div>
+
+            <!-- Tags -->
+            <div x-show="link?.tags && link.tags.length > 0" class="mb-6">
+              <label class="block text-sm font-medium text-gray-700 mb-2"
+                >Tags:</label
+              >
+              <div class="flex flex-wrap gap-2">
+                <template x-for="tag in link?.tags" :key="tag.id">
+                  <span
+                    class="px-3 py-1 bg-gray-100 text-gray-700 text-sm rounded-full"
+                    x-text="tag.name"
+                  ></span>
+                </template>
+              </div>
+            </div>
+
+            <!-- Collections -->
+            <div
+              x-show="link?.collections && link.collections.length > 0"
+              class="mb-6"
+            >
+              <label class="block text-sm font-medium text-gray-700 mb-2"
+                >Collections:</label
+              >
+              <div class="flex flex-wrap gap-2">
+                <template
+                  x-for="collection in link?.collections"
+                  :key="collection.id"
+                >
+                  <span
+                    class="px-3 py-1 bg-blue-100 text-blue-700 text-sm rounded-md"
+                    x-text="collection.name"
+                  ></span>
+                </template>
+              </div>
+            </div>
+
+            <div class="pt-6 border-t border-gray-200">
+              <a
+                :href="link?.url"
+                target="_blank"
+                class="inline-block bg-blue-600 text-white px-6 py-3 rounded-md hover:bg-blue-700 transition"
+              >
+                Visit Link →
+              </a>
+            </div>
+          </div>
+
+          <div class="text-sm text-gray-500 border-t border-gray-200 pt-4">
+            <p>Shared via HiddenLinks</p>
+            <p>Created: <span x-text="formatDate(link?.created_at)"></span></p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      function viewApp() {
+        return {
+          link: null,
+          loading: true,
+          error: "",
+
+          async init() {
+            const params = new URLSearchParams(window.location.search);
+            const hash = params.get("hash");
+
+            if (!hash) {
+              this.error = "No link hash provided";
+              this.loading = false;
+              return;
+            }
+
+            await this.loadLink(hash);
+          },
+
+          async loadLink(hash) {
+            try {
+              const response = await fetch(
+                `/api/links.php?hash=${encodeURIComponent(hash)}`
+              );
+              const data = await response.json();
+
+              if (data.success) {
+                this.link = data.link;
+              } else {
+                this.error = data.error || "Link not found or is private";
+              }
+            } catch (error) {
+              this.error = "Failed to load link";
+            } finally {
+              this.loading = false;
+            }
+          },
+
+          formatDate(dateString) {
+            if (!dateString) return "";
+            const date = new Date(dateString);
+            return date.toLocaleDateString("en-US", {
+              year: "numeric",
+              month: "long",
+              day: "numeric",
+            });
+          },
+        };
+      }
+    </script>
+  </body>
+</html>

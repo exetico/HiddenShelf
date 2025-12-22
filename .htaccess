@@ -1,0 +1,34 @@
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    
+    # Redirect to HTTPS (uncomment in production)
+    # RewriteCond %{HTTPS} off
+    # RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+    
+    # Public link short URLs (e.g., /h/abc123)
+    RewriteRule ^h/([a-zA-Z0-9]+)$ /public/view.html?hash=$1 [L,QSA]
+    
+    # Redirect root to login or app
+    RewriteRule ^$ /public/login.html [L]
+    
+    # Prevent direct access to config and lib
+    RewriteRule ^(config\.php|lib/.*) - [F,L]
+</IfModule>
+
+# Security headers
+<IfModule mod_headers.c>
+    Header set X-Content-Type-Options "nosniff"
+    Header set X-Frame-Options "SAMEORIGIN"
+    Header set X-XSS-Protection "1; mode=block"
+    Header set Referrer-Policy "strict-origin-when-cross-origin"
+</IfModule>
+
+# Disable directory browsing
+Options -Indexes
+
+# PHP settings
+<IfModule mod_php.c>
+    php_value session.cookie_httponly 1
+    php_value session.cookie_secure 1
+    php_value session.cookie_samesite Lax
+</IfModule>

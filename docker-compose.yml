@@ -1,0 +1,27 @@
+version: "3.8"
+
+services:
+  web:
+    build: .
+    container_name: hiddenlinks
+    ports:
+      - "8000:80"
+    volumes:
+      # Mount the db directory for persistence
+      - ./db:/var/www/html/db
+      # Mount config for easy updates (optional - comment out for production)
+      - ./config.php:/var/www/html/config.php
+    environment:
+      - PHP_DISPLAY_ERRORS=On
+      - PHP_ERROR_REPORTING=E_ALL
+    restart: unless-stopped
+    networks:
+      - hiddenlinks-network
+
+networks:
+  hiddenlinks-network:
+    driver: bridge
+
+volumes:
+  # Named volume for database persistence
+  db-data:

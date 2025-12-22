@@ -1,0 +1,30 @@
+# HiddenLinks - Environment files
+config.php
+.env
+
+# Composer
+/vendor/
+composer.lock
+
+# Database
+db/*.sqlite
+db/*.db
+
+# Logs
+*.log
+error_log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Temporary files
+tmp/
+temp/
+cache/

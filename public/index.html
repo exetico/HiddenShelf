@@ -1,0 +1,834 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>HiddenLinks - Save & Share Links</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@mdi/font@7.4.47/css/materialdesignicons.min.css" />
+    <script
+      defer
+      src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"
+    ></script>
+  </head>
+  <body class="bg-gray-50 min-h-screen">
+    <div x-data="app()" x-init="init()">
+      <!-- Navigation -->
+      <nav class="bg-white shadow-sm border-b">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div class="flex justify-between h-16 items-center">
+            <div class="flex items-center">
+              <h1 class="text-2xl font-bold text-gray-900">HiddenLinks</h1>
+            </div>
+            <div class="flex items-center gap-4">
+              <span class="text-sm text-gray-600" x-text="user?.email"></span>
+              <button
+                @click="logout"
+                class="text-sm text-red-600 hover:text-red-700"
+              >
+                Logout
+              </button>
+            </div>
+          </div>
+        </div>
+      </nav>
+
+      <!-- Main Content -->
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <!-- Action Buttons -->
+        <div class="mb-6 flex justify-between items-center">
+          <div class="flex gap-3">
+            <button
+              @click="showAddModal = true; resetForm()"
+              class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
+            >
+              + Add Link
+            </button>
+            <button
+              @click="showManageModal = true"
+              class="bg-gray-600 text-white px-4 py-2 rounded-md hover:bg-gray-700"
+            >
+              Manage Categories & Tags
+            </button>
+          </div>
+          
+          <!-- View Mode Toggle -->
+          <div class="flex gap-2 bg-white rounded-lg p-1 shadow-sm">
+            <button
+              @click="viewMode = 'view'"
+              :class="viewMode === 'view' ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-100'"
+              class="px-4 py-2 rounded-md transition"
+            >
+              <i class="mdi mdi-view-list mr-1"></i> View Mode
+            </button>
+            <button
+              @click="viewMode = 'edit'"
+              :class="viewMode === 'edit' ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-100'"
+              class="px-4 py-2 rounded-md transition"
+            >
+              <i class="mdi mdi-pencil mr-1"></i> Edit Mode
+            </button>
+          </div>
+        </div>
+
+        <!-- Filters -->
+        <div class="bg-white rounded-lg shadow-sm p-4 mb-6" x-show="viewMode === 'edit'">
+          <div class="flex gap-4 flex-wrap">
+            <input
+              type="search"
+              x-model="search"
+              @input="searchLinks()"
+              placeholder="Search links..."
+              class="flex-1 min-w-[200px] px-4 py-2 border border-gray-300 rounded-md"
+            />
+            <select
+              x-model="filterCategory"
+              @change="loadLinks()"
+              class="px-4 py-2 border border-gray-300 rounded-md"
+            >
+              <option value="">All Categories</option>
+              <template x-for="cat in categories" :key="cat.id">
+                <option :value="cat.id" x-text="cat.name"></option>
+              </template>
+            </select>
+          </div>
+        </div>
+
+        <!-- VIEW MODE: Organized by Categories -->
+        <div x-show="viewMode === 'view'">
+          <!-- Uncategorized Links -->
+          <template x-if="getUncategorizedLinks().length > 0">
+            <div class="mb-8">
+              <div class="flex items-center gap-3 mb-4">
+                <i class="mdi mdi-folder-outline text-3xl text-gray-400"></i>
+                <h2 class="text-2xl font-bold text-gray-700">Uncategorized</h2>
+                <span class="text-sm text-gray-500" x-text="`(${getUncategorizedLinks().length})`"></span>
+              </div>
+              <div class="bg-white rounded-lg shadow-sm p-6">
+                <div class="space-y-3">
+                  <template x-for="link in getUncategorizedLinks()" :key="link.id">
+                    <a :href="link.url" target="_blank" class="block group hover:bg-gray-50 p-3 rounded-md transition">
+                      <div class="flex items-start gap-3">
+                        <i class="mdi mdi-link-variant text-blue-600 text-xl mt-0.5"></i>
+                        <div class="flex-1">
+                          <h3 class="font-semibold text-gray-900 group-hover:text-blue-600" x-text="link.title"></h3>
+                          <p class="text-sm text-gray-500 truncate" x-text="link.url"></p>
+                          <div class="flex flex-wrap gap-1 mt-2">
+                            <template x-for="(tag, index) in link.tags.slice(0, 3)" :key="tag.id">
+                              <span class="px-2 py-0.5 bg-gray-100 text-gray-600 text-xs rounded-full" x-text="tag.name"></span>
+                            </template>
+                            <span x-show="link.tags.length > 3" class="px-2 py-0.5 text-gray-400 text-xs" x-text="`+${link.tags.length - 3} more`"></span>
+                          </div>
+                        </div>
+                      </div>
+                    </a>
+                  </template>
+                </div>
+              </div>
+            </div>
+          </template>
+
+          <!-- Categorized Links -->
+          <template x-for="category in getCategoriesWithLinks()" :key="category.id">
+            <div class="mb-8">
+              <div class="flex items-center gap-3 mb-4">
+                <i :class="category.icon || 'mdi-folder'" class="mdi text-3xl" :style="`color: ${category.color || '#6B7280'}`"></i>
+                <h2 class="text-2xl font-bold text-gray-900" x-text="category.name"></h2>
+                <span class="text-sm text-gray-500" x-text="`(${category.links.length})`"></span>
+              </div>
+              <div class="bg-white rounded-lg shadow-sm p-6">
+                <div class="space-y-3">
+                  <template x-for="link in category.links" :key="link.id">
+                    <a :href="link.url" target="_blank" class="block group hover:bg-gray-50 p-3 rounded-md transition">
+                      <div class="flex items-start gap-3">
+                        <i class="mdi mdi-link-variant text-blue-600 text-xl mt-0.5"></i>
+                        <div class="flex-1">
+                          <h3 class="font-semibold text-gray-900 group-hover:text-blue-600" x-text="link.title"></h3>
+                          <p class="text-sm text-gray-500 truncate" x-text="link.url"></p>
+                          <div class="flex flex-wrap gap-1 mt-2">
+                            <template x-for="(tag, index) in link.tags.slice(0, 3)" :key="tag.id">
+                              <span class="px-2 py-0.5 bg-gray-100 text-gray-600 text-xs rounded-full" x-text="tag.name"></span>
+                            </template>
+                            <span x-show="link.tags.length > 3" class="px-2 py-0.5 text-gray-400 text-xs" x-text="`+${link.tags.length - 3} more`"></span>
+                          </div>
+                        </div>
+                      </div>
+                    </a>
+                  </template>
+                </div>
+              </div>
+            </div>
+          </template>
+
+          <!-- Empty State -->
+          <div x-show="links.length === 0" class="text-center py-12">
+            <i class="mdi mdi-link-off text-6xl text-gray-300 mb-4"></i>
+            <p class="text-gray-500 text-lg">No links yet. Add your first link!</p>
+          </div>
+        </div>
+
+        <!-- EDIT MODE: Links Grid -->
+        <div x-show="viewMode === 'edit'">
+          <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            <template x-for="link in links" :key="link.id">
+              <div
+                class="bg-white rounded-lg shadow-sm p-6 hover:shadow-md transition"
+              >
+                <div class="flex justify-between items-start mb-2">
+                  <h3
+                    class="text-lg font-semibold text-gray-900"
+                    x-text="link.title"
+                  ></h3>
+                  <div class="flex gap-2">
+                    <button
+                      @click="editLink(link)"
+                      class="text-blue-600 hover:text-blue-700 text-sm"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      @click="deleteLink(link.id)"
+                      class="text-red-600 hover:text-red-700 text-sm"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
+
+                <p
+                  class="text-sm text-gray-600 mb-3"
+                  x-text="link.description || 'No description'"
+                ></p>
+
+                <a
+                  :href="link.url"
+                  target="_blank"
+                  class="text-sm text-blue-600 hover:underline block mb-3 truncate"
+                >
+                  <span x-text="link.url"></span>
+                </a>
+
+                <div class="flex flex-wrap gap-1 mb-3">
+                  <template x-for="tag in link.tags" :key="tag.id">
+                    <span
+                      class="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded-full"
+                      x-text="tag.name"
+                    ></span>
+                  </template>
+                </div>
+
+                <div class="flex items-center gap-2 text-sm">
+                  <span
+                    :class="link.is_public ? 'text-green-600' : 'text-gray-500'"
+                  >
+                    <span x-show="link.is_public">🔓 Public</span>
+                    <span x-show="!link.is_public">🔒 Private</span>
+                  </span>
+                  <template x-if="link.is_public">
+                    <button
+                      @click="copyPublicLink(link.hash)"
+                      class="text-blue-600 hover:text-blue-700 text-xs"
+                    >
+                      Copy Link
+                    </button>
+                  </template>
+              </div>
+            </div>
+          </template>
+          </div>
+
+          <!-- Empty State -->
+          <div x-show="links.length === 0" class="text-center py-12">
+            <i class="mdi mdi-link-off text-6xl text-gray-300 mb-4"></i>
+            <p class="text-gray-500 text-lg">
+              No links yet. Add your first link!
+            </p>
+          </div>
+        </div>
+
+        <!-- Add/Edit Modal -->
+        <div
+          x-show="showAddModal"
+          class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4"
+          @click.self="showAddModal = false"
+        >
+          <div class="bg-white rounded-lg shadow-xl max-w-2xl w-full p-6">
+            <h2
+              class="text-2xl font-bold mb-4"
+              x-text="editingLink ? 'Edit Link' : 'Add New Link'"
+            ></h2>
+
+            <form @submit.prevent="saveLink()">
+              <div class="space-y-4">
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-1"
+                    >URL *</label
+                  >
+                  <input
+                    type="url"
+                    x-model="form.url"
+                    required
+                    class="w-full px-4 py-2 border border-gray-300 rounded-md"
+                    placeholder="https://example.com"
+                  />
+                </div>
+
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-1"
+                    >Title *</label
+                  >
+                  <input
+                    type="text"
+                    x-model="form.title"
+                    required
+                    class="w-full px-4 py-2 border border-gray-300 rounded-md"
+                    placeholder="My awesome link"
+                  />
+                </div>
+
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-1"
+                    >Description</label
+                  >
+                  <textarea
+                    x-model="form.description"
+                    rows="3"
+                    class="w-full px-4 py-2 border border-gray-300 rounded-md"
+                    placeholder="Optional description"
+                  ></textarea>
+                </div>
+
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-1"
+                    >Category</label
+                  >
+                  <select
+                    x-model="form.category_id"
+                    class="w-full px-4 py-2 border border-gray-300 rounded-md"
+                  >
+                    <option value="">None</option>
+                    <template x-for="cat in categories" :key="cat.id">
+                      <option :value="cat.id" x-text="cat.name"></option>
+                    </template>
+                  </select>
+                </div>
+
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-1"
+                    >Tags (comma separated)</label
+                  >
+                  <input
+                    type="text"
+                    x-model="form.tagsInput"
+                    class="w-full px-4 py-2 border border-gray-300 rounded-md"
+                    placeholder="tutorial, javascript, react"
+                  />
+                </div>
+
+                <div class="flex items-center">
+                  <input
+                    type="checkbox"
+                    x-model="form.is_public"
+                    id="is_public"
+                    class="mr-2"
+                  />
+                  <label for="is_public" class="text-sm text-gray-700">
+                    Make this link public (anyone with the link can view it)
+                  </label>
+                </div>
+              </div>
+
+              <div class="flex justify-end gap-3 mt-6">
+                <button
+                  type="button"
+                  @click="showAddModal = false"
+                  class="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                >
+                  Save
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+
+        <!-- Manage Categories & Tags Modal -->
+        <div
+          x-show="showManageModal"
+          class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"
+          @click.self="showManageModal = false"
+        >
+          <div
+            class="bg-white rounded-lg shadow-xl max-w-2xl w-full p-6 max-h-[80vh] overflow-y-auto"
+          >
+            <h2 class="text-2xl font-bold mb-6">Manage Categories & Tags</h2>
+
+            <!-- Categories Section -->
+            <div class="mb-8">
+              <h3 class="text-lg font-semibold mb-3">Categories</h3>
+
+              <!-- Add Category Form -->
+              <form @submit.prevent="addCategory()" class="mb-4 space-y-3">
+                <input
+                  type="text"
+                  x-model="newCategoryName"
+                  placeholder="Category name"
+                  class="w-full px-4 py-2 border border-gray-300 rounded-md"
+                />
+                <div class="flex gap-2">
+                  <div class="flex-1">
+                    <label class="block text-sm text-gray-600 mb-1">Icon (optional)</label>
+                    <div class="flex gap-2">
+                      <input
+                        type="text"
+                        x-model="newCategoryIcon"
+                        placeholder="e.g., mdi-folder, mdi-briefcase"
+                        class="flex-1 px-4 py-2 border border-gray-300 rounded-md text-sm"
+                      />
+                      <div class="flex items-center justify-center w-12 h-10 border border-gray-300 rounded-md bg-gray-50">
+                        <i :class="newCategoryIcon || 'mdi-folder'" class="mdi text-2xl"></i>
+                      </div>
+                    </div>
+                    <a href="https://pictogrammers.com/library/mdi/" target="_blank" class="text-xs text-blue-600 hover:underline mt-1 inline-block">
+                      Browse icons →
+                    </a>
+                  </div>
+                  <div>
+                    <label class="block text-sm text-gray-600 mb-1">Color</label>
+                    <input
+                      type="color"
+                      x-model="newCategoryColor"
+                      class="w-16 h-10 border border-gray-300 rounded-md cursor-pointer"
+                    />
+                  </div>
+                </div>
+                <button
+                  type="submit"
+                  class="w-full px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                >
+                  Add Category
+                </button>
+              </form>
+
+              <!-- Categories List -->
+              <div class="space-y-2">
+                <template x-for="cat in categories" :key="cat.id">
+                  <div
+                    class="flex items-center justify-between p-3 bg-gray-50 rounded-md"
+                  >
+                    <div class="flex items-center gap-3">
+                      <i :class="cat.icon || 'mdi-folder'" class="mdi text-2xl" :style="`color: ${cat.color || '#6B7280'}`"></i>
+                      <div>
+                        <span class="font-medium" x-text="cat.name"></span>
+                        <span
+                          class="text-sm text-gray-500 ml-2"
+                          x-text="`(${cat.link_count || 0} links)`"
+                        ></span>
+                      </div>
+                    </div>
+                    <div class="flex gap-2">
+                      <button
+                        @click="editCategory(cat)"
+                        class="text-blue-600 hover:text-blue-700 text-sm"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        @click="deleteCategory(cat.id)"
+                        class="text-red-600 hover:text-red-700 text-sm"
+                      >
+                        Delete
+                    </button>
+                  </div>
+                </template>
+                <div
+                  x-show="categories.length === 0"
+                  class="text-gray-500 text-sm p-3"
+                >
+                  No categories yet. Create one above!
+                </div>
+              </div>
+            </div>
+
+            <!-- Tags Section -->
+            <div class="mb-6">
+              <h3 class="text-lg font-semibold mb-3">Tags</h3>
+
+              <!-- Add Tag Form -->
+              <form @submit.prevent="addTag()" class="mb-4">
+                <div class="flex gap-2">
+                  <input
+                    type="text"
+                    x-model="newTagName"
+                    placeholder="New tag name"
+                    class="flex-1 px-4 py-2 border border-gray-300 rounded-md"
+                  />
+                  <button
+                    type="submit"
+                    class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                  >
+                    Add Tag
+                  </button>
+                </div>
+              </form>
+
+              <!-- Tags List -->
+              <div class="flex flex-wrap gap-2">
+                <template x-for="tag in tags" :key="tag.id">
+                  <span
+                    class="px-3 py-1 bg-gray-100 rounded-full text-sm flex items-center gap-2"
+                  >
+                    <span x-text="tag.name"></span>
+                    <span
+                      class="text-gray-500"
+                      x-text="`(${tag.usage_count || 0})`"
+                    ></span>
+                  </span>
+                </template>
+                <div x-show="tags.length === 0" class="text-gray-500 text-sm">
+                  No tags yet. Create one above!
+                </div>
+              </div>
+            </div>
+
+            <div class="flex justify-end">
+              <button
+                @click="showManageModal = false"
+                class="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      function app() {
+        return {
+          user: null,
+          links: [],
+          categories: [],
+          tags: [],
+          viewMode: 'view',
+          showManageModal: false,
+          newCategoryName: "",
+          newCategoryIcon: "",
+          newCategoryColor: "#6B7280",
+          editingCategory: null,
+          newTagName: "",
+          search: "",
+          filterCategory: "",
+          showAddModal: false,
+          editingLink: null,
+          form: {
+            url: "",
+            title: "",
+            description: "",
+            category_id: "",
+            tagsInput: "",
+            is_public: false,
+          },
+
+          async init() {
+            await this.checkAuth();
+            await this.loadLinks();
+            await this.loadCategories();
+            await this.loadTags();
+          },
+
+          async checkAuth() {
+            try {
+              const response = await fetch("/api/auth.php?action=me");
+              const data = await response.json();
+
+              if (!data.success) {
+                window.location.href = "/public/login.html";
+                return;
+              }
+
+              this.user = data.user;
+            } catch (error) {
+              window.location.href = "/public/login.html";
+            }
+          },
+
+          async loadLinks() {
+            try {
+              let url = "/api/links.php?page=1";
+              if (this.filterCategory) {
+                url += "&category_id=" + this.filterCategory;
+              }
+
+              const response = await fetch(url);
+              const data = await response.json();
+
+              if (data.success) {
+                this.links = data.links;
+              }
+            } catch (error) {
+              console.error("Failed to load links:", error);
+            }
+          },
+
+          async loadCategories() {
+            try {
+              const response = await fetch("/api/categories.php");
+              const data = await response.json();
+
+              if (data.success) {
+                this.categories = data.categories;
+              }
+            } catch (error) {
+              console.error("Failed to load categories:", error);
+            }
+          },
+
+          searchLinks() {
+            clearTimeout(this.searchTimeout);
+            this.searchTimeout = setTimeout(async () => {
+              if (this.search) {
+                const response = await fetch(
+                  "/api/links.php?search=" + encodeURIComponent(this.search)
+                );
+                const data = await response.json();
+                if (data.success) {
+                  this.links = data.links;
+                }
+              } else {
+                await this.loadLinks();
+              }
+            }, 300);
+          },
+
+          resetForm() {
+            this.editingLink = null;
+            this.form = {
+              url: "",
+              title: "",
+              description: "",
+              category_id: "",
+              tagsInput: "",
+              is_public: false,
+            };
+          },
+
+          editLink(link) {
+            this.editingLink = link;
+            this.form = {
+              url: link.url,
+              title: link.title,
+              description: link.description || "",
+              category_id: link.category_id || "",
+              tagsInput: link.tags.map((t) => t.name).join(", "),
+              is_public: link.is_public === 1,
+            };
+            this.showAddModal = true;
+          },
+
+          async saveLink() {
+            const tags = this.form.tagsInput
+              .split(",")
+              .map((t) => t.trim())
+              .filter((t) => t);
+
+            const payload = {
+              url: this.form.url,
+              title: this.form.title,
+              description: this.form.description,
+              category_id: this.form.category_id || null,
+              tags: tags,
+              is_public: this.form.is_public ? 1 : 0,
+            };
+
+            try {
+              const url = this.editingLink
+                ? `/api/links.php?id=${this.editingLink.id}`
+                : "/api/links.php";
+
+              const response = await fetch(url, {
+                method: this.editingLink ? "PUT" : "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify(payload),
+              });
+
+              const data = await response.json();
+
+              if (data.success) {
+                this.showAddModal = false;
+                this.resetForm();
+                await this.loadLinks();
+              } else {
+                alert(data.error || "Failed to save link");
+              }
+            } catch (error) {
+              alert("Network error");
+            }
+          },
+
+          async deleteLink(id) {
+            if (!confirm("Are you sure you want to delete this link?")) {
+              return;
+            }
+
+            try {
+              const response = await fetch(`/api/links.php?id=${id}`, {
+                method: "DELETE",
+              });
+
+              const data = await response.json();
+
+              if (data.success) {
+                await this.loadLinks();
+              }
+            } catch (error) {
+              alert("Failed to delete link");
+            }
+          },
+
+          copyPublicLink(hash) {
+            const url =
+              window.location.origin + "/public/view.html?hash=" + hash;
+            navigator.clipboard.writeText(url);
+            alert("Public link copied to clipboard!");
+          },
+
+          async loadTags() {
+            try {
+              const response = await fetch("/api/tags.php");
+              const data = await response.json();
+
+              if (data.success) {
+                this.tags = data.tags;
+              }
+            } catch (error) {
+              console.error("Failed to load tags:", error);
+            }
+          },
+
+          async addCategory() {
+            if (!this.newCategoryName.trim()) {
+              return;
+            }
+
+            try {
+              const url = this.editingCategory 
+                ? `/api/categories.php?id=${this.editingCategory.id}`
+                : "/api/categories.php";
+              
+              const response = await fetch(url, {
+                method: this.editingCategory ? "PUT" : "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                  name: this.newCategoryName,
+                  icon: this.newCategoryIcon || null,
+                  color: this.newCategoryColor || null,
+                }),
+              });
+
+              const data = await response.json();
+
+              if (data.success) {
+                this.newCategoryName = "";
+                this.newCategoryIcon = "";
+                this.newCategoryColor = "#6B7280";
+                this.editingCategory = null;
+                await this.loadCategories();
+              } else {
+                alert(data.error || "Failed to save category");
+              }
+            } catch (error) {
+              alert("Network error");
+            }
+          },
+
+          editCategory(category) {
+            this.editingCategory = category;
+            this.newCategoryName = category.name;
+            this.newCategoryIcon = category.icon || "";
+            this.newCategoryColor = category.color || "#6B7280";
+          },
+
+          async deleteCategory(id) {
+            if (!confirm("Delete this category? Links will not be deleted.")) {
+              return;
+            }
+
+            try {
+              const response = await fetch(`/api/categories.php?id=${id}`, {
+                method: "DELETE",
+              });
+
+              const data = await response.json();
+
+              if (data.success) {
+                await this.loadCategories();
+                await this.loadLinks();
+              }
+            } catch (error) {
+              alert("Failed to delete category");
+            }
+          },
+
+          async addTag() {
+            if (!this.newTagName.trim()) {
+              return;
+            }
+
+            try {
+              const response = await fetch("/api/tags.php", {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                  name: this.newTagName,
+                }),
+              });
+
+              const data = await response.json();
+
+              if (data.success) {
+                this.newTagName = "";
+                await this.loadTags();
+              } else {
+                alert(data.error || "Failed to create tag");
+              }
+            } catch (error) {
+              alert("Network error");
+            }
+          },
+
+          async logout() {
+            await fetch("/api/auth.php?action=logout", { method: "POST" });
+            window.location.href = "/public/login.html";
+          },
+
+          // Helper functions for view mode
+          getUncategorizedLinks() {
+            return this.links.filter(link => !link.category_id);
+          },
+
+          getCategoriesWithLinks() {
+            return this.categories
+              .map(cat => ({
+                ...cat,
+                links: this.links.filter(link => link.category_id == cat.id)
+              }))
+              .filter(cat => cat.links.length > 0);
+          },
+        };
+      }
+    </script>
+  </body>
+</html>
