@@ -14,7 +14,7 @@
   <body class="bg-gray-50 min-h-screen">
     <div x-data="app()" x-init="init()">
       <!-- Toast Notifications -->
-      <div class="fixed top-4 right-4 z-50 space-y-2" style="max-width: 300px;">
+      <div class="fixed top-4 right-4 z-[100] space-y-2" style="max-width: 300px;">
         <template x-for="(toast, index) in toasts" :key="index">
           <div
             x-show="toast.show"
