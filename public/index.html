@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" :class="theme">
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -676,6 +676,12 @@
           toggleTheme() {
             this.theme = this.theme === 'dark' ? 'light' : 'dark';
             localStorage.setItem('hiddenlinks_theme', this.theme);
+            // Directly update HTML element class
+            if (this.theme === 'dark') {
+              document.documentElement.classList.add('dark');
+            } else {
+              document.documentElement.classList.remove('dark');
+            }
           },
 
           initTheme() {
@@ -685,6 +691,12 @@
               this.theme = savedTheme;
             } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
               this.theme = 'dark';
+            }
+            // Directly update HTML element class on init
+            if (this.theme === 'dark') {
+              document.documentElement.classList.add('dark');
+            } else {
+              document.documentElement.classList.remove('dark');
             }
           },
 
