@@ -11,10 +11,45 @@
     ></script>
   </head>
   <body class="bg-gray-50 min-h-screen flex items-center justify-center">
-    <div x-data="loginApp()" class="w-full max-w-md p-8">
+    <div x-data="loginApp()" x-init="init()" class="w-full max-w-md p-8">
       <div class="bg-white rounded-lg shadow-md p-8">
         <h1 class="text-3xl font-bold text-gray-900 mb-2">HiddenLinks</h1>
-        <p class="text-gray-600 mb-8">
+
+        <!-- Welcome back message -->
+        <div x-show="savedEmail && !showFullForm">
+          <p class="text-gray-600 mb-6">Welcome back! 👋</p>
+
+          <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+            <p class="text-sm text-gray-700 mb-3">Continue as:</p>
+            <p class="font-medium text-gray-900 mb-4" x-text="savedEmail"></p>
+
+            <button
+              @click="requestMagicLink()"
+              :disabled="loading"
+              class="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition mb-2"
+            >
+              <span x-show="!loading">Send Magic Link</span>
+              <span x-show="loading">Sending...</span>
+            </button>
+
+            <button
+              @click="showFullForm = true"
+              class="w-full text-sm text-blue-600 hover:text-blue-700 py-2"
+            >
+              Use a different email
+            </button>
+
+            <button
+              @click="forgetEmail()"
+              class="w-full text-sm text-red-600 hover:text-red-700 py-2"
+            >
+              Forget this device
+            </button>
+          </div>
+        </div>
+
+        <!-- Regular login prompt -->
+        <p x-show="!savedEmail || showFullForm" class="text-gray-600 mb-8">
           Enter your email to receive a magic login link
         </p>
 
@@ -33,7 +68,10 @@
         ></div>
 
         <!-- Login form -->
-        <form @submit.prevent="requestMagicLink" x-show="!successMessage">
+        <form
+          @submit.prevent="requestMagicLink()"
+          x-show="(!savedEmail || showFullForm) && !successMessage"
+        >
           <div class="mb-4">
             <label
               for="email"
@@ -72,6 +110,8 @@
       function loginApp() {
         return {
           email: "",
+          savedEmail: "",
+          showFullForm: false,
           loading: false,
           errorMessage: "",
           successMessage: "",
@@ -83,12 +123,25 @@
             if (error) {
               this.errorMessage = error;
             }
+
+            // Check for saved email
+            const saved = localStorage.getItem("hiddenlinks_email");
+            if (saved) {
+              this.savedEmail = saved;
+              this.email = saved;
+            }
           },
 
           async requestMagicLink() {
             this.errorMessage = "";
             this.successMessage = "";
             this.loading = true;
+
+            // Use savedEmail if we're in the welcome back flow
+            const emailToUse =
+              this.savedEmail && !this.showFullForm
+                ? this.savedEmail
+                : this.email;
 
             try {
               const response = await fetch("/api/auth.php?action=login", {
@@ -97,13 +150,16 @@
                   "Content-Type": "application/json",
                 },
                 body: JSON.stringify({
-                  email: this.email,
+                  email: emailToUse,
                 }),
               });
 
               const data = await response.json();
 
               if (data.success) {
+                // Save email to localStorage
+                localStorage.setItem("hiddenlinks_email", emailToUse);
+
                 this.successMessage =
                   "Check your email! We sent you a magic login link.";
                 this.email = "";
@@ -114,6 +170,19 @@
               this.errorMessage = "Network error. Please try again.";
             } finally {
               this.loading = false;
+            }
+          },
+
+          forgetEmail() {
+            if (
+              confirm(
+                "This will remove your saved email from this device. Are you sure?"
+              )
+            ) {
+              localStorage.removeItem("hiddenlinks_email");
+              this.savedEmail = "";
+              this.email = "";
+              this.showFullForm = false;
             }
           },
         };
