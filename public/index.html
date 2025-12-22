@@ -1541,7 +1541,7 @@
             this.showToast('Data exported successfully!', 'success');
           },
 
-          validateBulkImport() {
+          async validateBulkImport() {
             this.bulkImportError = "";
             this.bulkImportPreview = false;
             this.bulkImportStats = {
@@ -1559,6 +1559,29 @@
               // Validate structure
               if (!data || typeof data !== 'object') {
                 throw new Error('Invalid JSON format');
+              }
+
+              // Fetch ALL existing links by paginating through all pages
+              let allExistingLinks = [];
+              let page = 1;
+              let hasMore = true;
+              
+              while (hasMore) {
+                const response = await fetch(`/api/links.php?page=${page}`);
+                const linkData = await response.json();
+                
+                if (linkData.success && linkData.links && linkData.links.length > 0) {
+                  allExistingLinks = allExistingLinks.concat(linkData.links);
+                  
+                  // Check if there are more pages
+                  if (linkData.pagination && page < linkData.pagination.pages) {
+                    page++;
+                  } else {
+                    hasMore = false;
+                  }
+                } else {
+                  hasMore = false;
+                }
               }
 
               const validatedData = {
@@ -1609,9 +1632,9 @@
                 });
               }
 
-              // Validate and count links
+              // Validate and count links (using ALL existing links, not just paginated)
               if (data.links && Array.isArray(data.links)) {
-                const existingUrls = this.links.map(l => l.url.toLowerCase());
+                const existingUrls = allExistingLinks.map(l => l.url.toLowerCase());
                 
                 data.links.forEach(link => {
                   if (!link.url || typeof link.url !== 'string') {
