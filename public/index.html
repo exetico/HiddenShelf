@@ -86,13 +86,12 @@
               <h1 class="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">HiddenLinks</h1>
             </div>
             <div class="flex items-center gap-2 sm:gap-4">
-              <span class="hidden sm:inline text-sm text-gray-600 dark:text-gray-300" x-text="user?.email"></span>
               <button
-                @click="logout"
-                class="text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300"
-                title="Logout"
+                @click="showProfileModal = true"
+                class="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-brand-600 text-white font-semibold text-xs sm:text-sm flex items-center justify-center hover:bg-brand-700 transition-colors"
+                :title="user?.email"
+                x-text="getProfileInitials()"
               >
-                <i class="mdi mdi-logout"></i>
               </button>
               <button
                 @click="toggleTheme()"
@@ -667,6 +666,81 @@
         </div>
       </div>
 
+      <!-- Profile Modal -->
+      <div
+        x-show="showProfileModal"
+        class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+        @click.self="showProfileModal = false"
+        style="display: none"
+      >
+        <div class="bg-white dark:bg-brand-900 rounded-lg shadow-xl max-w-md w-full transition-colors">
+          <div class="border-b border-gray-200 dark:border-brand-700 p-6">
+            <h2 class="text-2xl font-bold text-gray-900 dark:text-white">Profile</h2>
+          </div>
+
+          <div class="p-6">
+            <div class="flex flex-col items-center mb-6">
+              <div class="w-20 h-20 rounded-full bg-brand-600 text-white font-bold text-2xl flex items-center justify-center mb-3">
+                <span x-text="getProfileInitials()"></span>
+              </div>
+              <p class="text-lg text-gray-900 dark:text-white font-medium" x-text="user?.email"></p>
+            </div>
+
+            <div class="space-y-3">
+              <button
+                @click="logout"
+                class="w-full bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 transition-colors flex items-center justify-center gap-2"
+              >
+                <i class="mdi mdi-logout"></i>
+                <span>Logout</span>
+              </button>
+
+              <button
+                @click="confirmDeleteEverything()"
+                class="w-full bg-gray-600 dark:bg-brand-800 text-white px-4 py-2 rounded-md hover:bg-gray-700 dark:hover:bg-brand-700 transition-colors flex items-center justify-center gap-2"
+              >
+                <i class="mdi mdi-delete-forever"></i>
+                <span>Delete Everything</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="border-t border-gray-200 dark:border-brand-700 p-6">
+            <button
+              @click="showProfileModal = false"
+              class="w-full px-4 py-2 bg-gray-200 dark:bg-brand-800 text-gray-700 dark:text-white rounded-md hover:bg-gray-300 dark:hover:bg-brand-700 transition-colors"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Delete Progress Modal -->
+      <div
+        x-show="showDeleteProgressModal"
+        class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60] p-4"
+        style="display: none"
+      >
+        <div class="bg-white dark:bg-brand-900 rounded-lg shadow-xl max-w-md w-full transition-colors">
+          <div class="p-6">
+            <div class="flex flex-col items-center">
+              <div class="w-16 h-16 border-4 border-brand-600 border-t-transparent rounded-full animate-spin mb-4"></div>
+              <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-2">Deleting Data</h3>
+              <p class="text-sm text-gray-600 dark:text-gray-400 text-center mb-4" x-text="deleteProgress"></p>
+              
+              <div class="w-full bg-gray-200 dark:bg-brand-800 rounded-full h-2 overflow-hidden">
+                <div 
+                  class="bg-brand-600 h-2 transition-all duration-300"
+                  :style="`width: ${deleteProgressPercent}%`"
+                ></div>
+              </div>
+              <p class="text-xs text-gray-500 dark:text-gray-400 mt-2" x-text="`${deleteProgressPercent}%`"></p>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- Bulk Editor Modal -->
       <div
         x-show="showBulkEditorModal"
@@ -767,6 +841,10 @@
           showCategoriesModal: false,
           showTagsModal: false,
           showBulkEditorModal: false,
+          showProfileModal: false,
+          showDeleteProgressModal: false,
+          deleteProgress: "",
+          deleteProgressPercent: 0,
           bulkImportJson: "",
           bulkImportError: "",
           bulkImportPreview: false,
@@ -1275,6 +1353,157 @@
           async logout() {
             await fetch("/api/auth.php?action=logout", { method: "POST" });
             window.location.href = "/public/login.html";
+          },
+
+          getProfileInitials() {
+            if (!this.user?.email) return "";
+            return this.user.email.substring(0, 2).toUpperCase();
+          },
+
+          async confirmDeleteEverything() {
+            const email = this.user?.email || "";
+            const confirmText = `This will permanently delete ALL your data including:\n\n• All links (${this.links.length})\n• All categories (${this.categories.length})\n• All tags (${this.tags.length})\n\nThis action CANNOT be undone!\n\nType your email "${email}" to confirm:`;
+            
+            const userInput = prompt(confirmText);
+            
+            if (userInput !== email) {
+              if (userInput !== null) {
+                this.showToast('Confirmation failed. Email does not match.', 'error');
+              }
+              return;
+            }
+
+            // Close profile modal and show progress modal
+            this.showProfileModal = false;
+            this.showDeleteProgressModal = true;
+            this.deleteProgress = "Fetching all data...";
+            this.deleteProgressPercent = 5;
+
+            try {
+              // Fetch ALL links by paginating through all pages
+              let allLinks = [];
+              let page = 1;
+              let hasMore = true;
+              
+              while (hasMore) {
+                const response = await fetch(`/api/links.php?page=${page}`);
+                const data = await response.json();
+                
+                if (data.success && data.links && data.links.length > 0) {
+                  allLinks = allLinks.concat(data.links);
+                  
+                  // Check if there are more pages
+                  if (data.pagination && page < data.pagination.pages) {
+                    page++;
+                  } else {
+                    hasMore = false;
+                  }
+                } else {
+                  hasMore = false;
+                }
+              }
+
+              this.deleteProgressPercent = 10;
+
+              // Fetch ALL categories
+              const allCategoriesResponse = await fetch('/api/categories.php');
+              const allCategoriesData = await allCategoriesResponse.json();
+              const allCategories = allCategoriesData.success ? allCategoriesData.categories : [];
+
+              // Fetch ALL tags
+              const allTagsResponse = await fetch('/api/tags.php');
+              const allTagsData = await allTagsResponse.json();
+              const allTags = allTagsData.success ? allTagsData.tags : [];
+
+              const totalItems = allLinks.length + allCategories.length + allTags.length;
+              let deletedItems = 0;
+              let failedDeletes = 0;
+
+              this.deleteProgressPercent = 15;
+              
+              // Delete all links first
+              for (let i = 0; i < allLinks.length; i++) {
+                const link = allLinks[i];
+                this.deleteProgress = `Deleting links (${i + 1}/${allLinks.length})...`;
+                this.deleteProgressPercent = 15 + Math.floor(((deletedItems + 1) / totalItems) * 75);
+                
+                try {
+                  const response = await fetch(`/api/links.php?id=${link.id}`, { method: "DELETE" });
+                  const data = await response.json();
+                  if (!data.success) {
+                    failedDeletes++;
+                  }
+                  deletedItems++;
+                } catch (e) {
+                  failedDeletes++;
+                  deletedItems++;
+                }
+              }
+
+              // Delete all tags
+              for (let i = 0; i < allTags.length; i++) {
+                const tag = allTags[i];
+                this.deleteProgress = `Deleting tags (${i + 1}/${allTags.length})...`;
+                this.deleteProgressPercent = 15 + Math.floor(((deletedItems + 1) / totalItems) * 75);
+                
+                try {
+                  const response = await fetch(`/api/tags.php?id=${tag.id}`, { method: "DELETE" });
+                  const data = await response.json();
+                  if (!data.success) {
+                    failedDeletes++;
+                  }
+                  deletedItems++;
+                } catch (e) {
+                  failedDeletes++;
+                  deletedItems++;
+                }
+              }
+
+              // Delete all categories
+              for (let i = 0; i < allCategories.length; i++) {
+                const cat = allCategories[i];
+                this.deleteProgress = `Deleting categories (${i + 1}/${allCategories.length})...`;
+                this.deleteProgressPercent = 15 + Math.floor(((deletedItems + 1) / totalItems) * 75);
+                
+                try {
+                  const response = await fetch(`/api/categories.php?id=${cat.id}`, { method: "DELETE" });
+                  const data = await response.json();
+                  if (!data.success) {
+                    failedDeletes++;
+                  }
+                  deletedItems++;
+                } catch (e) {
+                  failedDeletes++;
+                  deletedItems++;
+                }
+              }
+
+              // Reload all data
+              this.deleteProgress = "Refreshing data...";
+              this.deleteProgressPercent = 95;
+              
+              await this.loadLinks();
+              await this.loadCategories();
+              await this.loadTags();
+
+              this.deleteProgressPercent = 100;
+              this.deleteProgress = "Complete!";
+
+              // Close progress modal after a short delay
+              setTimeout(() => {
+                this.showDeleteProgressModal = false;
+                
+                if (failedDeletes > 0) {
+                  this.showToast(`Deleted ${deletedItems - failedDeletes} items with ${failedDeletes} errors.`, 'warning');
+                } else {
+                  this.showToast(`All ${deletedItems} items deleted successfully!`, 'success');
+                }
+              }, 500);
+
+            } catch (error) {
+              this.showDeleteProgressModal = false;
+              this.showToast('Failed to delete all data: ' + error.message, 'error');
+            }
           },
 
           // Bulk Editor Functions
