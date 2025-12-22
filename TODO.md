@@ -10,6 +10,14 @@
 6. Make SSO login
 7. Make Backup to cloud, or whatever?
 8. Lav federe favicon. Måske noget skygge under linket, mv? en skrig grøn omkring? og måske en helt mørk, ud over dette?
+9. Add variables for "max links query" or whatever things
+10. Prompt:
+
+```
+Make it user optional to set a link limit of 20 to 500 links. It needs to be validated on server site, too, so no more than 500 links.
+```
+
+11. Categories at top: On top of view-page, render all categories, or at least, let the user select which to look at, possibly even star one or more, and re-order them.
 
 Tested with email: `UeNLqiPscLZ9ivgW@fP2LYAFme95rJ73p.com`
 
