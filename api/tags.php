@@ -70,20 +70,27 @@ try {
             errorResponse('Tag ID is required');
         }
         
-        // Check if tag is in use by ANY user (not just current user)
-        $usageCount = $db->fetchOne(
+        // First, remove the tag from all links belonging to the current user
+        $db->query(
+            "DELETE FROM link_tags 
+             WHERE tag_id = ? 
+             AND link_id IN (SELECT id FROM links WHERE user_id = ?)", 
+            [$id, getCurrentUserId()]
+        );
+        
+        // Check if tag is still in use by other users
+        $remainingUsage = $db->fetchOne(
             "SELECT COUNT(*) as count FROM link_tags WHERE tag_id = ?", 
             [$id]
         );
         
-        if ($usageCount['count'] > 0) {
-            errorResponse("Cannot delete tag: it is in use by {$usageCount['count']} link(s).", 403);
+        // Only delete the tag from database if no one else is using it
+        if ($remainingUsage['count'] == 0) {
+            $db->query("DELETE FROM tags WHERE id = ?", [$id]);
+            successResponse([], 'Tag removed from your links and deleted');
+        } else {
+            successResponse([], 'Tag removed from your links');
         }
-        
-        // Delete the tag (only if not in use by anyone)
-        $db->query("DELETE FROM tags WHERE id = ?", [$id]);
-        
-        successResponse([], 'Tag deleted successfully');
     }
     
 } catch (Exception $e) {

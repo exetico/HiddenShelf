@@ -18,6 +18,7 @@
         <template x-for="(toast, index) in toasts" :key="index">
           <div
             x-show="toast.show"
+            @click="dismissToast(toast)"
             x-transition:enter="transition ease-out duration-300"
             x-transition:enter-start="opacity-0 transform translate-x-8"
             x-transition:enter-end="opacity-100 transform translate-x-0"
@@ -30,15 +31,25 @@
               'bg-yellow-500': toast.type === 'warning',
               'bg-red-500': toast.type === 'error'
             }"
-            class="text-white px-4 py-3 rounded-lg shadow-lg flex items-start gap-2"
+            class="text-white rounded-lg shadow-lg cursor-pointer hover:shadow-xl transition-shadow overflow-hidden"
           >
-            <i :class="{
-              'mdi-check-circle': toast.type === 'success',
-              'mdi-information': toast.type === 'info',
-              'mdi-alert': toast.type === 'warning',
-              'mdi-alert-circle': toast.type === 'error'
-            }" class="mdi text-xl mt-0.5"></i>
-            <span class="flex-1 text-sm" x-text="toast.message"></span>
+            <div class="px-4 py-3 flex items-start gap-2">
+              <i :class="{
+                'mdi-check-circle': toast.type === 'success',
+                'mdi-information': toast.type === 'info',
+                'mdi-alert': toast.type === 'warning',
+                'mdi-alert-circle': toast.type === 'error'
+              }" class="mdi text-xl mt-0.5"></i>
+              <span class="flex-1 text-sm" x-text="toast.message"></span>
+              <i class="mdi mdi-close text-lg opacity-70 hover:opacity-100"></i>
+            </div>
+            <!-- Progress bar -->
+            <div class="h-1 bg-black bg-opacity-20">
+              <div 
+                class="h-full bg-white bg-opacity-40 transition-all ease-linear"
+                :style="`width: ${toast.progress || 100}%; transition-duration: ${toast.duration || 2000}ms`"
+              ></div>
+            </div>
           </div>
         </template>
       </div>
@@ -630,16 +641,32 @@
             is_public: false,
           },
 
-          showToast(message, type = 'info') {
-            const toast = { message, type, show: true };
+          showToast(message, type = 'info', duration = 2000) {
+            const toast = { message, type, show: true, progress: 100, duration };
             this.toasts.push(toast);
             
+            // Start progress bar animation
             setTimeout(() => {
-              toast.show = false;
-              setTimeout(() => {
-                this.toasts = this.toasts.filter(t => t !== toast);
-              }, 300);
-            }, 3000);
+              toast.progress = 0;
+            }, 10);
+            
+            // Auto-dismiss after duration
+            const timeoutId = setTimeout(() => {
+              this.dismissToast(toast);
+            }, duration);
+            
+            // Store timeout ID so we can cancel it if manually dismissed
+            toast.timeoutId = timeoutId;
+          },
+
+          dismissToast(toast) {
+            if (toast.timeoutId) {
+              clearTimeout(toast.timeoutId);
+            }
+            toast.show = false;
+            setTimeout(() => {
+              this.toasts = this.toasts.filter(t => t !== toast);
+            }, 300);
           },
 
           normalizeIcon(icon, context = 'link') {
