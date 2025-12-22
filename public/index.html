@@ -272,6 +272,20 @@
             <i class="mdi mdi-link-off text-6xl text-gray-300 dark:text-gray-600 mb-4"></i>
             <p class="text-gray-500 dark:text-gray-400 text-lg">No links yet. Add your first link!</p>
           </div>
+
+          <!-- Pagination Info & Load More -->
+          <div x-show="totalLinks > 0" class="mt-8 text-center">
+            <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">
+              Showing <span x-text="links.length"></span> of <span x-text="totalLinks"></span> links
+            </p>
+            <button
+              x-show="hasMoreLinks()"
+              @click="loadMoreLinks()"
+              class="bg-brand-600 text-white px-6 py-2 rounded-md hover:bg-brand-700 transition-colors"
+            >
+              <i class="mdi mdi-chevron-down mr-2"></i>Load More
+            </button>
+          </div>
         </div>
 
         <div id="edit-mode" x-show="viewMode === 'edit'">
@@ -352,6 +366,20 @@
             <p class="text-gray-500 dark:text-gray-400 text-lg">
               No links yet. Add your first link!
             </p>
+          </div>
+
+          <!-- Pagination Info & Load More -->
+          <div x-show="totalLinks > 0" class="mt-8 text-center">
+            <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">
+              Showing <span x-text="links.length"></span> of <span x-text="totalLinks"></span> links
+            </p>
+            <button
+              x-show="hasMoreLinks()"
+              @click="loadMoreLinks()"
+              class="bg-brand-600 text-white px-6 py-2 rounded-md hover:bg-brand-700 transition-colors"
+            >
+              <i class="mdi mdi-chevron-down mr-2"></i>Load More
+            </button>
           </div>
         </div>
 
@@ -863,6 +891,9 @@
           newTagName: "",
           search: "",
           filterCategory: "",
+          currentPage: 1,
+          totalPages: 1,
+          totalLinks: 0,
           showAddModal: false,
           editingLink: null,
           form: {
@@ -1051,9 +1082,10 @@
             }
           },
 
-          async loadLinks() {
+          async loadLinks(append = false) {
             try {
-              let url = "/api/links.php?page=1";
+              const page = append ? this.currentPage + 1 : 1;
+              let url = `/api/links.php?page=${page}`;
               if (this.filterCategory) {
                 url += "&category_id=" + this.filterCategory;
               }
@@ -1062,11 +1094,31 @@
               const data = await response.json();
 
               if (data.success) {
-                this.links = data.links;
+                if (append) {
+                  this.links = [...this.links, ...data.links];
+                  this.currentPage = page;
+                } else {
+                  this.links = data.links;
+                  this.currentPage = 1;
+                }
+                
+                // Update pagination info
+                if (data.pagination) {
+                  this.totalPages = data.pagination.pages;
+                  this.totalLinks = data.pagination.total;
+                }
               }
             } catch (error) {
               console.error("Failed to load links:", error);
             }
+          },
+
+          hasMoreLinks() {
+            return this.currentPage < this.totalPages;
+          },
+
+          async loadMoreLinks() {
+            await this.loadLinks(true);
           },
 
           async loadCategories() {
