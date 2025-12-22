@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>HiddenLinks - Save & Share Links</title>
-    <link rel="icon" type="image/x-icon" href="favicon.ico" />
+    <link rel="icon" type="image/x-icon" href="favicon.png" />
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
       tailwind.config = {
@@ -116,13 +116,13 @@
             </button>
             <button
               @click="showCategoriesModal = true"
-              class="bg-gray-600 dark:bg-gray-700 text-white px-3 sm:px-4 py-2 rounded-md hover:bg-gray-700 dark:hover:bg-gray-600 transition-colors text-sm sm:text-base whitespace-nowrap"
+              class="bg-gray-600 dark:bg-brand-800 text-white px-3 sm:px-4 py-2 rounded-md hover:bg-gray-700 dark:hover:bg-brand-700 transition-colors text-sm sm:text-base whitespace-nowrap"
             >
               Categories
             </button>
             <button
               @click="showTagsModal = true"
-              class="bg-gray-600 dark:bg-gray-700 text-white px-3 sm:px-4 py-2 rounded-md hover:bg-gray-700 dark:hover:bg-gray-600 transition-colors text-sm sm:text-base"
+              class="bg-gray-600 dark:bg-brand-800 text-white px-3 sm:px-4 py-2 rounded-md hover:bg-gray-700 dark:hover:bg-brand-700 transition-colors text-sm sm:text-base"
             >
               Tags
             </button>
@@ -131,14 +131,14 @@
           <div id="view-mode-toggle" class="flex gap-1 sm:gap-2 bg-white dark:bg-brand-900 rounded-lg p-1 shadow-sm transition-colors">
             <button
               @click="setRoute('view')"
-              :class="viewMode === 'view' ? 'bg-brand-600 text-white' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'"
+              :class="viewMode === 'view' ? 'bg-brand-600 text-white' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-brand-800'"
               class="px-3 sm:px-4 py-2 rounded-md transition-colors text-xs sm:text-sm whitespace-nowrap"
             >
               <i class="mdi mdi-view-list mr-1"></i><span class="hidden sm:inline">View</span><span class="sm:hidden">View</span>
             </button>
             <button
               @click="setRoute('edit')"
-              :class="viewMode === 'edit' ? 'bg-brand-600 text-white' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'"
+              :class="viewMode === 'edit' ? 'bg-brand-600 text-white' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-brand-800'"
               class="px-3 sm:px-4 py-2 rounded-md transition-colors text-xs sm:text-sm whitespace-nowrap"
             >
               <i class="mdi mdi-pencil mr-1"></i><span class="hidden sm:inline">Edit</span><span class="sm:hidden">Edit</span>
@@ -153,12 +153,12 @@
               x-model="search"
               @input="searchLinks()"
               placeholder="Search links..."
-              class="flex-1 min-w-[200px] px-4 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md"
+              class="flex-1 min-w-[200px] px-4 py-2 border border-gray-300 dark:border-brand-700 dark:bg-brand-800 dark:text-white rounded-md"
             />
             <select
               x-model="filterCategory"
               @change="loadLinks()"
-              class="px-4 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md"
+              class="px-4 py-2 border border-gray-300 dark:border-brand-700 dark:bg-brand-800 dark:text-white rounded-md"
             >
               <option value="">All Categories</option>
               <template x-for="cat in categories" :key="cat.id">
@@ -177,10 +177,10 @@
                 <h2 class="text-2xl font-bold text-gray-700 dark:text-gray-200">Uncategorized</h2>
                 <span class="text-sm text-gray-500 dark:text-gray-400" x-text="`(${getUncategorizedLinks().length})`"></span>
               </div>
-              <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-3 transition-colors">
+              <div class="bg-white dark:bg-brand-900 rounded-lg shadow-sm p-3 transition-colors">
                 <div class="space-y-1">
                   <template x-for="link in getUncategorizedLinks()" :key="link.id">
-                    <div class="group hover:bg-gray-50 dark:hover:bg-gray-700 p-2 rounded-md transition-colors flex flex-wrap items-center gap-2">
+                    <div class="group hover:bg-gray-50 dark:hover:bg-brand-800 p-2 rounded-md transition-colors flex flex-wrap items-center gap-2">
                       <i :class="link.icon || 'mdi-link-variant'" class="mdi text-lg flex-shrink-0" :style="`color: ${getLinkIconColor(link)}`"></i>
                       <div class="flex-1 min-w-0 sm:min-w-[200px]">
                         <a :href="link.url" target="_blank" class="font-medium text-gray-900 dark:text-gray-100 group-hover:text-brand-600 dark:group-hover:text-brand-400 text-sm" x-text="link.title"></a>
@@ -189,7 +189,7 @@
                       <div class="flex items-center gap-2 ml-auto">
                         <div class="flex flex-wrap gap-1 justify-end">
                           <template x-for="(tag, index) in link.tags.slice(0, 3)" :key="tag.id">
-                            <span class="px-2 py-0.5 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 text-xs rounded-full" x-text="tag.name"></span>
+                            <span class="px-2 py-0.5 bg-gray-100 dark:bg-brand-800 text-gray-600 dark:text-gray-300 text-xs rounded-full" x-text="tag.name"></span>
                           </template>
                           <span x-show="link.tags.length > 3" class="px-2 py-0.5 text-gray-400 text-xs" x-text="`+${link.tags.length - 3}`"></span>
                         </div>
@@ -215,10 +215,10 @@
                 <h2 class="text-2xl font-bold text-gray-900 dark:text-gray-100" x-text="category.name"></h2>
                 <span class="text-sm text-gray-500 dark:text-gray-400" x-text="`(${category.links.length})`"></span>
               </div>
-              <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-3 transition-colors">
+              <div class="bg-white dark:bg-brand-900 rounded-lg shadow-sm p-3 transition-colors">
                 <div class="space-y-1">
                   <template x-for="link in category.links" :key="link.id">
-                    <div class="group hover:bg-gray-50 dark:hover:bg-gray-700 p-2 rounded-md transition-colors flex flex-wrap items-center gap-2">
+                    <div class="group hover:bg-gray-50 dark:hover:bg-brand-800 p-2 rounded-md transition-colors flex flex-wrap items-center gap-2">
                       <i :class="link.icon || 'mdi-link-variant'" class="mdi text-lg flex-shrink-0" :style="`color: ${getLinkIconColor(link)}`"></i>
                       <div class="flex-1 min-w-0 sm:min-w-[200px]">
                         <a :href="link.url" target="_blank" class="font-medium text-gray-900 dark:text-gray-100 group-hover:text-brand-600 dark:group-hover:text-brand-400 text-sm" x-text="link.title"></a>
@@ -227,7 +227,7 @@
                       <div class="flex items-center gap-2 ml-auto">
                         <div class="flex flex-wrap gap-1 justify-end">
                           <template x-for="(tag, index) in link.tags.slice(0, 3)" :key="tag.id">
-                            <span class="px-2 py-0.5 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 text-xs rounded-full" x-text="tag.name"></span>
+                            <span class="px-2 py-0.5 bg-gray-100 dark:bg-brand-800 text-gray-600 dark:text-gray-300 text-xs rounded-full" x-text="tag.name"></span>
                           </template>
                           <span x-show="link.tags.length > 3" class="px-2 py-0.5 text-gray-400 text-xs" x-text="`+${link.tags.length - 3}`"></span>
                         </div>
@@ -256,7 +256,7 @@
           <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             <template x-for="link in links" :key="link.id">
               <div
-                class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 hover:shadow-md transition-all"
+                class="bg-white dark:bg-brand-900 rounded-lg shadow-sm p-6 hover:shadow-md transition-all"
               >
                 <div class="flex justify-between items-start mb-2">
                   <div class="flex items-center gap-2">
@@ -298,7 +298,7 @@
                 <div class="flex flex-wrap gap-1 mb-3">
                   <template x-for="tag in link.tags" :key="tag.id">
                     <span
-                      class="px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-xs rounded-full"
+                      class="px-2 py-1 bg-gray-100 dark:bg-brand-800 text-gray-700 dark:text-gray-300 text-xs rounded-full"
                       x-text="tag.name"
                     ></span>
                   </template>
@@ -338,7 +338,7 @@
           class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"
           @click.self="showAddModal = false"
         >
-          <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full p-6">
+          <div class="bg-white dark:bg-brand-900 rounded-lg shadow-xl max-w-2xl w-full p-6">
             <h2
               class="text-2xl font-bold mb-4 text-gray-900 dark:text-white"
               x-text="editingLink ? 'Edit Link' : 'Add New Link'"
@@ -354,7 +354,7 @@
                     type="url"
                     x-model="form.url"
                     required
-                    class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md"
+                    class="w-full px-4 py-2 border border-gray-300 dark:border-brand-700 dark:bg-brand-800 dark:text-white rounded-md"
                     placeholder="https://example.com"
                   />
                 </div>
@@ -367,7 +367,7 @@
                     type="text"
                     x-model="form.title"
                     required
-                    class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md"
+                    class="w-full px-4 py-2 border border-gray-300 dark:border-brand-700 dark:bg-brand-800 dark:text-white rounded-md"
                     placeholder="My awesome link"
                   />
                 </div>
@@ -379,7 +379,7 @@
                   <textarea
                     x-model="form.description"
                     rows="3"
-                    class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md"
+                    class="w-full px-4 py-2 border border-gray-300 dark:border-brand-700 dark:bg-brand-800 dark:text-white rounded-md"
                     placeholder="Optional description"
                   ></textarea>
                 </div>
@@ -390,7 +390,7 @@
                   >
                   <select
                     x-model="form.category_id"
-                    class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md"
+                    class="w-full px-4 py-2 border border-gray-300 dark:border-brand-700 dark:bg-brand-800 dark:text-white rounded-md"
                   >
                     <option value="">None</option>
                     <template x-for="cat in categories" :key="cat.id">
@@ -406,9 +406,9 @@
                       type="text"
                       x-model="form.icon"
                       placeholder="e.g., mdi-link, mdi-bookmark, mdi-star"
-                      class="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md text-sm"
+                      class="flex-1 px-4 py-2 border border-gray-300 dark:border-brand-700 dark:bg-brand-800 dark:text-white rounded-md text-sm"
                     />
-                    <div class="flex items-center justify-center w-12 h-10 border border-gray-300 dark:border-gray-600 rounded-md bg-gray-50 dark:bg-gray-700">
+                    <div class="flex items-center justify-center w-12 h-10 border border-gray-300 dark:border-brand-700 rounded-md bg-gray-50 dark:bg-brand-800">
                       <i :class="form.icon || 'mdi-link-variant'" class="mdi text-2xl text-brand-600 dark:text-brand-400"></i>
                     </div>
                   </div>
@@ -424,7 +424,7 @@
                   <input
                     type="text"
                     x-model="form.tagsInput"
-                    class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md"
+                    class="w-full px-4 py-2 border border-gray-300 dark:border-brand-700 dark:bg-brand-800 dark:text-white rounded-md"
                     placeholder="tutorial, javascript, react"
                   />
                 </div>
@@ -446,7 +446,7 @@
                 <button
                   type="button"
                   @click="showAddModal = false"
-                  class="px-4 py-2 border border-gray-300 dark:border-gray-600 dark:text-gray-300 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                  class="px-4 py-2 border border-gray-300 dark:border-brand-700 dark:text-gray-300 rounded-md hover:bg-gray-50 dark:hover:bg-brand-800 transition-colors"
                 >
                   Cancel
                 </button>
@@ -467,7 +467,7 @@
           @click.self="showCategoriesModal = false"
         >
           <div
-            class="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full p-6 max-h-[80vh] overflow-y-auto"
+            class="bg-white dark:bg-brand-900 rounded-lg shadow-xl max-w-2xl w-full p-6 max-h-[80vh] overflow-y-auto"
           >
             <h2 class="text-2xl font-bold mb-6 text-gray-900 dark:text-white">Manage Categories</h2>
 
@@ -492,7 +492,7 @@
                 type="text"
                 x-model="newCategoryName"
                 placeholder="Category name"
-                class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md"
+                class="w-full px-4 py-2 border border-gray-300 dark:border-brand-700 dark:bg-brand-800 dark:text-white rounded-md"
               />
               <div class="flex gap-2">
                 <div class="flex-1">
@@ -502,9 +502,9 @@
                       type="text"
                       x-model="newCategoryIcon"
                       placeholder="e.g., mdi-folder, mdi-briefcase"
-                      class="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md text-sm"
+                      class="flex-1 px-4 py-2 border border-gray-300 dark:border-brand-700 dark:bg-brand-800 dark:text-white rounded-md text-sm"
                     />
-                    <div class="flex items-center justify-center w-12 h-10 border border-gray-300 dark:border-gray-600 rounded-md bg-gray-50 dark:bg-gray-700">
+                    <div class="flex items-center justify-center w-12 h-10 border border-gray-300 dark:border-brand-700 rounded-md bg-gray-50 dark:bg-brand-800">
                       <i :class="newCategoryIcon || 'mdi-folder'" class="mdi text-2xl" :style="`color: ${newCategoryColor || '#6B7280'}`"></i>
                     </div>
                   </div>
@@ -517,7 +517,7 @@
                   <input
                     type="color"
                     x-model="newCategoryColor"
-                    class="w-16 h-10 border border-gray-300 dark:border-gray-600 rounded-md cursor-pointer"
+                    class="w-16 h-10 border border-gray-300 dark:border-brand-700 rounded-md cursor-pointer"
                   />
                 </div>
               </div>
@@ -533,7 +533,7 @@
             <div class="space-y-2">
               <template x-for="cat in categories" :key="cat.id">
                 <div
-                  class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-md transition-colors"
+                  class="flex items-center justify-between p-3 bg-gray-50 dark:bg-brand-800 rounded-md transition-colors"
                   :class="editingCategory?.id === cat.id ? 'ring-2 ring-brand-500 dark:ring-brand-400' : ''"
                 >
                   <div class="flex items-center gap-3">
@@ -572,7 +572,7 @@
             <div class="flex justify-end mt-6">
               <button
                 @click="showCategoriesModal = false; editingCategory = null; newCategoryName = ''; newCategoryIcon = ''; newCategoryColor = '#6B7280';"
-                class="px-4 py-2 bg-gray-600 dark:bg-gray-700 text-white rounded-md hover:bg-gray-700 dark:hover:bg-gray-600 transition-colors"
+                class="px-4 py-2 bg-gray-600 dark:bg-brand-800 text-white rounded-md hover:bg-gray-700 dark:hover:bg-brand-700 transition-colors"
               >
                 Close
               </button>
@@ -586,7 +586,7 @@
           @click.self="showTagsModal = false"
         >
           <div
-            class="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full p-6 max-h-[80vh] overflow-y-auto"
+            class="bg-white dark:bg-brand-900 rounded-lg shadow-xl max-w-2xl w-full p-6 max-h-[80vh] overflow-y-auto"
           >
             <h2 class="text-2xl font-bold mb-6 text-gray-900 dark:text-white">Manage Tags</h2>
 
@@ -597,7 +597,7 @@
                     type="text"
                     x-model="newTagName"
                     placeholder="New tag name"
-                    class="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md"
+                    class="flex-1 px-4 py-2 border border-gray-300 dark:border-brand-700 dark:bg-brand-800 dark:text-white rounded-md"
                   />
                   <button
                     type="submit"
@@ -611,7 +611,7 @@
               <!-- Tags List -->
               <div class="space-y-2">
                 <template x-for="tag in tags" :key="tag.id">
-                  <div class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-md transition-colors">
+                  <div class="flex items-center justify-between p-3 bg-gray-50 dark:bg-brand-800 rounded-md transition-colors">
                     <div class="flex items-center gap-2">
                       <span class="font-medium text-gray-900 dark:text-gray-100" x-text="tag.name"></span>
                       <span
@@ -635,7 +635,7 @@
             <div class="flex justify-end mt-6">
               <button
                 @click="showTagsModal = false"
-                class="px-4 py-2 bg-gray-600 dark:bg-gray-700 text-white rounded-md hover:bg-gray-700 dark:hover:bg-gray-600 transition-colors"
+                class="px-4 py-2 bg-gray-600 dark:bg-brand-800 text-white rounded-md hover:bg-gray-700 dark:hover:bg-brand-700 transition-colors"
               >
                 Close
               </button>
