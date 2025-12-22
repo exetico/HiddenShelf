@@ -833,6 +833,7 @@
                 this.showToast(data.error || 'Failed to save link', 'error');
               }
             } catch (error) {
+              console.error('Error saving link:', error);
               this.showToast('Network error', 'error');
             }
           },
