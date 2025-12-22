@@ -61,6 +61,33 @@ try {
         successResponse(['tag' => $tag], 'Tag created successfully');
     }
     
+    // DELETE - Delete tag
+    if ($method === 'DELETE') {
+        requireAuth();
+        
+        $id = $_GET['id'] ?? null;
+        if (!$id) {
+            errorResponse('Tag ID is required');
+        }
+        
+        // Check if tag is in use by current user's links
+        $usageCount = $db->fetchOne(
+            "SELECT COUNT(*) as count FROM link_tags lt 
+             JOIN links l ON lt.link_id = l.id 
+             WHERE lt.tag_id = ? AND l.user_id = ?", 
+            [$id, getCurrentUserId()]
+        );
+        
+        if ($usageCount['count'] > 0) {
+            errorResponse("Tag is in use by {$usageCount['count']} link(s). Remove it from all links first.", 400);
+        }
+        
+        // Delete tag
+        $db->query("DELETE FROM tags WHERE id = ?", [$id]);
+        
+        successResponse(null, 'Tag deleted successfully');
+    }
+    
 } catch (Exception $e) {
     if (DEBUG_MODE) {
         errorResponse($e->getMessage(), 500);
