@@ -127,6 +127,12 @@
             >
               Tags
             </button>
+            <button
+              @click="showBulkEditorModal = true"
+              class="bg-purple-600 dark:bg-purple-700 text-white px-3 sm:px-4 py-2 rounded-md hover:bg-purple-700 dark:hover:bg-purple-800 transition-colors text-sm sm:text-base whitespace-nowrap"
+            >
+              <i class="mdi mdi-database-import-outline mr-1"></i>Bulk Editor
+            </button>
           </div>
           
           <div id="view-mode-toggle" class="flex gap-1 sm:gap-2 bg-white dark:bg-brand-900 rounded-lg p-1 shadow-sm transition-colors">
@@ -660,6 +666,92 @@
           </div>
         </div>
       </div>
+
+      <!-- Bulk Editor Modal -->
+      <div
+        x-show="showBulkEditorModal"
+        class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+        @click.self="showBulkEditorModal = false"
+        style="display: none"
+      >
+        <div class="bg-white dark:bg-brand-900 rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto transition-colors">
+          <div class="sticky top-0 bg-white dark:bg-brand-900 border-b border-gray-200 dark:border-brand-700 p-6 z-10">
+            <h2 class="text-2xl font-bold text-gray-900 dark:text-white">Bulk Editor - Import/Export Data</h2>
+            <p class="text-sm text-gray-600 dark:text-gray-400 mt-2">Export your data as JSON or import from JSON to update multiple items at once.</p>
+          </div>
+
+          <div class="p-6">
+            <!-- Export Section -->
+            <div class="mb-8">
+              <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-3">Export Data</h3>
+              <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">Download your links, categories, and tags as JSON.</p>
+              <button
+                @click="exportData()"
+                class="bg-brand-600 text-white px-4 py-2 rounded-md hover:bg-brand-700 transition-colors"
+              >
+                <i class="mdi mdi-download mr-2"></i>Export to JSON
+              </button>
+            </div>
+
+            <!-- Import Section -->
+            <div class="border-t border-gray-200 dark:border-brand-700 pt-8">
+              <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-3">Import Data</h3>
+              <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">Paste JSON data below to import or update items. Duplicates will be automatically detected.</p>
+              
+              <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">JSON Data</label>
+                <textarea
+                  x-model="bulkImportJson"
+                  rows="12"
+                  class="w-full px-3 py-2 border border-gray-300 dark:border-brand-700 rounded-md bg-white dark:bg-brand-800 text-gray-900 dark:text-white font-mono text-sm"
+                  placeholder='{"links": [...], "categories": [...], "tags": [...]}'
+                ></textarea>
+              </div>
+
+              <div x-show="bulkImportError" class="mb-4 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md">
+                <p class="text-sm text-red-600 dark:text-red-400" x-text="bulkImportError"></p>
+              </div>
+
+              <div x-show="bulkImportPreview" class="mb-4 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-md">
+                <h4 class="font-semibold text-blue-900 dark:text-blue-300 mb-2">Import Summary</h4>
+                <div class="text-sm text-blue-800 dark:text-blue-400 space-y-1">
+                  <p x-show="bulkImportStats.newLinks > 0"><strong x-text="bulkImportStats.newLinks"></strong> new links to import</p>
+                  <p x-show="bulkImportStats.duplicateLinks > 0"><strong x-text="bulkImportStats.duplicateLinks"></strong> duplicate links (will be skipped)</p>
+                  <p x-show="bulkImportStats.newCategories > 0"><strong x-text="bulkImportStats.newCategories"></strong> new categories to import</p>
+                  <p x-show="bulkImportStats.duplicateCategories > 0"><strong x-text="bulkImportStats.duplicateCategories"></strong> duplicate categories (will be skipped)</p>
+                  <p x-show="bulkImportStats.newTags > 0"><strong x-text="bulkImportStats.newTags"></strong> new tags to import</p>
+                  <p x-show="bulkImportStats.duplicateTags > 0"><strong x-text="bulkImportStats.duplicateTags"></strong> duplicate tags (will be skipped)</p>
+                </div>
+              </div>
+
+              <div class="flex gap-3">
+                <button
+                  @click="validateBulkImport()"
+                  class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors"
+                >
+                  <i class="mdi mdi-magnify mr-2"></i>Validate & Preview
+                </button>
+                <button
+                  x-show="bulkImportPreview && !bulkImportError"
+                  @click="executeBulkImport()"
+                  class="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 transition-colors"
+                >
+                  <i class="mdi mdi-check mr-2"></i>Execute Import
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div class="sticky bottom-0 bg-white dark:bg-brand-900 border-t border-gray-200 dark:border-brand-700 p-6">
+            <button
+              @click="closeBulkEditor()"
+              class="px-4 py-2 bg-gray-600 dark:bg-brand-800 text-white rounded-md hover:bg-gray-700 dark:hover:bg-brand-700 transition-colors"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
 
     <script>
@@ -674,6 +766,18 @@
           viewMode: 'view',
           showCategoriesModal: false,
           showTagsModal: false,
+          showBulkEditorModal: false,
+          bulkImportJson: "",
+          bulkImportError: "",
+          bulkImportPreview: false,
+          bulkImportStats: {
+            newLinks: 0,
+            duplicateLinks: 0,
+            newCategories: 0,
+            duplicateCategories: 0,
+            newTags: 0,
+            duplicateTags: 0,
+          },
           newCategoryName: "",
           newCategoryIcon: "",
           newCategoryColor: "#738562",
@@ -1171,6 +1275,249 @@
           async logout() {
             await fetch("/api/auth.php?action=logout", { method: "POST" });
             window.location.href = "/public/login.html";
+          },
+
+          // Bulk Editor Functions
+          exportData() {
+            const exportData = {
+              links: this.links.map(link => ({
+                url: link.url,
+                title: link.title,
+                description: link.description || "",
+                icon: link.icon || "",
+                category: link.category_name || "",
+                tags: link.tags.map(t => t.name),
+                is_public: link.is_public ? true : false,
+              })),
+              categories: this.categories.map(cat => ({
+                name: cat.name,
+                icon: cat.icon || "",
+                color: cat.color || "",
+              })),
+              tags: this.tags.map(tag => ({
+                name: tag.name,
+              })),
+            };
+
+            const jsonStr = JSON.stringify(exportData, null, 2);
+            const blob = new Blob([jsonStr], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `hiddenlinks-export-${new Date().toISOString().split('T')[0]}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            this.showToast('Data exported successfully!', 'success');
+          },
+
+          validateBulkImport() {
+            this.bulkImportError = "";
+            this.bulkImportPreview = false;
+            this.bulkImportStats = {
+              newLinks: 0,
+              duplicateLinks: 0,
+              newCategories: 0,
+              duplicateCategories: 0,
+              newTags: 0,
+              duplicateTags: 0,
+            };
+
+            try {
+              const data = JSON.parse(this.bulkImportJson);
+
+              // Validate structure
+              if (!data || typeof data !== 'object') {
+                throw new Error('Invalid JSON format');
+              }
+
+              const validatedData = {
+                links: [],
+                categories: [],
+                tags: [],
+              };
+
+              // Validate and count categories
+              if (data.categories && Array.isArray(data.categories)) {
+                const existingCategoryNames = this.categories.map(c => c.name.toLowerCase());
+                
+                data.categories.forEach(cat => {
+                  if (!cat.name || typeof cat.name !== 'string') {
+                    throw new Error('Category must have a valid name');
+                  }
+                  
+                  if (existingCategoryNames.includes(cat.name.toLowerCase())) {
+                    this.bulkImportStats.duplicateCategories++;
+                  } else {
+                    this.bulkImportStats.newCategories++;
+                    validatedData.categories.push({
+                      name: cat.name,
+                      icon: cat.icon || "",
+                      color: cat.color || "#738562",
+                    });
+                  }
+                });
+              }
+
+              // Validate and count tags
+              if (data.tags && Array.isArray(data.tags)) {
+                const existingTagNames = this.tags.map(t => t.name.toLowerCase());
+                
+                data.tags.forEach(tag => {
+                  if (!tag.name || typeof tag.name !== 'string') {
+                    throw new Error('Tag must have a valid name');
+                  }
+                  
+                  if (existingTagNames.includes(tag.name.toLowerCase())) {
+                    this.bulkImportStats.duplicateTags++;
+                  } else {
+                    this.bulkImportStats.newTags++;
+                    validatedData.tags.push({
+                      name: tag.name,
+                    });
+                  }
+                });
+              }
+
+              // Validate and count links
+              if (data.links && Array.isArray(data.links)) {
+                const existingUrls = this.links.map(l => l.url.toLowerCase());
+                
+                data.links.forEach(link => {
+                  if (!link.url || typeof link.url !== 'string') {
+                    throw new Error('Link must have a valid URL');
+                  }
+                  if (!link.title || typeof link.title !== 'string') {
+                    throw new Error('Link must have a valid title');
+                  }
+                  
+                  if (existingUrls.includes(link.url.toLowerCase())) {
+                    this.bulkImportStats.duplicateLinks++;
+                  } else {
+                    this.bulkImportStats.newLinks++;
+                    validatedData.links.push({
+                      url: link.url,
+                      title: link.title,
+                      description: link.description || "",
+                      icon: link.icon || "",
+                      category: link.category || "",
+                      tags: Array.isArray(link.tags) ? link.tags : [],
+                      is_public: link.is_public ? true : false,
+                    });
+                  }
+                });
+              }
+
+              // Store validated data for import
+              this.validatedImportData = validatedData;
+              this.bulkImportPreview = true;
+              
+              const totalNew = this.bulkImportStats.newLinks + this.bulkImportStats.newCategories + this.bulkImportStats.newTags;
+              if (totalNew === 0) {
+                this.bulkImportError = "No new items to import. All items already exist.";
+              }
+
+            } catch (error) {
+              this.bulkImportError = `Invalid JSON: ${error.message}`;
+            }
+          },
+
+          async executeBulkImport() {
+            if (!this.validatedImportData || !this.bulkImportPreview) {
+              this.showToast('Please validate the import first', 'warning');
+              return;
+            }
+
+            const totalNew = this.bulkImportStats.newLinks + this.bulkImportStats.newCategories + this.bulkImportStats.newTags;
+            if (totalNew === 0) {
+              this.showToast('No new items to import', 'warning');
+              return;
+            }
+
+            if (!confirm(`Import ${totalNew} new items? This action cannot be undone.`)) {
+              return;
+            }
+
+            try {
+              // Import categories first
+              for (const cat of this.validatedImportData.categories) {
+                await fetch("/api/categories.php", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify(cat),
+                });
+              }
+
+              // Reload categories to get IDs
+              await this.loadCategories();
+
+              // Import tags
+              for (const tag of this.validatedImportData.tags) {
+                await fetch("/api/tags.php", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify(tag),
+                });
+              }
+
+              // Reload tags to get IDs
+              await this.loadTags();
+
+              // Import links
+              for (const link of this.validatedImportData.links) {
+                // Find category ID if specified
+                let category_id = null;
+                if (link.category) {
+                  const cat = this.categories.find(c => c.name.toLowerCase() === link.category.toLowerCase());
+                  if (cat) category_id = cat.id;
+                }
+
+                // Prepare tags string
+                const tagsInput = link.tags.join(', ');
+
+                await fetch("/api/links.php", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    url: link.url,
+                    title: link.title,
+                    description: link.description,
+                    icon: link.icon,
+                    category_id: category_id,
+                    tags: tagsInput,
+                    is_public: link.is_public,
+                  }),
+                });
+              }
+
+              // Reload all data
+              await this.loadLinks();
+              await this.loadCategories();
+              await this.loadTags();
+
+              this.showToast(`Successfully imported ${totalNew} items!`, 'success');
+              this.closeBulkEditor();
+
+            } catch (error) {
+              this.showToast('Import failed: ' + error.message, 'error');
+            }
+          },
+
+          closeBulkEditor() {
+            this.showBulkEditorModal = false;
+            this.bulkImportJson = "";
+            this.bulkImportError = "";
+            this.bulkImportPreview = false;
+            this.validatedImportData = null;
+            this.bulkImportStats = {
+              newLinks: 0,
+              duplicateLinks: 0,
+              newCategories: 0,
+              duplicateCategories: 0,
+              newTags: 0,
+              duplicateTags: 0,
+            };
           },
 
           // Helper functions for view mode
