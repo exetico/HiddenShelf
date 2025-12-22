@@ -35,6 +35,15 @@ try {
             
             $input = getJsonInput();
             $email = $input['email'] ?? '';
+            $returnTo = $input['return_to'] ?? null;
+            
+            // Store return URL in session if provided
+            if ($returnTo) {
+                if (session_status() === PHP_SESSION_NONE) {
+                    session_start();
+                }
+                $_SESSION['return_to'] = $returnTo;
+            }
             
             $result = $auth->requestMagicLink($email);
             
@@ -52,8 +61,17 @@ try {
             $result = $auth->verifyMagicLink($token);
             
             if ($result['success']) {
-                // Redirect to app
-                header('Location: ' . SITE_URL . '/public/index.html');
+                // Start session to access stored return URL
+                if (session_status() === PHP_SESSION_NONE) {
+                    session_start();
+                }
+                
+                // Check if there's a return URL stored
+                $returnTo = $_SESSION['return_to'] ?? '/public/index.html';
+                unset($_SESSION['return_to']); // Clear it after using
+                
+                // Redirect to intended page or default to app
+                header('Location: ' . SITE_URL . $returnTo);
                 exit;
             } else {
                 // Redirect to login with error

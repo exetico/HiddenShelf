@@ -234,6 +234,12 @@
               this.savedEmail = saved;
               this.email = saved;
             }
+
+            // Show message if there's a return URL (user was redirected here)
+            const returnTo = sessionStorage.getItem("hiddenlinks_return_to");
+            if (returnTo) {
+              this.errorMessage = "Please log in to continue.";
+            }
           },
 
           async requestMagicLink() {
@@ -247,15 +253,25 @@
                 ? this.savedEmail
                 : this.email;
 
+            // Get return URL from sessionStorage if it exists
+            const returnTo = sessionStorage.getItem("hiddenlinks_return_to");
+
             try {
+              const payload = {
+                email: emailToUse,
+              };
+
+              // Include return URL if it exists
+              if (returnTo) {
+                payload.return_to = returnTo;
+              }
+
               const response = await fetch("/api/auth.php?action=login", {
                 method: "POST",
                 headers: {
                   "Content-Type": "application/json",
                 },
-                body: JSON.stringify({
-                  email: emailToUse,
-                }),
+                body: JSON.stringify(payload),
               });
 
               const data = await response.json();

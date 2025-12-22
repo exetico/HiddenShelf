@@ -133,14 +133,14 @@
           <!-- View Mode Toggle -->
           <div class="flex gap-2 bg-white dark:bg-gray-800 rounded-lg p-1 shadow-sm transition-colors">
             <button
-              @click="viewMode = 'view'"
+              @click="setRoute('view')"
               :class="viewMode === 'view' ? 'bg-brand-600 text-white' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'"
               class="px-4 py-2 rounded-md transition-colors"
             >
               <i class="mdi mdi-view-list mr-1"></i> View Mode
             </button>
             <button
-              @click="viewMode = 'edit'"
+              @click="setRoute('edit')"
               :class="viewMode === 'edit' ? 'bg-brand-600 text-white' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'"
               class="px-4 py-2 rounded-md transition-colors"
             >
@@ -792,8 +792,34 @@
             }
           },
 
+          initRouting() {
+            // Read initial route from URL hash
+            const hash = window.location.hash.slice(1); // Remove the #
+            if (hash === '/edit') {
+              this.viewMode = 'edit';
+            } else {
+              this.viewMode = 'view';
+            }
+
+            // Listen for hash changes
+            window.addEventListener('hashchange', () => {
+              const newHash = window.location.hash.slice(1);
+              if (newHash === '/edit') {
+                this.viewMode = 'edit';
+              } else {
+                this.viewMode = 'view';
+              }
+            });
+          },
+
+          setRoute(mode) {
+            // Update URL hash when mode changes
+            window.location.hash = mode === 'edit' ? '#/edit' : '#/view';
+          },
+
           async init() {
             this.initTheme();
+            this.initRouting();
             await this.checkAuth();
             await this.loadCategories();
             await this.ensureUnsortedCategory();
@@ -807,12 +833,18 @@
               const data = await response.json();
 
               if (!data.success) {
+                // Save current route before redirecting to login
+                const currentRoute = window.location.hash || '#/view';
+                sessionStorage.setItem('hiddenlinks_return_to', currentRoute);
                 window.location.href = "/public/login.html";
                 return;
               }
 
               this.user = data.user;
             } catch (error) {
+              // Save current route before redirecting to login
+              const currentRoute = window.location.hash || '#/view';
+              sessionStorage.setItem('hiddenlinks_return_to', currentRoute);
               window.location.href = "/public/login.html";
             }
           },
