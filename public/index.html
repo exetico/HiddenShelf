@@ -194,6 +194,14 @@
                           <span x-show="link.tags.length > 3" class="px-2 py-0.5 text-gray-400 text-xs" x-text="`+${link.tags.length - 3}`"></span>
                         </div>
                         <button
+                          x-show="link.is_public"
+                          @click.prevent="copyPublicLink(link.hash)"
+                          class="text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 text-sm flex-shrink-0"
+                          title="Copy public link"
+                        >
+                          <i class="mdi mdi-link-variant"></i>
+                        </button>
+                        <button
                           @click.prevent="editLink(link)"
                           class="text-brand-600 dark:text-brand-400 hover:text-brand-700 dark:hover:text-brand-300 text-xs px-2 py-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
                         >
@@ -231,6 +239,14 @@
                           </template>
                           <span x-show="link.tags.length > 3" class="px-2 py-0.5 text-gray-400 text-xs" x-text="`+${link.tags.length - 3}`"></span>
                         </div>
+                        <button
+                          x-show="link.is_public"
+                          @click.prevent="copyPublicLink(link.hash)"
+                          class="text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 text-sm flex-shrink-0"
+                          title="Copy public link"
+                        >
+                          <i class="mdi mdi-link-variant"></i>
+                        </button>
                         <button
                           @click.prevent="editLink(link)"
                           class="text-brand-600 dark:text-brand-400 hover:text-brand-700 dark:hover:text-brand-300 text-xs px-2 py-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
