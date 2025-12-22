@@ -11,18 +11,4 @@
 7. Make Backup to cloud, or whatever?
 8. Lav federe favicon. Måske noget skygge under linket, mv? en skrig grøn omkring? og måske en helt mørk, ud over dette?
 
-Use this prompt:
-
-```
-Make a mass bulk editor, where the user can edit many things at once,
-
-But, make it as a json editor, so very simple, for people to paste in and "import/updat"
-
-This method should ALSO allow the user to export current data.
-
-Make a warning before import, but also, secure no dupes. Also summary before doing anything.
-
-Again, remember that this is a multi-user platform. The user should not be able to touch other users data.
-```
-
 Tested with email: `UeNLqiPscLZ9ivgW@fP2LYAFme95rJ73p.com`
