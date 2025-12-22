@@ -175,6 +175,7 @@ try {
         $url = sanitize($input['url'] ?? '');
         $title = sanitize($input['title'] ?? '');
         $description = sanitize($input['description'] ?? '');
+        $icon = sanitize($input['icon'] ?? '');
         $isPublic = (int)($input['is_public'] ?? 0);
         $categoryId = $input['category_id'] ?? null;
         $tags = $input['tags'] ?? [];
@@ -196,14 +197,15 @@ try {
         } while ($existing);
         
         // Insert link
-        $sql = "INSERT INTO links (user_id, hash, url, title, description, is_public, category_id) 
-                VALUES (?, ?, ?, ?, ?, ?, ?)";
+        $sql = "INSERT INTO links (user_id, hash, url, title, description, icon, is_public, category_id) 
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
         $linkId = $db->insert($sql, [
             getCurrentUserId(),
             $hash,
             $url,
             $title,
             $description,
+            $icon,
             $isPublic,
             $categoryId
         ]);
@@ -260,6 +262,7 @@ try {
         $url = sanitize($input['url'] ?? $existing['url']);
         $title = sanitize($input['title'] ?? $existing['title']);
         $description = sanitize($input['description'] ?? $existing['description']);
+        $icon = sanitize($input['icon'] ?? $existing['icon']);
         $isPublic = isset($input['is_public']) ? (int)$input['is_public'] : $existing['is_public'];
         $categoryId = $input['category_id'] ?? $existing['category_id'];
         
@@ -274,9 +277,9 @@ try {
         
         // Update link
         $sql = "UPDATE links 
-                SET url = ?, title = ?, description = ?, is_public = ?, category_id = ?, updated_at = CURRENT_TIMESTAMP 
+                SET url = ?, title = ?, description = ?, icon = ?, is_public = ?, category_id = ?, updated_at = CURRENT_TIMESTAMP 
                 WHERE id = ?";
-        $db->query($sql, [$url, $title, $description, $isPublic, $categoryId, $id]);
+        $db->query($sql, [$url, $title, $description, $icon, $isPublic, $categoryId, $id]);
         
         // Update tags if provided
         if (isset($input['tags'])) {
