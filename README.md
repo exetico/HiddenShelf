@@ -206,11 +206,24 @@ define('SMTP_HOST', 'smtp.example.com');
 define('SMTP_PORT', 587);
 define('SMTP_USER', 'your@email.com');
 define('SMTP_PASS', 'password');
+define('SMTP_ENCRYPTION', 'tls');
 define('FROM_EMAIL', 'noreply@yoursite.com');
 define('FROM_NAME', 'HiddenLinks');
 ```
 
 Testing Email: `UeNLqiPscLZ9ivgW@fP2LYAFme95rJ73p.com`
+
+Use a test SMTP server like [this](https://www.smtpbucket.com/emails?recipient=UeNLqiPscLZ9ivgW@fP2LYAFme95rJ73p.com) if you need it. But remember to remove user, pass and encryption.
+
+Like:
+
+```php
+define('SMTP_HOST', 'mail.smtpbucket.com');
+define('SMTP_PORT', 8025); // Normally 587
+// define('SMTP_USER', 'your@email.com');
+// define('SMTP_PASS', 'your-password');
+define('SMTP_ENCRYPTION', '');
+```
 
 ## How It Works
 
