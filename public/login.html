@@ -4,6 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Login - HiddenLinks</title>
+    <link rel="icon" type="image/x-icon" href="public/favicon.ico" />
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
       tailwind.config = {
@@ -176,6 +177,82 @@
         <p class="text-xs text-gray-500 dark:text-gray-400 mt-6 text-center">
           No passwords required. We'll send you a secure login link via email.
         </p>
+
+        <!-- Data Retention Disclaimer -->
+        <div class="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+          <p class="text-xs text-gray-500 dark:text-gray-400 text-center">
+            ⚠️ Beta Service: Data may be deleted without notice.
+            <button
+              @click="showDisclaimerModal = true"
+              class="text-brand-600 dark:text-brand-400 hover:underline"
+            >
+              Learn more
+            </button>
+          </p>
+        </div>
+      </div>
+
+      <!-- Disclaimer Modal -->
+      <div
+        x-show="showDisclaimerModal"
+        class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"
+        @click.self="showDisclaimerModal = false"
+      >
+        <div
+          class="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-lg w-full p-6"
+        >
+          <h2 class="text-2xl font-bold mb-4 text-gray-900 dark:text-white">
+            Data Retention Policy
+          </h2>
+
+          <div class="space-y-4 text-gray-700 dark:text-gray-300 text-sm">
+            <p class="font-semibold text-yellow-600 dark:text-yellow-500">
+              ⚠️ Important: This service is currently in beta and subject to
+              change.
+            </p>
+
+            <p>
+              <strong>Data Retention:</strong> Your data (links, categories,
+              tags, and account information) may be deleted at any time without
+              prior notice. We do not guarantee data persistence or
+              availability.
+            </p>
+
+            <p>
+              <strong>No Backups:</strong> We do not provide automated backups.
+              It is your responsibility to maintain copies of any important
+              information stored in HiddenLinks.
+            </p>
+
+            <p>
+              <strong>Service Availability:</strong> The service may be
+              discontinued, modified, or become temporarily unavailable without
+              warning. No service level agreement (SLA) is provided.
+            </p>
+
+            <p>
+              <strong>Recommendation:</strong> Do not use this service for
+              storing critical, irreplaceable, or sensitive information.
+              Consider this a temporary or experimental tool.
+            </p>
+
+            <p
+              class="text-xs text-gray-500 dark:text-gray-400 pt-2 border-t border-gray-200 dark:border-gray-700"
+            >
+              By using HiddenLinks, you acknowledge and accept these terms. Use
+              at your own risk.
+            </p>
+          </div>
+
+          <div class="mt-6 flex justify-end">
+            <button
+              @click="showDisclaimerModal = false"
+              class="px-4 py-2 bg-brand-600 text-white rounded-md hover:bg-brand-700 transition-colors"
+            >
+              I Understand
+            </button>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -189,6 +266,7 @@
           loading: false,
           errorMessage: "",
           successMessage: "",
+          showDisclaimerModal: false,
 
           toggleTheme() {
             this.theme = this.theme === "dark" ? "light" : "dark";
