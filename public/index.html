@@ -131,7 +131,7 @@
               </div>
 
               <button
-                @click="showProfileModal = true"
+                @click="setRoute('profile')"
                 class="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-brand-600 text-white font-semibold text-xs sm:text-sm flex items-center justify-center hover:bg-brand-700 transition-colors"
                 :title="user?.email"
                 x-text="getProfileInitials()"
@@ -806,146 +806,151 @@
         </div>
       </div>
 
-      <!-- Profile Modal -->
-      <div
-        x-show="showProfileModal"
-        class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
-        @click.self="showProfileModal = false"
-        style="display: none"
-      >
-        <div class="bg-white dark:bg-brand-900 rounded-lg shadow-xl max-w-md w-full transition-colors">
-          <div class="border-b border-gray-200 dark:border-brand-700 p-6">
-            <h2 class="text-2xl font-bold text-gray-900 dark:text-white">Profile</h2>
-          </div>
+      <!-- Profile View -->
+      <div x-show="viewMode === 'profile'" class="max-w-2xl mx-auto">
+        <!-- Back Button -->
+        <div class="mb-6">
+          <button
+            @click="setRoute('view')"
+            class="flex items-center gap-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
+            </svg>
+            Back to Links
+          </button>
+        </div>
 
-          <div class="p-6">
-            <div class="flex flex-col items-center mb-6">
-              <div class="w-20 h-20 rounded-full bg-brand-600 text-white font-bold text-2xl flex items-center justify-center mb-3">
-                <span x-text="getProfileInitials()"></span>
-              </div>
-              <p class="text-lg text-gray-900 dark:text-white font-medium" x-text="user?.email"></p>
+        <!-- Profile Header -->
+        <div class="mb-8">
+          <h1 class="text-3xl font-bold text-gray-900 dark:text-white mb-2">Profile & Settings</h1>
+          <p class="text-gray-600 dark:text-gray-400">Manage your account and customize your experience</p>
+        </div>
+
+        <!-- Display Settings -->
+        <div class="bg-white dark:bg-brand-900 rounded-lg shadow-md p-6 mb-6 transition-colors">
+          <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">Display Settings</h2>
+          
+          <div class="space-y-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Links per page</label>
+              <select
+                x-model.number="linksPerPage"
+                @change="saveSettings(); fetchLinks();"
+                class="w-full px-3 py-2 bg-white dark:bg-brand-800 border border-gray-300 dark:border-brand-700 rounded-md text-gray-900 dark:text-white focus:ring-2 focus:ring-brand-500 dark:focus:ring-brand-400 focus:border-transparent transition-colors"
+              >
+                <option value="20">20</option>
+                <option value="50">50</option>
+                <option value="100">100</option>
+                <option value="250">250</option>
+                <option value="500">500</option>
+              </select>
             </div>
+          </div>
+        </div>
 
-            <!-- Settings Section -->
-            <div class="mb-6 p-4 bg-gray-50 dark:bg-brand-800 rounded-lg border border-gray-200 dark:border-brand-700">
-              <h3 class="text-sm font-semibold text-gray-900 dark:text-white mb-3">Display Settings</h3>
-              
-              <div class="mb-4">
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Links per page
-                </label>
-                <select
-                  x-model.number="linksPerPage"
-                  @change="updateLinksPerPage(linksPerPage)"
-                  class="w-full px-3 py-2 border border-gray-300 dark:border-brand-700 rounded-md bg-white dark:bg-brand-900 text-gray-900 dark:text-white"
-                >
-                  <option value="20">20 links</option>
-                  <option value="50">50 links</option>
-                  <option value="100">100 links</option>
-                  <option value="250">250 links</option>
-                  <option value="500">500 links</option>
-                </select>
-                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Number of links to display per page</p>
-              </div>
-
-              <div>
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Brand color
-                </label>
-                <div class="flex gap-2 items-center">
-                  <input
-                    type="color"
-                    x-model="brandColor"
-                    @change="updateBrandColor(brandColor)"
-                    class="h-10 w-20 rounded border border-gray-300 dark:border-brand-700 cursor-pointer"
-                  />
+        <!-- Brand Color -->
+        <div class="bg-white dark:bg-brand-900 rounded-lg shadow-md p-6 mb-6 transition-colors">
+          <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">Brand Color</h2>
+          
+          <div class="space-y-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Choose your brand color</label>
+              <div class="flex gap-3 items-center">
+                <input
+                  type="color"
+                  x-model="brandColor"
+                  @input="updateBrandColor($event.target.value)"
+                  class="h-10 w-20 rounded border border-gray-300 dark:border-brand-700 cursor-pointer"
+                />
+                <div class="flex-1">
                   <input
                     type="text"
                     x-model="brandColor"
-                    @change="updateBrandColor(brandColor)"
+                    @input="updateBrandColor($event.target.value)"
+                    class="w-full px-3 py-2 bg-white dark:bg-brand-800 border border-gray-300 dark:border-brand-700 rounded-md text-gray-900 dark:text-white font-mono text-sm focus:ring-2 focus:ring-brand-500 dark:focus:ring-brand-400 focus:border-transparent transition-colors"
                     placeholder="#687061"
-                    pattern="^#[0-9A-Fa-f]{6}$"
-                    class="flex-1 px-3 py-2 border border-gray-300 dark:border-brand-700 rounded-md bg-white dark:bg-brand-900 text-gray-900 dark:text-white font-mono text-sm"
                   />
-                  <button
-                    @click="resetBrandColor()"
-                    class="px-3 py-2 bg-gray-200 dark:bg-brand-800 text-gray-700 dark:text-gray-300 rounded-md hover:bg-gray-300 dark:hover:bg-brand-700 transition-colors text-sm"
-                    title="Reset to default"
-                  >
-                    <i class="mdi mdi-refresh"></i>
-                  </button>
                 </div>
-                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Choose your preferred theme color</p>
-              </div>
-            </div>
-
-            <div class="space-y-3">
-              <button
-                @click="logout"
-                class="w-full bg-gray-600 dark:bg-brand-800 text-white px-4 py-2 rounded-md hover:bg-gray-700 dark:hover:bg-brand-700 transition-colors flex items-center justify-center gap-2"
-              >
-                <i class="mdi mdi-logout"></i>
-                <span>Logout</span>
-              </button>
-
-              <!-- Advanced Tools -->
-              <div class="border border-blue-200 dark:border-blue-900 rounded-lg overflow-hidden">
                 <button
-                  @click="showAdvancedTools = !showAdvancedTools"
-                  class="w-full bg-blue-50 dark:bg-blue-950 text-blue-700 dark:text-blue-400 px-4 py-2 hover:bg-blue-100 dark:hover:bg-blue-900 transition-colors flex items-center justify-between gap-2"
+                  @click="resetBrandColor()"
+                  class="px-4 py-2 bg-brand-600 dark:bg-brand-700 text-white rounded-md hover:bg-brand-700 dark:hover:bg-brand-600 transition-colors"
                 >
-                  <div class="flex items-center gap-2">
-                    <i class="mdi mdi-tools"></i>
-                    <span class="font-semibold">Advanced Tools</span>
-                  </div>
-                  <i class="mdi" :class="showAdvancedTools ? 'mdi-chevron-up' : 'mdi-chevron-down'"></i>
+                  Reset
                 </button>
-                
-                <div x-show="showAdvancedTools" x-collapse class="p-3 bg-blue-50 dark:bg-blue-950 border-t border-blue-200 dark:border-blue-900">
-                  <p class="text-xs text-blue-600 dark:text-blue-400 mb-3">Tools for power users</p>
-                  <button
-                    @click="showBulkEditorModal = true; showProfileModal = false"
-                    class="w-full bg-brand-600 text-white px-4 py-2 rounded-md hover:bg-brand-700 transition-colors flex items-center justify-center gap-2"
-                  >
-                    <i class="mdi mdi-database-import-outline"></i>
-                    <span>Bulk Editor</span>
-                  </button>
-                </div>
               </div>
-
-              <!-- Danger Zone -->
-              <div class="border border-red-200 dark:border-red-900 rounded-lg overflow-hidden">
-                <button
-                  @click="showDangerZone = !showDangerZone"
-                  class="w-full bg-red-50 dark:bg-red-950 text-red-700 dark:text-red-400 px-4 py-2 hover:bg-red-100 dark:hover:bg-red-900 transition-colors flex items-center justify-between gap-2"
-                >
-                  <div class="flex items-center gap-2">
-                    <i class="mdi mdi-alert-octagon"></i>
-                    <span class="font-semibold">Danger Zone</span>
-                  </div>
-                  <i class="mdi" :class="showDangerZone ? 'mdi-chevron-up' : 'mdi-chevron-down'"></i>
-                </button>
-                
-                <div x-show="showDangerZone" x-collapse class="p-3 bg-red-50 dark:bg-red-950 border-t border-red-200 dark:border-red-900">
-                  <p class="text-xs text-red-600 dark:text-red-400 mb-3">This action cannot be undone!</p>
-                  <button
-                    @click="confirmDeleteEverything()"
-                    class="w-full bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 transition-colors flex items-center justify-center gap-2"
-                  >
-                    <i class="mdi mdi-delete-forever"></i>
-                    <span>Delete Everything</span>
-                  </button>
-                </div>
-              </div>
+              <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">Default: #687061</p>
             </div>
           </div>
+        </div>
 
-          <div class="border-t border-gray-200 dark:border-brand-700 p-6">
+        <!-- Advanced Tools -->
+        <div class="bg-white dark:bg-brand-900 rounded-lg shadow-md p-6 mb-6 transition-colors">
+          <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">Advanced Tools</h2>
+          
+          <div class="space-y-3">
             <button
-              @click="showProfileModal = false"
-              class="w-full px-4 py-2 bg-gray-200 dark:bg-brand-800 text-gray-700 dark:text-white rounded-md hover:bg-gray-300 dark:hover:bg-brand-700 transition-colors"
+              @click="showBulkEditorModal = true; setRoute('view')"
+              class="w-full flex items-center justify-between p-3 bg-brand-50 dark:bg-brand-800 rounded-md hover:bg-brand-100 dark:hover:bg-brand-700 transition-colors group"
             >
-              Close
+              <div class="flex items-center gap-3">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 text-gray-600 dark:text-gray-400">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25H12" />
+                </svg>
+                <div class="text-left">
+                  <div class="text-sm font-medium text-gray-900 dark:text-white">Bulk Editor</div>
+                  <div class="text-xs text-gray-500 dark:text-gray-400">Import/Export and manage links in bulk</div>
+                </div>
+              </div>
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 text-gray-400 group-hover:text-gray-600 dark:group-hover:text-gray-300 transition-colors">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- Account -->
+        <div class="bg-white dark:bg-brand-900 rounded-lg shadow-md p-6 mb-6 transition-colors">
+          <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">Account</h2>
+          
+          <button
+            @click="logout()"
+            class="w-full px-4 py-2 bg-brand-600 dark:bg-brand-700 text-white rounded-md hover:bg-brand-700 dark:hover:bg-brand-600 transition-colors"
+          >
+            Logout
+          </button>
+        </div>
+
+        <!-- Danger Zone -->
+        <div class="bg-red-50 dark:bg-red-950 rounded-lg shadow-md p-6 border-2 border-red-300 dark:border-red-800 transition-colors">
+          <button
+            @click="showDangerZone = !showDangerZone"
+            class="w-full flex items-center justify-between text-left mb-4"
+          >
+            <h2 class="text-xl font-semibold text-red-600 dark:text-red-400">Danger Zone</h2>
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke-width="1.5"
+              stroke="currentColor"
+              class="w-5 h-5 text-red-600 dark:text-red-400 transition-transform"
+              :class="showDangerZone ? 'rotate-180' : ''"
+            >
+              <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+            </svg>
+          </button>
+          
+          <div x-show="showDangerZone" x-collapse>
+            <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">
+              These actions are irreversible. Please be certain before proceeding.
+            </p>
+            
+            <button
+              @click="confirmDeleteEverything()"
+              class="w-full px-4 py-2 bg-red-600 dark:bg-red-700 text-white rounded-md hover:bg-red-700 dark:hover:bg-red-600 transition-colors"
+            >
+              Delete Everything
             </button>
           </div>
         </div>
@@ -1172,12 +1177,10 @@
           toasts: [],
           theme: 'light',
           viewMode: 'view',
+          showDangerZone: false,
           showCategoriesModal: false,
           showTagsModal: false,
           showBulkEditorModal: false,
-          showProfileModal: false,
-          showDangerZone: false,
-          showAdvancedTools: false,
           showDeleteProgressModal: false,
           deleteProgress: "",
           deleteProgressPercent: 0,
@@ -1535,6 +1538,8 @@
             const hash = window.location.hash.slice(1); // Remove the #
             if (hash === '/edit') {
               this.viewMode = 'edit';
+            } else if (hash === '/profile') {
+              this.viewMode = 'profile';
             } else {
               this.viewMode = 'view';
             }
@@ -1544,6 +1549,8 @@
               const newHash = window.location.hash.slice(1);
               if (newHash === '/edit') {
                 this.viewMode = 'edit';
+              } else if (newHash === '/profile') {
+                this.viewMode = 'profile';
               } else {
                 this.viewMode = 'view';
               }
@@ -1552,7 +1559,13 @@
 
           setRoute(mode) {
             // Update URL hash when mode changes
-            window.location.hash = mode === 'edit' ? '#/edit' : '#/view';
+            if (mode === 'edit') {
+              window.location.hash = '#/edit';
+            } else if (mode === 'profile') {
+              window.location.hash = '#/profile';
+            } else {
+              window.location.hash = '#/view';
+            }
           },
 
           async init() {
@@ -2018,8 +2031,7 @@
               return;
             }
 
-            // Close profile modal and show progress modal
-            this.showProfileModal = false;
+            // Show progress modal
             this.showDeleteProgressModal = true;
             this.deleteProgress = "Fetching all data...";
             this.deleteProgressPercent = 5;

@@ -21,8 +21,8 @@ WORKDIR /var/www/html
 # Copy application files
 COPY . /var/www/html/
 
-# Install PHPMailer via Composer
-RUN composer require phpmailer/phpmailer
+# Install dependencies via Composer
+RUN composer install --no-dev --optimize-autoloader
 
 # Create db directory and set permissions
 RUN mkdir -p /var/www/html/db && \

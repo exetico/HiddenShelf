@@ -1,6 +1,9 @@
 # HiddenLinks - Environment files
 config.php
 .env
+.env.dev
+.env.test
+.env.prod
 
 # Composer
 /vendor/
