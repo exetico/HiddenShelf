@@ -9,7 +9,6 @@
 5. Make the AI with Sonnet 4.5 check for security conserns
 6. Make Backup to cloud, or whatever?
 7. Lav federe favicon. Måske noget skygge under linket, mv? en skrig grøn omkring? og måske en helt mørk, ud over dette?
-8. Add variables for "max links query" or whatever things
 
 Tested with email: `UeNLqiPscLZ9ivgW@fP2LYAFme95rJ73p.com`
 
