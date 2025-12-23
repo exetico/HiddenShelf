@@ -1860,7 +1860,9 @@
           },
 
           resetBrandColor() {
-            this.debouncedBrandColorUpdate('#687061');
+            this.brandColor = '#687061';
+            this.applyBrandColor();
+            this.saveBrandColor('#687061');
           },
 
           applyBrandColor() {
