@@ -927,7 +927,7 @@
               <label class="block text-sm font-medium text-gray-700 dark:text-brand-300 mb-2">Links per page</label>
               <select
                 x-model.number="linksPerPage"
-                @change="saveSettings(); fetchLinks();"
+                @change="saveSettings({ links_per_page: linksPerPage }, { reloadLinks: true })"
                 class="w-full px-3 py-2 bg-white dark:bg-brand-800 border border-gray-300 dark:border-brand-700 rounded-md text-gray-900 dark:text-white focus:ring-2 focus:ring-brand-500 dark:focus:ring-brand-400 focus:border-transparent transition-colors"
               >
                 <option value="20">20</option>
@@ -1781,22 +1781,40 @@
             }
           },
 
-          async updateLinksPerPage(value) {
+          async saveSettings(settings, options = {}) {
+            const { showToast = true, reloadLinks = false } = options;
+            
             try {
               const response = await fetch('/api/user_settings.php', {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ links_per_page: value })
+                body: JSON.stringify(settings)
               });
               const data = await response.json();
+              
               if (data.success) {
-                this.linksPerPage = value;
-                this.showToast('Settings updated', 'success');
-                await this.loadLinks(); // Reload with new limit
+                // Update local state
+                if (settings.links_per_page !== undefined) {
+                  this.linksPerPage = settings.links_per_page;
+                }
+                if (settings.brand_color !== undefined) {
+                  this.brandColor = settings.brand_color;
+                  this.applyBrandColor();
+                }
+                
+                if (showToast) {
+                  this.showToast('Settings updated', 'success');
+                }
+                
+                if (reloadLinks) {
+                  await this.loadLinks();
+                }
               }
             } catch (error) {
               console.error('Failed to update settings:', error);
-              this.showToast('Failed to update settings', 'error');
+              if (showToast) {
+                this.showToast('Failed to update settings', 'error');
+              }
             }
           },
 
@@ -1812,33 +1830,14 @@
             
             // Set new timeout to save after 1 second of no typing
             this.brandColorTimeout = setTimeout(() => {
-              this.saveBrandColor(color);
+              this.saveSettings({ brand_color: color });
             }, 1000);
-          },
-
-          async saveBrandColor(color) {
-            try {
-              const response = await fetch('/api/user_settings.php', {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ brand_color: color })
-              });
-              
-              const data = await response.json();
-              
-              if (data.success) {
-                this.showToast('Brand color saved!', 'success');
-              }
-            } catch (error) {
-              console.error('Error updating brand color:', error);
-              this.showToast('Failed to update color', 'error');
-            }
           },
 
           resetBrandColor() {
             this.brandColor = '#687061';
             this.applyBrandColor();
-            this.saveBrandColor('#687061');
+            this.saveSettings({ brand_color: '#687061' });
           },
 
           applyBrandColor() {
