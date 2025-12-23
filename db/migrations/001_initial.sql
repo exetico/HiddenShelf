@@ -13,10 +13,24 @@ INSERT OR IGNORE INTO _meta (key, value) VALUES ('schema_version', '1');
 CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     email TEXT UNIQUE NOT NULL,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    -- Add OAuth authentication fields to users table
+    oauth_provider TEXT DEFAULT NULL,
+    oauth_id TEXT DEFAULT NULL,
+    oauth_email TEXT DEFAULT NULL
 );
 
 CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
+CREATE INDEX IF NOT EXISTS idx_users_oauth ON users(oauth_provider, oauth_id);
+
+-- User settings table (flexible JSON-based)
+CREATE TABLE IF NOT EXISTS user_settings (
+    user_id INTEGER PRIMARY KEY,
+    settings TEXT DEFAULT '{"links_per_page":20,"brand_color":"#687061"}',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
 
 -- Links table
 CREATE TABLE IF NOT EXISTS links (
@@ -29,6 +43,7 @@ CREATE TABLE IF NOT EXISTS links (
     icon TEXT DEFAULT NULL,
     display_order INTEGER DEFAULT NULL,
     is_public INTEGER DEFAULT 0,
+    metadata TEXT DEFAULT '{}', -- JSON for flexible data: brand_color, custom properties, etc.
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE

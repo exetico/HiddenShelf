@@ -28,14 +28,19 @@ try {
         
         $userId = getCurrentUserId();
         
-        // Get or create settings
-        $settings = $db->fetchOne("SELECT * FROM user_settings WHERE user_id = ?", [$userId]);
+        // Get settings
+        $result = $db->fetchOne("SELECT settings FROM user_settings WHERE user_id = ?", [$userId]);
         
-        if (!$settings) {
+        if (!$result) {
             // Create default settings
-            $sql = "INSERT INTO user_settings (user_id, links_per_page, brand_color) VALUES (?, ?, ?)";
-            $db->insert($sql, [$userId, 20, '#6d7665']);
-            $settings = $db->fetchOne("SELECT * FROM user_settings WHERE user_id = ?", [$userId]);
+            $defaultSettings = json_encode([
+                'links_per_page' => 20,
+                'brand_color' => '#687061'
+            ]);
+            $db->insert("INSERT INTO user_settings (user_id, settings) VALUES (?, ?)", [$userId, $defaultSettings]);
+            $settings = json_decode($defaultSettings, true);
+        } else {
+            $settings = json_decode($result['settings'], true);
         }
         
         successResponse(['settings' => $settings]);
@@ -48,54 +53,46 @@ try {
         $userId = getCurrentUserId();
         $input = getJsonInput();
         
-        $linksPerPage = isset($input['links_per_page']) ? (int)$input['links_per_page'] : null;
-        $brandColor = isset($input['brand_color']) ? sanitize($input['brand_color']) : null;
+        // Get current settings or defaults
+        $result = $db->fetchOne("SELECT settings FROM user_settings WHERE user_id = ?", [$userId]);
         
-        // Validate links_per_page if provided
-        if ($linksPerPage !== null) {
+        if ($result) {
+            $settings = json_decode($result['settings'], true);
+        } else {
+            $settings = [
+                'links_per_page' => 20,
+                'brand_color' => '#687061'
+            ];
+        }
+        
+        // Validate and update links_per_page if provided
+        if (isset($input['links_per_page'])) {
             $validLimits = [20, 50, 100, 250, 500];
-            if (!in_array($linksPerPage, $validLimits)) {
+            if (!in_array((int)$input['links_per_page'], $validLimits)) {
                 errorResponse('Invalid links_per_page value. Must be one of: ' . implode(', ', $validLimits));
             }
+            $settings['links_per_page'] = (int)$input['links_per_page'];
         }
         
-        // Validate brand_color if provided
-        if ($brandColor !== null && !preg_match('/^#[0-9A-Fa-f]{6}$/', $brandColor)) {
-            errorResponse('Invalid brand_color value. Must be a valid hex color (e.g., #6d7665)');
+        // Validate and update brand_color if provided
+        if (isset($input['brand_color'])) {
+            $brandColor = sanitize($input['brand_color']);
+            if (!preg_match('/^#[0-9A-Fa-f]{6}$/', $brandColor)) {
+                errorResponse('Invalid brand_color value. Must be a valid hex color (e.g., #687061)');
+            }
+            $settings['brand_color'] = $brandColor;
         }
         
-        // Check if settings exist
-        $existing = $db->fetchOne("SELECT * FROM user_settings WHERE user_id = ?", [$userId]);
+        // Save settings
+        $settingsJson = json_encode($settings);
         
-        if ($existing) {
-            // Build update query dynamically
-            $updates = [];
-            $params = [];
-            
-            if ($linksPerPage !== null) {
-                $updates[] = 'links_per_page = ?';
-                $params[] = $linksPerPage;
-            }
-            
-            if ($brandColor !== null) {
-                $updates[] = 'brand_color = ?';
-                $params[] = $brandColor;
-            }
-            
-            if (!empty($updates)) {
-                $updates[] = 'updated_at = CURRENT_TIMESTAMP';
-                $params[] = $userId;
-                
-                $sql = "UPDATE user_settings SET " . implode(', ', $updates) . " WHERE user_id = ?";
-                $db->query($sql, $params);
-            }
+        if ($result) {
+            $db->query("UPDATE user_settings SET settings = ?, updated_at = CURRENT_TIMESTAMP WHERE user_id = ?", 
+                [$settingsJson, $userId]);
         } else {
-            // Insert with defaults
-            $sql = "INSERT INTO user_settings (user_id, links_per_page, brand_color) VALUES (?, ?, ?)";
-            $db->insert($sql, [$userId, $linksPerPage ?? 20, $brandColor ?? '#6d7665']);
+            $db->insert("INSERT INTO user_settings (user_id, settings) VALUES (?, ?)", 
+                [$userId, $settingsJson]);
         }
-        
-        $settings = $db->fetchOne("SELECT * FROM user_settings WHERE user_id = ?", [$userId]);
         
         successResponse(['settings' => $settings], 'Settings updated successfully');
     }
