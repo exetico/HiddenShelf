@@ -2161,14 +2161,17 @@
           },
 
           async confirmDeleteEverything() {
-            const email = this.user?.email || "";
-            const confirmText = `This will permanently delete ALL your data including:\n\n• All links (${this.links.length})\n• All categories (${this.categories.length})\n• All tags (${this.tags.length})\n\nThis action CANNOT be undone!\n\nType your email "${email}" to confirm:`;
+            // Calculate total count
+            const totalCount = this.totalLinks + this.categories.length + this.tags.length;
+            const expectedAnswer = `delete ${totalCount} now`;
+            
+            const confirmText = `This will permanently delete ALL your data including:\n\n• All links (${this.totalLinks})\n• All categories (${this.categories.length})\n• All tags (${this.tags.length})\n\nThis action CANNOT be undone!\n\nTo confirm, type: ${expectedAnswer}`;
             
             const userInput = prompt(confirmText);
             
-            if (userInput !== email) {
+            if (userInput !== expectedAnswer) {
               if (userInput !== null) {
-                this.showToast('Confirmation failed. Email does not match.', 'error');
+                this.showToast('Confirmation failed. Please type the exact phrase.', 'error');
               }
               return;
             }
