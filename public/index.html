@@ -31,6 +31,24 @@
       }
     </script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@mdi/font@7.4.47/css/materialdesignicons.min.css" />
+    <style>
+      /* Custom scrollbar for category filter - hidden */
+      .scrollbar-hide::-webkit-scrollbar {
+        display: none;
+      }
+      .scrollbar-hide {
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+      }
+      /* Draggable cursor */
+      .drag-scroll {
+        cursor: grab;
+        user-select: none;
+      }
+      .drag-scroll:active {
+        cursor: grabbing;
+      }
+    </style>
     <script
       defer
       src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"
@@ -176,8 +194,57 @@
         </div>
 
         <div id="view-mode" x-show="viewMode === 'view'">
+          <!-- Category Filter Bar -->
+          <div class="mb-6 bg-white dark:bg-brand-900 rounded-lg shadow-sm p-3 transition-colors">
+            <div 
+              x-ref="categoryScroll"
+              @mousedown="startDrag($event, $refs.categoryScroll)"
+              @mousemove="drag($event, $refs.categoryScroll)"
+              @mouseup="stopDrag()"
+              @mouseleave="stopDrag()"
+              class="flex items-center gap-2 overflow-x-auto scrollbar-hide drag-scroll"
+            >
+              <!-- All Categories Button -->
+              <button
+                @click="if (!hasDragged) { filterCategory = ''; loadLinks(); }"
+                :class="filterCategory === '' ? 'bg-brand-600 text-white' : 'bg-gray-100 dark:bg-brand-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-brand-700'"
+                class="flex items-center gap-2 px-4 py-2 rounded-lg transition-colors whitespace-nowrap flex-shrink-0"
+              >
+                <i class="mdi mdi-view-grid text-lg"></i>
+                <span class="text-sm font-medium">All</span>
+                <span class="text-xs opacity-75" x-text="`(${totalLinks})`"></span>
+              </button>
+
+              <!-- Uncategorized Button -->
+              <template x-if="getUncategorizedLinks().length > 0">
+                <button
+                  @click="if (!hasDragged) filterCategory = 'uncategorized'"
+                  :class="filterCategory === 'uncategorized' ? 'bg-brand-600 text-white' : 'bg-gray-100 dark:bg-brand-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-brand-700'"
+                  class="flex items-center gap-2 px-4 py-2 rounded-lg transition-colors whitespace-nowrap flex-shrink-0"
+                >
+                  <i class="mdi mdi-folder-outline text-lg text-gray-400"></i>
+                  <span class="text-sm font-medium">Uncategorized</span>
+                  <span class="text-xs opacity-75" x-text="`(${getUncategorizedLinks().length})`"></span>
+                </button>
+              </template>
+
+              <!-- Category Buttons -->
+              <template x-for="category in categories" :key="category.id">
+                <button
+                  @click="if (!hasDragged) { filterCategory = category.id; loadLinks(); }"
+                  :class="filterCategory == category.id ? 'bg-brand-600 text-white' : 'bg-gray-100 dark:bg-brand-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-brand-700'"
+                  class="flex items-center gap-2 px-4 py-2 rounded-lg transition-colors whitespace-nowrap flex-shrink-0"
+                >
+                  <i :class="category.icon || 'mdi-folder'" class="mdi text-lg" :style="filterCategory == category.id ? '' : `color: ${category.color || '#6B7280'}`"></i>
+                  <span class="text-sm font-medium" x-text="category.name"></span>
+                  <span class="text-xs opacity-75" x-text="`(${links.filter(l => l.category_id == category.id).length})`"></span>
+                </button>
+              </template>
+            </div>
+          </div>
+
           <!-- Uncategorized Links -->
-          <template x-if="getUncategorizedLinks().length > 0">
+          <template x-if="(filterCategory === '' || filterCategory === 'uncategorized') && getUncategorizedLinks().length > 0">
             <div class="mb-8">
               <div class="flex items-center gap-3 mb-4">
                 <i class="mdi mdi-folder-outline text-3xl text-gray-400 dark:text-gray-500"></i>
@@ -224,7 +291,7 @@
 
           <!-- Categorized Links -->
           <template x-for="category in getCategoriesWithLinks()" :key="category.id">
-            <div class="mb-8">
+            <div class="mb-8" x-show="filterCategory === '' || filterCategory == category.id">
               <div class="flex items-center gap-3 mb-4">
                 <i :class="category.icon || 'mdi-folder'" class="mdi text-3xl" :style="`color: ${category.color || '#6B7280'}`"></i>
                 <h2 class="text-2xl font-bold text-gray-900 dark:text-gray-100" x-text="category.name"></h2>
@@ -895,6 +962,10 @@
           currentPage: 1,
           totalPages: 1,
           totalLinks: 0,
+          isDragging: false,
+          hasDragged: false,
+          dragStartX: 0,
+          dragScrollLeft: 0,
           showAddModal: false,
           editingLink: null,
           form: {
@@ -976,6 +1047,36 @@
                 this.toasts = this.toasts.filter(t => t.id !== toast.id);
               }, 300);
             }
+          },
+
+          // Drag-to-scroll handlers for category filter bar
+          startDrag(event, element) {
+            this.isDragging = true;
+            this.hasDragged = false;
+            this.dragStartX = event.pageX - element.offsetLeft;
+            this.dragScrollLeft = element.scrollLeft;
+          },
+
+          drag(event, element) {
+            if (!this.isDragging) return;
+            event.preventDefault();
+            const x = event.pageX - element.offsetLeft;
+            const walk = (x - this.dragStartX) * 2; // Scroll speed multiplier
+            
+            // If mouse moved more than 3 pixels, consider it a drag
+            if (Math.abs(walk) > 3) {
+              this.hasDragged = true;
+            }
+            
+            element.scrollLeft = this.dragScrollLeft - walk;
+          },
+
+          stopDrag() {
+            this.isDragging = false;
+            // Reset hasDragged after a short delay to allow click events to check it
+            setTimeout(() => {
+              this.hasDragged = false;
+            }, 50);
           },
 
           normalizeIcon(icon, context = 'link') {
