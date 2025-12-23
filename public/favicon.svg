@@ -1,7 +1,30 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="7 7 50 50">
-  <g transform="rotate(45 32 32)">
-    <rect x="0" y="24" width="24" height="16" rx="8" fill="#8BB158"/>
-    <rect x="40" y="24" width="24" height="16" rx="8" fill="#8BB158"/>
-    <rect x="23" y="30" width="18" height="4" fill="#8BB158"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 51 51">
+
+  <!-- Everything lives inside a safe area -->
+  <g transform="translate(32 32) scale(0.88) translate(-39.5 -39.5)">
+
+    <!-- Dark outer outline -->
+    <g transform="translate(32 32) scale(1.14) translate(-32 -32) rotate(45 32 32)">
+      <!-- Pills -->
+      <rect x="0" y="24" width="24" height="16" rx="8" fill="#2E3A1F"/>
+      <rect x="40" y="24" width="24" height="16" rx="8" fill="#2E3A1F"/>
+      <rect x="23" y="30" width="18" height="4" fill="#2E3A1F"/>
+    </g>
+
+    <!-- Inner outline -->
+    <g transform="translate(32 32) scale(1.07) translate(-32 -32) rotate(45 32 32)">
+      <rect x="0" y="24" width="24" height="16" rx="8" fill="#CDEB9A"/>
+      <rect x="40" y="24" width="24" height="16" rx="8" fill="#CDEB9A"/>
+      <rect x="23" y="30" width="18" height="4" fill="#CDEB9A"/>
+    </g>
+
+    <!-- Main shape -->
+    <g transform="rotate(45 32 32)">
+      <rect x="0" y="24" width="24" height="16" rx="8" fill="#8BB158"/>
+      <rect x="40" y="24" width="24" height="16" rx="8" fill="#8BB158"/>
+      <rect x="23" y="30" width="18" height="4" fill="#8BB158"/>
+      <circle cx="6"  cy="32" r="4" fill="#FFFFFF"/>
+      <circle cx="58" cy="32" r="4" fill="#FFF"/>
+    </g>
   </g>
 </svg>
