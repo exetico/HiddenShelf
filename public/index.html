@@ -1694,6 +1694,7 @@
               await this.loadLinks();
               await this.loadCategories();
               await this.loadTags();
+              // Don't call ensureUnsortedCategory here - let it be created naturally on next init
 
               this.deleteProgressPercent = 100;
               this.deleteProgress = "Complete!";

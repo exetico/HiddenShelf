@@ -51,6 +51,17 @@ try {
             errorResponse('Category name is required');
         }
         
+        // Check if category with this name already exists for this user
+        $existing = $db->fetchOne(
+            "SELECT * FROM categories WHERE user_id = ? AND name = ?", 
+            [getCurrentUserId(), $name]
+        );
+        
+        if ($existing) {
+            // Return the existing category instead of creating a duplicate
+            successResponse(['category' => $existing], 'Category already exists');
+        }
+        
         $sql = "INSERT INTO categories (user_id, name, icon, color) VALUES (?, ?, ?, ?)";
         $categoryId = $db->insert($sql, [getCurrentUserId(), $name, $icon, $color]);
         
