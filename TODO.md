@@ -23,6 +23,7 @@
 19. Log visits to public links, including time, maybe a masked IP, first two spaces, maybe thee, and browser type.
 20. Allow public links to be directly redirected
 21. Make guide on how to deploy to PHP host, without using Docker (preparing -> deploy -> validate)
+22. Add profile email at top of profile, to tell the user how's logged in, or, maybe at the bottom, with version of app, or similar?
 
 ## Bugs
 
