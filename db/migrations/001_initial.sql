@@ -26,6 +26,8 @@ CREATE TABLE IF NOT EXISTS links (
     url TEXT NOT NULL,
     title TEXT NOT NULL,
     description TEXT,
+    icon TEXT DEFAULT NULL,
+    display_order INTEGER DEFAULT NULL,
     is_public INTEGER DEFAULT 0,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -35,6 +37,7 @@ CREATE TABLE IF NOT EXISTS links (
 CREATE INDEX IF NOT EXISTS idx_links_user_id ON links(user_id);
 CREATE INDEX IF NOT EXISTS idx_links_hash ON links(hash);
 CREATE INDEX IF NOT EXISTS idx_links_created_at ON links(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_links_display_order ON links(display_order);
 
 -- Magic tokens for passwordless auth
 CREATE TABLE IF NOT EXISTS magic_tokens (

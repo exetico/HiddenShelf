@@ -82,14 +82,6 @@ try {
                 [$link['id']]
             );
             
-            // Get collections
-            $link['collections'] = $db->fetchAll(
-                "SELECT c.* FROM collections c 
-                 JOIN link_collections lc ON c.id = lc.collection_id 
-                 WHERE lc.link_id = ?",
-                [$link['id']]
-            );
-            
             successResponse(['link' => $link]);
         }
         
@@ -106,7 +98,6 @@ try {
         $offset = ($page - 1) * $limit;
         
         $categoryId = $_GET['category_id'] ?? null;
-        $collectionId = $_GET['collection_id'] ?? null;
         $search = $_GET['search'] ?? null;
         
         // Build query
@@ -116,11 +107,6 @@ try {
         if ($categoryId) {
             $where[] = 'l.category_id = ?';
             $params[] = $categoryId;
-        }
-        
-        if ($collectionId) {
-            $where[] = 'EXISTS (SELECT 1 FROM link_collections lc WHERE lc.link_id = l.id AND lc.collection_id = ?)';
-            $params[] = $collectionId;
         }
         
         if ($search) {
@@ -188,7 +174,6 @@ try {
         $categoryId = $input['category_id'] ?? null;
         $displayOrder = isset($input['display_order']) ? (is_null($input['display_order']) ? null : (int)$input['display_order']) : null;
         $tags = $input['tags'] ?? [];
-        $collections = $input['collections'] ?? [];
         
         // Validate
         if (empty($url) || !isValidUrl($url)) {
@@ -226,23 +211,16 @@ try {
                 $tagName = sanitize($tagName);
                 if (empty($tagName)) continue;
                 
-                // Get or create tag
-                $tag = $db->fetchOne("SELECT id FROM tags WHERE name = ?", [$tagName]);
+                // Get or create tag (per user)
+                $tag = $db->fetchOne("SELECT id FROM tags WHERE name = ? AND user_id = ?", [$tagName, getCurrentUserId()]);
                 if (!$tag) {
-                    $tagId = $db->insert("INSERT INTO tags (name) VALUES (?)", [$tagName]);
+                    $tagId = $db->insert("INSERT INTO tags (name, user_id) VALUES (?, ?)", [$tagName, getCurrentUserId()]);
                 } else {
                     $tagId = $tag['id'];
                 }
                 
                 // Link tag
                 $db->query("INSERT OR IGNORE INTO link_tags (link_id, tag_id) VALUES (?, ?)", [$linkId, $tagId]);
-            }
-        }
-        
-        // Add to collections
-        if (!empty($collections)) {
-            foreach ($collections as $collectionId) {
-                $db->query("INSERT OR IGNORE INTO link_collections (link_id, collection_id) VALUES (?, ?)", [$linkId, $collectionId]);
             }
         }
         
@@ -302,23 +280,14 @@ try {
                 $tagName = sanitize($tagName);
                 if (empty($tagName)) continue;
                 
-                $tag = $db->fetchOne("SELECT id FROM tags WHERE name = ?", [$tagName]);
+                $tag = $db->fetchOne("SELECT id FROM tags WHERE name = ? AND user_id = ?", [$tagName, getCurrentUserId()]);
                 if (!$tag) {
-                    $tagId = $db->insert("INSERT INTO tags (name) VALUES (?)", [$tagName]);
+                    $tagId = $db->insert("INSERT INTO tags (name, user_id) VALUES (?, ?)", [$tagName, getCurrentUserId()]);
                 } else {
                     $tagId = $tag['id'];
                 }
                 
                 $db->query("INSERT OR IGNORE INTO link_tags (link_id, tag_id) VALUES (?, ?)", [$id, $tagId]);
-            }
-        }
-        
-        // Update collections if provided
-        if (isset($input['collections'])) {
-            $db->query("DELETE FROM link_collections WHERE link_id = ?", [$id]);
-            
-            foreach ($input['collections'] as $collectionId) {
-                $db->query("INSERT OR IGNORE INTO link_collections (link_id, collection_id) VALUES (?, ?)", [$id, $collectionId]);
             }
         }
         

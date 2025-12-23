@@ -5,32 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>HiddenLinks - Save & Share Links</title>
     <link rel="icon" type="image/x-icon" href="favicon.png" />
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-      tailwind.config = {
-        darkMode: 'class',
-        theme: {
-          extend: {
-            colors: {
-              brand: {
-                50: 'rgb(var(--brand-50) / <alpha-value>)',
-                100: 'rgb(var(--brand-100) / <alpha-value>)',
-                200: 'rgb(var(--brand-200) / <alpha-value>)',
-                300: 'rgb(var(--brand-300) / <alpha-value>)',
-                400: 'rgb(var(--brand-400) / <alpha-value>)',
-                500: 'rgb(var(--brand-500) / <alpha-value>)',
-                600: 'rgb(var(--brand-600) / <alpha-value>)',
-                700: 'rgb(var(--brand-700) / <alpha-value>)',
-                800: 'rgb(var(--brand-800) / <alpha-value>)',
-                900: 'rgb(var(--brand-900) / <alpha-value>)',
-                950: 'rgb(var(--brand-950) / <alpha-value>)',
-              },
-            },
-          },
-        },
-      }
-    </script>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@mdi/font@7.4.47/css/materialdesignicons.min.css" />
     <style>
       /* Prevent white flash on dark mode */
       html {
@@ -57,6 +31,33 @@
         cursor: grabbing;
       }
     </style>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@mdi/font@7.4.47/css/materialdesignicons.min.css" />
+    <script>
+      tailwind.config = {
+        darkMode: 'class',
+        theme: {
+          extend: {
+            colors: {
+              brand: {
+                50: 'rgb(var(--brand-50) / <alpha-value>)',
+                100: 'rgb(var(--brand-100) / <alpha-value>)',
+                200: 'rgb(var(--brand-200) / <alpha-value>)',
+                300: 'rgb(var(--brand-300) / <alpha-value>)',
+                400: 'rgb(var(--brand-400) / <alpha-value>)',
+                500: 'rgb(var(--brand-500) / <alpha-value>)',
+                600: 'rgb(var(--brand-600) / <alpha-value>)',
+                700: 'rgb(var(--brand-700) / <alpha-value>)',
+                800: 'rgb(var(--brand-800) / <alpha-value>)',
+                900: 'rgb(var(--brand-900) / <alpha-value>)',
+                950: 'rgb(var(--brand-950) / <alpha-value>)',
+              },
+            },
+          },
+        },
+      }
+    </script>
+    <script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/collapse@3.x.x/dist/cdn.min.js"></script>
     <script
       defer
       src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"
@@ -109,7 +110,10 @@
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div class="flex justify-between h-16 items-center">
             <div class="flex items-center">
-              <h1 class="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">HiddenLinks</h1>
+              <h1 
+                @click="setRoute('dashboard')" 
+                class="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white cursor-pointer hover:text-brand-600 dark:hover:text-brand-400 transition-colors"
+              >HiddenLinks</h1>
             </div>
             <div class="flex items-center gap-2 sm:gap-4">
               <!-- View/Edit Toggle -->
@@ -192,6 +196,117 @@
                 <option :value="cat.id" x-text="cat.name"></option>
               </template>
             </select>
+          </div>
+        </div>
+
+        <!-- Dashboard/Home View -->
+        <div id="dashboard-mode" x-show="viewMode === 'dashboard'" class="max-w-4xl mx-auto">
+          <div class="mb-8">
+            <h2 class="text-3xl font-bold text-gray-900 dark:text-white mb-2">Welcome back!</h2>
+            <p class="text-gray-600 dark:text-brand-300">Here's an overview of your HiddenLinks</p>
+          </div>
+
+          <!-- Stats Grid -->
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+            <div class="bg-white dark:bg-brand-900 rounded-lg shadow-sm p-6 transition-colors">
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-gray-600 dark:text-brand-300 text-sm">Total Links</span>
+                <i class="mdi mdi-link-variant text-2xl text-brand-600 dark:text-brand-500"></i>
+              </div>
+              <div class="text-3xl font-bold text-gray-900 dark:text-white" x-text="totalLinks">0</div>
+            </div>
+            
+            <div class="bg-white dark:bg-brand-900 rounded-lg shadow-sm p-6 transition-colors">
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-gray-600 dark:text-brand-300 text-sm">Categories</span>
+                <i class="mdi mdi-folder-outline text-2xl text-brand-600 dark:text-brand-500"></i>
+              </div>
+              <div class="text-3xl font-bold text-gray-900 dark:text-white" x-text="categories.length">0</div>
+            </div>
+            
+            <div class="bg-white dark:bg-brand-900 rounded-lg shadow-sm p-6 transition-colors">
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-gray-600 dark:text-brand-300 text-sm">Tags</span>
+                <i class="mdi mdi-tag-outline text-2xl text-brand-600 dark:text-brand-500"></i>
+              </div>
+              <div class="text-3xl font-bold text-gray-900 dark:text-white" x-text="tags.length">0</div>
+            </div>
+          </div>
+
+          <!-- Quick Actions -->
+          <div class="bg-white dark:bg-brand-900 rounded-lg shadow-sm p-6 mb-6 transition-colors">
+            <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-4">Quick Actions</h3>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <button
+                @click="setRoute('view')"
+                class="flex items-center gap-3 p-4 bg-gray-50 dark:bg-brand-800 rounded-lg hover:bg-brand-50 dark:hover:bg-brand-700 transition-colors text-left group"
+              >
+                <div class="w-10 h-10 bg-brand-600 dark:bg-brand-600 text-white rounded-lg flex items-center justify-center group-hover:bg-brand-700 transition-colors">
+                  <i class="mdi mdi-view-list text-xl"></i>
+                </div>
+                <div>
+                  <div class="font-medium text-gray-900 dark:text-white">View Links</div>
+                  <div class="text-sm text-gray-600 dark:text-brand-300">Browse your collection</div>
+                </div>
+              </button>
+
+              <button
+                @click="setRoute('edit')"
+                class="flex items-center gap-3 p-4 bg-gray-50 dark:bg-brand-800 rounded-lg hover:bg-brand-50 dark:hover:bg-brand-700 transition-colors text-left group"
+              >
+                <div class="w-10 h-10 bg-brand-600 dark:bg-brand-600 text-white rounded-lg flex items-center justify-center group-hover:bg-brand-700 transition-colors">
+                  <i class="mdi mdi-pencil text-xl"></i>
+                </div>
+                <div>
+                  <div class="font-medium text-gray-900 dark:text-white">Edit Mode</div>
+                  <div class="text-sm text-gray-600 dark:text-brand-300">Manage and organize</div>
+                </div>
+              </button>
+
+              <button
+                @click="setRoute('profile')"
+                class="flex items-center gap-3 p-4 bg-gray-50 dark:bg-brand-800 rounded-lg hover:bg-brand-50 dark:hover:bg-brand-700 transition-colors text-left group"
+              >
+                <div class="w-10 h-10 bg-brand-600 dark:bg-brand-600 text-white rounded-lg flex items-center justify-center group-hover:bg-brand-700 transition-colors">
+                  <i class="mdi mdi-account text-xl"></i>
+                </div>
+                <div>
+                  <div class="font-medium text-gray-900 dark:text-white">Profile Settings</div>
+                  <div class="text-sm text-gray-600 dark:text-brand-300">Customize your experience</div>
+                </div>
+              </button>
+
+              <button
+                @click="showBulkEditorModal = true; setRoute('view')"
+                class="flex items-center gap-3 p-4 bg-gray-50 dark:bg-brand-800 rounded-lg hover:bg-brand-50 dark:hover:bg-brand-700 transition-colors text-left group"
+              >
+                <div class="w-10 h-10 bg-brand-600 dark:bg-brand-600 text-white rounded-lg flex items-center justify-center group-hover:bg-brand-700 transition-colors">
+                  <i class="mdi mdi-upload text-xl"></i>
+                </div>
+                <div>
+                  <div class="font-medium text-gray-900 dark:text-white">Import Data</div>
+                  <div class="text-sm text-gray-600 dark:text-brand-300">Bulk import your links</div>
+                </div>
+              </button>
+            </div>
+          </div>
+
+          <!-- Theme Toggle -->
+          <div class="bg-white dark:bg-brand-900 rounded-lg shadow-sm p-6 transition-colors">
+            <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-4">Theme</h3>
+            <div class="flex items-center justify-between">
+              <div>
+                <div class="font-medium text-gray-900 dark:text-white mb-1">Toggle Dark Mode</div>
+                <div class="text-sm text-gray-600 dark:text-brand-300">You can also use the button in the top right corner</div>
+              </div>
+              <button
+                @click="toggleTheme()"
+                class="px-4 py-2 bg-brand-600 dark:bg-brand-700 text-white rounded-md hover:bg-brand-700 dark:hover:bg-brand-600 transition-colors flex items-center gap-2"
+              >
+                <i :class="theme === 'dark' ? 'mdi-white-balance-sunny' : 'mdi-moon-waning-crescent'" class="mdi text-lg"></i>
+                <span x-text="theme === 'dark' ? 'Light Mode' : 'Dark Mode'"></span>
+              </button>
+            </div>
           </div>
         </div>
 
@@ -291,14 +406,14 @@
                         <div class="hidden md:flex flex-col gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
                           <button
                             @click.stop.prevent="moveLink(link, 'up')"
-                            class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 text-xs leading-none"
+                            class="text-brand-400 hover:text-gray-600 dark:hover:text-brand-300 text-xs leading-none"
                             title="Move up"
                           >
                             <i class="mdi mdi-chevron-up"></i>
                           </button>
                           <button
                             @click.stop.prevent="moveLink(link, 'down')"
-                            class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 text-xs leading-none"
+                            class="text-brand-400 hover:text-gray-600 dark:hover:text-brand-300 text-xs leading-none"
                             title="Move down"
                           >
                             <i class="mdi mdi-chevron-down"></i>
@@ -358,14 +473,14 @@
                         <div class="hidden md:flex flex-col gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
                           <button
                             @click.stop.prevent="moveLink(link, 'up')"
-                            class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 text-xs leading-none"
+                            class="text-brand-400 hover:text-gray-600 dark:hover:text-brand-300 text-xs leading-none"
                             title="Move up"
                           >
                             <i class="mdi mdi-chevron-up"></i>
                           </button>
                           <button
                             @click.stop.prevent="moveLink(link, 'down')"
-                            class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 text-xs leading-none"
+                            class="text-brand-400 hover:text-gray-600 dark:hover:text-brand-300 text-xs leading-none"
                             title="Move down"
                           >
                             <i class="mdi mdi-chevron-down"></i>
@@ -381,7 +496,7 @@
 
           <!-- Empty State -->
           <div x-show="links.length === 0" class="text-center py-12">
-            <i class="mdi mdi-link-off text-6xl text-gray-300 dark:text-gray-600 mb-4"></i>
+            <i class="mdi mdi-link-off text-6xl text-brand-300 dark:text-gray-600 mb-4"></i>
             <p class="text-gray-500 dark:text-brand-400 text-lg">No links yet. Add your first link!</p>
           </div>
 
@@ -474,7 +589,7 @@
 
           <!-- Empty State -->
           <div x-show="links.length === 0" class="text-center py-12">
-            <i class="mdi mdi-link-off text-6xl text-gray-300 dark:text-gray-600 mb-4"></i>
+            <i class="mdi mdi-link-off text-6xl text-brand-300 dark:text-gray-600 mb-4"></i>
             <p class="text-gray-500 dark:text-brand-400 text-lg">
               No links yet. Add your first link!
             </p>
@@ -608,7 +723,7 @@
                 <button
                   type="button"
                   @click="showAddModal = false"
-                  class="px-4 py-2 border border-gray-300 dark:border-brand-700 dark:text-gray-300 rounded-md hover:bg-gray-50 dark:hover:bg-brand-800 transition-colors"
+                  class="px-4 py-2 border border-gray-300 dark:border-brand-700 dark:text-brand-300 rounded-md hover:bg-gray-50 dark:hover:bg-brand-800 transition-colors"
                 >
                   Cancel
                 </button>
@@ -902,7 +1017,7 @@
                   <div class="text-xs text-gray-500 dark:text-brand-400">Import/Export and manage links in bulk</div>
                 </div>
               </div>
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 text-brand-400 group-hover:text-gray-600 dark:group-hover:text-gray-300 transition-colors">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 text-brand-400 group-hover:text-gray-600 dark:group-hover:text-brand-300 transition-colors">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
               </svg>
             </button>
@@ -1209,6 +1324,9 @@
           showDeleteProgressModal: false,
           deleteProgress: "",
           deleteProgressPercent: 0,
+          showImportProgressModal: false,
+          importProgress: "",
+          importProgressPercent: 0,
           bulkImportJson: "",
           bulkImportError: "",
           bulkImportPreview: false,
@@ -1566,8 +1684,10 @@
               this.viewMode = 'edit';
             } else if (hash === '/profile') {
               this.viewMode = 'profile';
-            } else {
+            } else if (hash === '/view') {
               this.viewMode = 'view';
+            } else {
+              this.viewMode = 'dashboard';
             }
 
             // Listen for hash changes
@@ -1577,15 +1697,19 @@
                 this.viewMode = 'edit';
               } else if (newHash === '/profile') {
                 this.viewMode = 'profile';
-              } else {
+              } else if (newHash === '/view') {
                 this.viewMode = 'view';
+              } else {
+                this.viewMode = 'dashboard';
               }
             });
           },
 
           setRoute(mode) {
             // Update URL hash when mode changes
-            if (mode === 'edit') {
+            if (mode === 'dashboard') {
+              window.location.hash = '#/';
+            } else if (mode === 'edit') {
               window.location.hash = '#/edit';
             } else if (mode === 'profile') {
               window.location.hash = '#/profile';

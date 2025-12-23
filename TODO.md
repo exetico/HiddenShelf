@@ -10,6 +10,7 @@
 6. Make Backup to cloud, or whatever?
 7. Fix the console output i get: `(index):64 cdn.tailwindcss.com should not be used in production. To use Tailwind CSS in production, install it as a PostCSS plugin or use the Tailwind CLI: https://tailwindcss.com/docs/installation`
    Tested with email: `UeNLqiPscLZ9ivgW@fP2LYAFme95rJ73p.com`
+8. Make delete everything answer "delete <total_count> now"
 
 ## Bugs to fix
 

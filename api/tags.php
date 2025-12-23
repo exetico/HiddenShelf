@@ -29,7 +29,7 @@ try {
         $sql = "SELECT t.*, COUNT(lt.link_id) as usage_count 
                 FROM tags t 
                 LEFT JOIN link_tags lt ON t.id = lt.tag_id 
-                LEFT JOIN links l ON lt.link_id = l.id AND l.user_id = ? 
+                WHERE t.user_id = ? 
                 GROUP BY t.id 
                 ORDER BY usage_count DESC, t.name ASC";
         
@@ -49,13 +49,13 @@ try {
             errorResponse('Tag name is required');
         }
         
-        // Check if tag exists
-        $existing = $db->fetchOne("SELECT * FROM tags WHERE name = ?", [$name]);
+        // Check if tag exists for this user
+        $existing = $db->fetchOne("SELECT * FROM tags WHERE name = ? AND user_id = ?", [$name, getCurrentUserId()]);
         if ($existing) {
             successResponse(['tag' => $existing], 'Tag already exists');
         }
         
-        $tagId = $db->insert("INSERT INTO tags (name) VALUES (?)", [$name]);
+        $tagId = $db->insert("INSERT INTO tags (name, user_id) VALUES (?, ?)", [$name, getCurrentUserId()]);
         $tag = $db->fetchOne("SELECT * FROM tags WHERE id = ?", [$tagId]);
         
         successResponse(['tag' => $tag], 'Tag created successfully');
@@ -70,27 +70,16 @@ try {
             errorResponse('Tag ID is required');
         }
         
-        // First, remove the tag from all links belonging to the current user
-        $db->query(
-            "DELETE FROM link_tags 
-             WHERE tag_id = ? 
-             AND link_id IN (SELECT id FROM links WHERE user_id = ?)", 
-            [$id, getCurrentUserId()]
-        );
-        
-        // Check if tag is still in use by other users
-        $remainingUsage = $db->fetchOne(
-            "SELECT COUNT(*) as count FROM link_tags WHERE tag_id = ?", 
-            [$id]
-        );
-        
-        // Only delete the tag from database if no one else is using it
-        if ($remainingUsage['count'] == 0) {
-            $db->query("DELETE FROM tags WHERE id = ?", [$id]);
-            successResponse([], 'Tag removed from your links and deleted');
-        } else {
-            successResponse([], 'Tag removed from your links');
+        // Verify the tag belongs to the current user
+        $tag = $db->fetchOne("SELECT * FROM tags WHERE id = ? AND user_id = ?", [$id, getCurrentUserId()]);
+        if (!$tag) {
+            errorResponse('Tag not found or access denied', 404);
         }
+        
+        // Delete the tag (this will cascade delete link_tags due to foreign key)
+        $db->query("DELETE FROM tags WHERE id = ?", [$id]);
+        
+        successResponse([], 'Tag deleted successfully');
     }
     
 } catch (Exception $e) {
