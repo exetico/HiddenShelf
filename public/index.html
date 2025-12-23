@@ -160,21 +160,15 @@
             </button>
             <button
               @click="showCategoriesModal = true"
-              class="bg-gray-600 dark:bg-brand-800 text-white px-3 sm:px-4 py-2 rounded-md hover:bg-gray-700 dark:hover:bg-brand-700 transition-colors text-sm sm:text-base whitespace-nowrap"
+              class="bg-brand-600 dark:bg-brand-700 text-white px-3 sm:px-4 py-2 rounded-md hover:bg-brand-700 dark:hover:bg-brand-600 transition-colors text-sm sm:text-base whitespace-nowrap"
             >
               Categories
             </button>
             <button
               @click="showTagsModal = true"
-              class="bg-gray-600 dark:bg-brand-800 text-white px-3 sm:px-4 py-2 rounded-md hover:bg-gray-700 dark:hover:bg-brand-700 transition-colors text-sm sm:text-base"
+              class="bg-brand-600 dark:bg-brand-700 text-white px-3 sm:px-4 py-2 rounded-md hover:bg-brand-700 dark:hover:bg-brand-600 transition-colors text-sm sm:text-base"
             >
               Tags
-            </button>
-            <button
-              @click="showBulkEditorModal = true"
-              class="bg-purple-600 dark:bg-purple-700 text-white px-3 sm:px-4 py-2 rounded-md hover:bg-purple-700 dark:hover:bg-purple-800 transition-colors text-sm sm:text-base whitespace-nowrap"
-            >
-              <i class="mdi mdi-database-import-outline mr-1"></i>Bulk Editor
             </button>
           </div>
         </div>
@@ -894,6 +888,31 @@
                 <span>Logout</span>
               </button>
 
+              <!-- Advanced Tools -->
+              <div class="border border-blue-200 dark:border-blue-900 rounded-lg overflow-hidden">
+                <button
+                  @click="showAdvancedTools = !showAdvancedTools"
+                  class="w-full bg-blue-50 dark:bg-blue-950 text-blue-700 dark:text-blue-400 px-4 py-2 hover:bg-blue-100 dark:hover:bg-blue-900 transition-colors flex items-center justify-between gap-2"
+                >
+                  <div class="flex items-center gap-2">
+                    <i class="mdi mdi-tools"></i>
+                    <span class="font-semibold">Advanced Tools</span>
+                  </div>
+                  <i class="mdi" :class="showAdvancedTools ? 'mdi-chevron-up' : 'mdi-chevron-down'"></i>
+                </button>
+                
+                <div x-show="showAdvancedTools" x-collapse class="p-3 bg-blue-50 dark:bg-blue-950 border-t border-blue-200 dark:border-blue-900">
+                  <p class="text-xs text-blue-600 dark:text-blue-400 mb-3">Tools for power users</p>
+                  <button
+                    @click="showBulkEditorModal = true; showProfileModal = false"
+                    class="w-full bg-brand-600 text-white px-4 py-2 rounded-md hover:bg-brand-700 transition-colors flex items-center justify-center gap-2"
+                  >
+                    <i class="mdi mdi-database-import-outline"></i>
+                    <span>Bulk Editor</span>
+                  </button>
+                </div>
+              </div>
+
               <!-- Danger Zone -->
               <div class="border border-red-200 dark:border-red-900 rounded-lg overflow-hidden">
                 <button
@@ -1158,6 +1177,7 @@
           showBulkEditorModal: false,
           showProfileModal: false,
           showDangerZone: false,
+          showAdvancedTools: false,
           showDeleteProgressModal: false,
           deleteProgress: "",
           deleteProgressPercent: 0,
