@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../../config.php';
 require_once __DIR__ . '/../../vendor/autoload.php';
 require_once __DIR__ . '/../../lib/Database.php';
 
@@ -32,6 +33,7 @@ $authorizationUrl = $provider->getAuthorizationUrl([
 ]);
 
 // Store state in session for CSRF protection
+session_name(SESSION_NAME);
 session_start();
 $_SESSION['oauth2state'] = $provider->getState();
 
