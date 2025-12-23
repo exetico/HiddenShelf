@@ -112,6 +112,7 @@ try {
     if (DEBUG_MODE) {
         errorResponse($e->getMessage(), 500);
     } else {
-        errorResponse('An error occurred', 500);
+        error_log("Auth API Error: " . $e->getMessage());
+        errorResponse('Something went wrong. Please try again or contact support if the problem persists.', 500);
     }
 }

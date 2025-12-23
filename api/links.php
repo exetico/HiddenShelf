@@ -49,14 +49,6 @@ try {
                 [$link['id']]
             );
             
-            // Get collections
-            $link['collections'] = $db->fetchAll(
-                "SELECT c.* FROM collections c 
-                 JOIN link_collections lc ON c.id = lc.collection_id 
-                 WHERE lc.link_id = ?",
-                [$link['id']]
-            );
-            
             successResponse(['link' => $link]);
         }
         
@@ -322,6 +314,7 @@ try {
     if (DEBUG_MODE) {
         errorResponse($e->getMessage(), 500);
     } else {
-        errorResponse('An error occurred', 500);
+        error_log("Links API Error: " . $e->getMessage());
+        errorResponse('Something went wrong. Please try again or contact support if the problem persists.', 500);
     }
 }

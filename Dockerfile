@@ -3,8 +3,10 @@ FROM php:8.2-apache
 # Enable Apache modules
 RUN a2enmod rewrite headers
 
-# Install SQLite extension and other dependencies
-RUN apt-get update && apt-get install -y \
+# Install Node.js, SQLite extension and other dependencies
+RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && \
+    apt-get update && apt-get install -y \
+    nodejs \
     sqlite3 \
     libsqlite3-dev \
     git \
@@ -20,6 +22,9 @@ WORKDIR /var/www/html
 
 # Copy application files
 COPY . /var/www/html/
+
+# Install Node dependencies and build Tailwind CSS
+RUN npm install && npm run build:css
 
 # Install dependencies via Composer
 RUN composer install --no-dev --optimize-autoloader

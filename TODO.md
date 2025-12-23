@@ -8,9 +8,8 @@
 4. Fix Apple related colors in browser, logo and branding things
 5. Make the AI with Sonnet 4.5 check for security conserns
 6. Make Backup to cloud, or whatever?
-7. Fix the console output i get: `(index):64 cdn.tailwindcss.com should not be used in production. To use Tailwind CSS in production, install it as a PostCSS plugin or use the Tailwind CLI: https://tailwindcss.com/docs/installation`
-   Tested with email: `UeNLqiPscLZ9ivgW@fP2LYAFme95rJ73p.com`
-8. Make delete everything answer "delete <total_count> now"
+7. Make delete everything answer "delete <total_count> now"
+8. Make "Bulk create", right? Instead of it having to loop through everyone, right?
 
 ## Bugs to fix
 

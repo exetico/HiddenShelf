@@ -9,6 +9,11 @@ config.php
 /vendor/
 composer.lock
 
+# Node.js
+/node_modules/
+package-lock.json
+public/output.css
+
 # Database
 db/*.sqlite
 db/*.db

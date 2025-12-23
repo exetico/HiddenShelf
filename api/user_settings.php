@@ -100,6 +100,11 @@ try {
     errorResponse('Invalid request method', 405);
     
 } catch (Exception $e) {
-    error_log("User Settings API Error: " . $e->getMessage());
-    errorResponse('An error occurred: ' . $e->getMessage());
+    if (DEBUG_MODE) {
+        error_log("User Settings API Error: " . $e->getMessage());
+        errorResponse('An error occurred: ' . $e->getMessage());
+    } else {
+        error_log("User Settings API Error: " . $e->getMessage());
+        errorResponse('Something went wrong. Please try again or contact support if the problem persists.', 500);
+    }
 }
