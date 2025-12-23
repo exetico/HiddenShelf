@@ -297,7 +297,7 @@
 
           toggleTheme() {
             this.theme = this.theme === "dark" ? "light" : "dark";
-            localStorage.setItem("hiddenlinks_theme", this.theme);
+            localStorage.setItem("hiddenshelf_theme", this.theme);
             // Directly update HTML element class
             if (this.theme === "dark") {
               document.documentElement.classList.add("dark");
@@ -307,7 +307,7 @@
           },
 
           initTheme() {
-            const savedTheme = localStorage.getItem("hiddenlinks_theme");
+            const savedTheme = localStorage.getItem("hiddenshelf_theme");
             if (savedTheme) {
               this.theme = savedTheme;
             } else if (
@@ -343,14 +343,14 @@
             }
 
             // Check for saved email
-            const saved = localStorage.getItem("hiddenlinks_email");
+            const saved = localStorage.getItem("hiddenshelf_email");
             if (saved) {
               this.savedEmail = saved;
               this.email = saved;
             }
 
             // Show message if there's a return URL (user was redirected here)
-            const returnTo = sessionStorage.getItem("hiddenlinks_return_to");
+            const returnTo = sessionStorage.getItem("hiddenshelf_return_to");
             if (returnTo) {
               this.errorMessage = "Please log in to continue.";
             }
@@ -368,7 +368,7 @@
                 : this.email;
 
             // Get return URL from sessionStorage if it exists
-            const returnTo = sessionStorage.getItem("hiddenlinks_return_to");
+            const returnTo = sessionStorage.getItem("hiddenshelf_return_to");
 
             try {
               const payload = {
@@ -392,7 +392,7 @@
 
               if (data.success) {
                 // Save email to localStorage
-                localStorage.setItem("hiddenlinks_email", emailToUse);
+                localStorage.setItem("hiddenshelf_email", emailToUse);
 
                 this.successMessage =
                   "Check your email! We sent you a magic login link.";
@@ -413,7 +413,7 @@
                 "This will remove your saved email from this device. Are you sure?"
               )
             ) {
-              localStorage.removeItem("hiddenlinks_email");
+              localStorage.removeItem("hiddenshelf_email");
               this.savedEmail = "";
               this.email = "";
               this.showFullForm = false;

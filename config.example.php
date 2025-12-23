@@ -25,7 +25,7 @@ define('FROM_NAME', 'Hidden Shelf');
 define('MAGIC_LINK_EXPIRY', 15 * 60); // 15 minutes in seconds
 
 // Session settings
-define('SESSION_NAME', 'hiddenlinks_session');
+define('SESSION_NAME', 'hiddenshelf_session');
 define('SESSION_LIFETIME', 30 * 24 * 60 * 60); // 30 days
 
 // Security

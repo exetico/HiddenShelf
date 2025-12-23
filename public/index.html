@@ -1351,7 +1351,7 @@
 
           toggleTheme() {
             this.theme = this.theme === 'dark' ? 'light' : 'dark';
-            localStorage.setItem('hiddenlinks_theme', this.theme);
+            localStorage.setItem('hiddenshelf_theme', this.theme);
             // Directly update HTML element class
             if (this.theme === 'dark') {
               document.documentElement.classList.add('dark');
@@ -1362,7 +1362,7 @@
 
           initTheme() {
             // Check for saved theme preference or default to system preference
-            const savedTheme = localStorage.getItem('hiddenlinks_theme');
+            const savedTheme = localStorage.getItem('hiddenshelf_theme');
             if (savedTheme) {
               this.theme = savedTheme;
             } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
@@ -1713,7 +1713,7 @@
               if (!data.success) {
                 // Save current route before redirecting to login
                 const currentRoute = window.location.hash || '#/view';
-                sessionStorage.setItem('hiddenlinks_return_to', currentRoute);
+                sessionStorage.setItem('hiddenshelf_return_to', currentRoute);
                 window.location.href = "/public/login.html";
                 return;
               }
@@ -1722,7 +1722,7 @@
             } catch (error) {
               // Save current route before redirecting to login
               const currentRoute = window.location.hash || '#/view';
-              sessionStorage.setItem('hiddenlinks_return_to', currentRoute);
+              sessionStorage.setItem('hiddenshelf_return_to', currentRoute);
               window.location.href = "/public/login.html";
             }
           },
@@ -2342,7 +2342,7 @@
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `hiddenlinks-export-${new Date().toISOString().split('T')[0]}.json`;
+            a.download = `hiddenshelf-export-${new Date().toISOString().split('T')[0]}.json`;
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);

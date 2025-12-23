@@ -1,7 +1,7 @@
 services:
   web:
     build: .
-    container_name: hiddenlinks
+    container_name: hiddenshelf
     ports:
       - "8000:80"
     volumes:
@@ -17,10 +17,10 @@ services:
       - GOOGLE_REDIRECT_URI=${GOOGLE_REDIRECT_URI:-http://localhost:8000/api/auth/google-callback.php}
     restart: unless-stopped
     networks:
-      - hiddenlinks-network
+      - hiddenshelf-network
 
 networks:
-  hiddenlinks-network:
+  hiddenshelf-network:
     driver: bridge
 
 volumes:
