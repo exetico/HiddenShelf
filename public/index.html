@@ -1080,6 +1080,31 @@
         </div>
       </div>
 
+      <!-- Import Progress Modal -->
+      <div
+        x-show="showImportProgressModal"
+        class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60] p-4"
+        style="display: none"
+      >
+        <div class="bg-white dark:bg-brand-900 rounded-lg shadow-xl max-w-md w-full transition-colors">
+          <div class="p-6">
+            <div class="flex flex-col items-center">
+              <div class="w-16 h-16 border-4 border-brand-600 border-t-transparent rounded-full animate-spin mb-4"></div>
+              <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-2">Importing Data</h3>
+              <p class="text-sm text-gray-600 dark:text-gray-400 text-center mb-4" x-text="importProgress"></p>
+              
+              <div class="w-full bg-gray-200 dark:bg-brand-800 rounded-full h-2 overflow-hidden">
+                <div 
+                  class="bg-brand-600 h-2 transition-all duration-300"
+                  :style="`width: ${importProgressPercent}%`"
+                ></div>
+              </div>
+              <p class="text-xs text-gray-500 dark:text-gray-400 mt-2" x-text="`${importProgressPercent}%`"></p>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- Bulk Editor Modal -->
       <div
         x-show="showBulkEditorModal"
@@ -2036,6 +2061,9 @@
             this.deleteProgress = "Fetching all data...";
             this.deleteProgressPercent = 5;
 
+            // Helper to add delay between requests
+            const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
             try {
               // Fetch ALL links by paginating through all pages
               let allLinks = [];
@@ -2095,6 +2123,7 @@
                   failedDeletes++;
                   deletedItems++;
                 }
+                await delay(100); // 100ms delay between requests
               }
 
               // Delete all tags
@@ -2114,6 +2143,7 @@
                   failedDeletes++;
                   deletedItems++;
                 }
+                await delay(100); // 100ms delay between requests
               }
 
               // Delete all categories
@@ -2133,6 +2163,7 @@
                   failedDeletes++;
                   deletedItems++;
                 }
+                await delay(100); // 100ms delay between requests
               }
 
               // Reload all data
@@ -2351,33 +2382,64 @@
               return;
             }
 
+            // Show progress modal
+            this.showImportProgressModal = true;
+            this.importProgress = "Starting import...";
+            this.importProgressPercent = 0;
+
+            // Helper to add delay between requests
+            const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
             try {
+              let processedItems = 0;
+
               // Import categories first
-              for (const cat of this.validatedImportData.categories) {
+              this.importProgress = "Importing categories...";
+              for (let i = 0; i < this.validatedImportData.categories.length; i++) {
+                const cat = this.validatedImportData.categories[i];
+                this.importProgress = `Importing categories (${i + 1}/${this.validatedImportData.categories.length})...`;
+                this.importProgressPercent = Math.floor((processedItems / totalNew) * 100);
+                
                 await fetch("/api/categories.php", {
                   method: "POST",
                   headers: { "Content-Type": "application/json" },
                   body: JSON.stringify(cat),
                 });
+                
+                processedItems++;
+                await delay(100); // 100ms delay between requests
               }
 
               // Reload categories to get IDs
               await this.loadCategories();
 
               // Import tags
-              for (const tag of this.validatedImportData.tags) {
+              this.importProgress = "Importing tags...";
+              for (let i = 0; i < this.validatedImportData.tags.length; i++) {
+                const tag = this.validatedImportData.tags[i];
+                this.importProgress = `Importing tags (${i + 1}/${this.validatedImportData.tags.length})...`;
+                this.importProgressPercent = Math.floor((processedItems / totalNew) * 100);
+                
                 await fetch("/api/tags.php", {
                   method: "POST",
                   headers: { "Content-Type": "application/json" },
                   body: JSON.stringify(tag),
                 });
+                
+                processedItems++;
+                await delay(100); // 100ms delay between requests
               }
 
               // Reload tags to get IDs
               await this.loadTags();
 
               // Import links
-              for (const link of this.validatedImportData.links) {
+              this.importProgress = "Importing links...";
+              for (let i = 0; i < this.validatedImportData.links.length; i++) {
+                const link = this.validatedImportData.links[i];
+                this.importProgress = `Importing links (${i + 1}/${this.validatedImportData.links.length})...`;
+                this.importProgressPercent = Math.floor((processedItems / totalNew) * 100);
+                
                 // Find category ID if specified
                 let category_id = null;
                 if (link.category) {
@@ -2399,17 +2461,27 @@
                     display_order: link.display_order,
                   }),
                 });
+                
+                processedItems++;
+                await delay(100); // 100ms delay between requests
               }
+
+              this.importProgressPercent = 100;
+              this.importProgress = "Finalizing...";
 
               // Reload all data
               await this.loadLinks();
               await this.loadCategories();
               await this.loadTags();
 
+              // Close progress modal
+              this.showImportProgressModal = false;
+
               this.showToast(`Successfully imported ${totalNew} items!`, 'success');
               this.closeBulkEditor();
 
             } catch (error) {
+              this.showImportProgressModal = false;
               this.showToast('Import failed: ' + error.message, 'error');
             }
           },
