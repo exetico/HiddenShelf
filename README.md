@@ -5,7 +5,7 @@ A minimal, flexible link-saving solution with public/private sharing capabilitie
 ## Features
 
 - 🔗 Save links with title, description, and metadata
-- 🏷️ Organize with collections, categories, and tags
+- 🏷️ Organize with categories and tags
 - 🔒 Public/private link sharing (unique hash URLs)
 - ✉️ Passwordless authentication via magic links (email)
 - 📱 Simple, responsive frontend
@@ -25,13 +25,13 @@ HiddenLinks/
 ├── api/                    # API endpoints
 │   ├── auth.php           # Authentication (login, verify)
 │   ├── links.php          # CRUD operations for links
-│   ├── collections.php    # Collections management
+│   ├── categories.php     # Categories management
 │   └── tags.php           # Tags management
 ├── db/                    # Database
 │   ├── database.sqlite    # SQLite database file
 │   └── migrations/        # Schema migrations
 │       ├── 001_initial.sql
-│       ├── 002_collections.sql
+│       ├── 002_categories.sql
 │       └── 003_tags.sql
 ├── public/                # Frontend files
 │   ├── index.html         # Main app
@@ -69,19 +69,6 @@ HiddenLinks/
 - `is_public` - Boolean (0 = private, 1 = public)
 - `created_at` - Timestamp
 - `updated_at` - Timestamp
-
-### Collections
-
-- `id` - Primary key
-- `user_id` - Foreign key
-- `name` - Collection name
-- `description` - Optional
-- `created_at` - Timestamp
-
-### Link_Collections (Many-to-many)
-
-- `link_id` - Foreign key
-- `collection_id` - Foreign key
 
 ### Tags
 
@@ -125,13 +112,6 @@ HiddenLinks/
 - `DELETE /api/links.php?id=123` - Delete link
 - `GET /api/links.php?hash=abc123` - Get public link by hash
 
-### Collections
-
-- `GET /api/collections.php` - List collections
-- `POST /api/collections.php` - Create collection
-- `PUT /api/collections.php?id=123` - Update collection
-- `DELETE /api/collections.php?id=123` - Delete collection
-
 ### Tags
 
 - `GET /api/tags.php` - List all tags
@@ -146,6 +126,8 @@ HiddenLinks/
    ```bash
    docker-compose up -d
    ```
+
+   The Tailwind CSS build process runs automatically during container creation.
 
 2. **Access the app**
 
@@ -177,19 +159,28 @@ HiddenLinks/
    - Update email settings (SMTP)
    - Set your app URL
 
-3. **Set permissions**
+3. **Install dependencies and build CSS**
+
+   Requires Node.js v20 or higher:
+
+   ```bash
+   npm install
+   npm run build:css
+   ```
+
+4. **Set permissions**
 
    ```bash
    chmod 755 db/
    chmod 644 db/database.sqlite
    ```
 
-4. **Point your web server to the project root**
+5. **Point your web server to the project root**
 
    - Apache: Enable mod_rewrite
    - The `.htaccess` handles routing
 
-5. **Access the app**
+6. **Access the app**
    - Navigate to your domain
    - Database migrations run automatically on first load
 
@@ -244,18 +235,39 @@ define('SMTP_ENCRYPTION', '');
 
 ### Link Organization
 
-- **Collections:** Group related links (e.g., "Work Resources")
 - **Categories:** Classify links (e.g., "Articles", "Videos")
 - **Tags:** Flexible labeling (many-to-many)
 
 ## Development
+
+### CSS Build Process
+
+HiddenLinks uses Tailwind CSS compiled from source for production. The CSS is built automatically during Docker container creation.
+
+**For Development (with file watching):**
+
+```bash
+npm install
+npm run watch:css
+```
+
+**For Production Build:**
+
+```bash
+npm install
+npm run build:css
+```
+
+The compiled CSS is output to `public/output.css` and is excluded from git. Brand colors are defined using CSS custom properties in `src/input.css`.
+
+### Technical Stack
 
 The app uses vanilla PHP with no framework dependencies:
 
 - Session-based auth
 - PDO for database
 - Alpine.js for frontend reactivity
-- Tailwind CSS via CDN
+- Tailwind CSS (compiled from source)
 
 ## Security Features
 

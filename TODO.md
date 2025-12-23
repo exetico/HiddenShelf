@@ -1,6 +1,6 @@
 # To do overview
 
-## Todo you don't need to handle now, but we need to later
+## Features and nice to have
 
 1. Add backup function
 2. Make restore function
@@ -11,6 +11,6 @@
 7. Make delete everything answer "delete <total_count> now"
 8. Make "Bulk create", right? Instead of it having to loop through everyone, right?
 
-## Bugs to fix
+## Bugs
 
-1. Validate if this is fixed: Bulk import will only report 20 duplicates, as it's using the "in memory" data.
+None
