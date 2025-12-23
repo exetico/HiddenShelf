@@ -2385,9 +2385,6 @@
                   if (cat) category_id = cat.id;
                 }
 
-                // Prepare tags string
-                const tagsInput = link.tags.join(', ');
-
                 await fetch("/api/links.php", {
                   method: "POST",
                   headers: { "Content-Type": "application/json" },
@@ -2397,7 +2394,7 @@
                     description: link.description,
                     icon: link.icon,
                     category_id: category_id,
-                    tags: tagsInput,
+                    tags: link.tags || [],
                     is_public: link.is_public,
                     display_order: link.display_order,
                   }),
