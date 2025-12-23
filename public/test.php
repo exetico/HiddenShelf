@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HiddenLinks - System Test</title>
+    <title>Hidden Shelf - System Test</title>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-gray-50 min-h-screen p-8">
@@ -35,7 +35,7 @@
         ?>
         
         <div class="bg-white rounded-lg shadow-md p-8 mb-6">
-            <h1 class="text-3xl font-bold text-gray-900 mb-2">HiddenLinks System Test</h1>
+            <h1 class="text-3xl font-bold text-gray-900 mb-2">Hidden Shelf System Test</h1>
             <p class="text-gray-600 mb-6">Verify your installation is working correctly</p>
             
             <?php
@@ -219,7 +219,7 @@
             if ($allPassed) {
                 echo "<div class='mt-6 p-6 bg-green-100 border-2 border-green-500 rounded-lg'>";
                 echo "<h2 class='text-xl font-bold text-green-800 mb-2'>✓ All Tests Passed!</h2>";
-                echo "<p class='text-green-700'>Your HiddenLinks installation is ready to use.</p>";
+                echo "<p class='text-green-700'>Your Hidden Shelf installation is ready to use.</p>";
                 echo "<div class='mt-4'>";
                 echo "<a href='/public/login.html' class='inline-block bg-green-600 text-white px-6 py-2 rounded-md hover:bg-green-700'>Go to Login Page →</a>";
                 echo "</div>";
@@ -296,7 +296,7 @@
         </div>
         
         <div class="text-center mt-6 text-sm text-gray-500">
-            <p>HiddenLinks System Test • <a href="/" class="text-blue-600 hover:underline">Back to Home</a></p>
+            <p>Hidden Shelf System Test • <a href="/" class="text-blue-600 hover:underline">Back to Home</a></p>
         </div>
     </div>
 </body>

@@ -1,4 +1,4 @@
-# HiddenLinks
+# Hidden Shelf
 
 A minimal, flexible link-saving solution with public/private sharing capabilities.
 
@@ -21,7 +21,7 @@ A minimal, flexible link-saving solution with public/private sharing capabilitie
 ## Project Structure
 
 ```
-HiddenLinks/
+Hidden Shelf/
 ├── api/                    # API endpoints
 │   ├── auth.php           # Authentication (login, verify)
 │   ├── links.php          # CRUD operations for links
@@ -150,7 +150,7 @@ HiddenLinks/
 
    ```bash
    git clone <repo-url>
-   cd HiddenLinks
+   cd Hidden Shelf
    ```
 
 2. **Configure the app**
@@ -199,7 +199,7 @@ define('SMTP_USER', 'your@email.com');
 define('SMTP_PASS', 'password');
 define('SMTP_ENCRYPTION', 'tls');
 define('FROM_EMAIL', 'noreply@yoursite.com');
-define('FROM_NAME', 'HiddenLinks');
+define('FROM_NAME', 'Hidden Shelf');
 ```
 
 Testing Email: `UeNLqiPscLZ9ivgW@fP2LYAFme95rJ73p.com`
@@ -242,7 +242,7 @@ define('SMTP_ENCRYPTION', '');
 
 ### CSS Build Process
 
-HiddenLinks uses Tailwind CSS compiled from source for production. The CSS is built automatically during Docker container creation.
+Hidden Shelf uses Tailwind CSS compiled from source for production. The CSS is built automatically during Docker container creation.
 
 **For Development (with file watching):**
 

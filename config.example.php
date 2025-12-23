@@ -1,6 +1,6 @@
 <?php
 /**
- * Configuration file for HiddenLinks
+ * Configuration file for Hidden Shelf
  * 
  * Copy this file to config.php and update the values
  */
@@ -10,7 +10,7 @@ define('DB_PATH', __DIR__ . '/db/database.sqlite');
 
 // Site configuration
 define('SITE_URL', 'http://localhost:8000'); // Update with your domain
-define('SITE_NAME', 'HiddenLinks');
+define('SITE_NAME', 'Hidden Shelf');
 
 // Email configuration (SMTP)
 define('SMTP_HOST', 'smtp.example.com');
@@ -19,7 +19,7 @@ define('SMTP_USER', 'your@email.com');
 define('SMTP_PASS', 'your-password');
 define('SMTP_ENCRYPTION', 'tls'); // 'tls' or 'ssl'
 define('FROM_EMAIL', 'noreply@example.com');
-define('FROM_NAME', 'HiddenLinks');
+define('FROM_NAME', 'Hidden Shelf');
 
 // Magic link settings
 define('MAGIC_LINK_EXPIRY', 15 * 60); // 15 minutes in seconds

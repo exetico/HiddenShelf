@@ -1,7 +1,7 @@
 {
   "name": "hiddenlinks",
   "version": "1.0.0",
-  "description": "HiddenLinks - Save & Share Links",
+  "description": "Hidden Shelf - Save & Share Links",
   "scripts": {
     "build:css": "tailwindcss -i ./src/input.css -o ./public/output.css --minify",
     "watch:css": "tailwindcss -i ./src/input.css -o ./public/output.css --watch"
