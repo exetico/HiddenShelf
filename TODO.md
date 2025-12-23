@@ -18,6 +18,10 @@
 14. Config for "site url" and "subpath"/subdomain, for people running it behind a proxy
 15. Consider moving the db migrations to another path, so it's not linked to the filesystem, like the `db`
 16. Possible take a look at the `test.php` site: What needs to be done? Is it secure?
+17. Magic links needs to expire aftr usage
+18. Check for SQL injection things, we don't want
+19. Log visits to public links, including time, maybe a masked IP, first two spaces, maybe thee, and browser type.
+20. Allow public links to be directly redirected
 
 ## Bugs
 
