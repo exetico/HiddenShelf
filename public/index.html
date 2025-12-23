@@ -13,17 +13,17 @@
           extend: {
             colors: {
               brand: {
-                50: '#f6f7f5',
-                100: '#e8ebe5',
-                200: '#d1d7cb',
-                300: '#b0bbaa',
-                400: '#8d9d85',
-                500: '#738562',
-                600: '#5c6b4f',
-                700: '#4a5540',
-                800: '#3d4636',
-                900: '#343b2f',
-                950: '#1b1f18',
+                50: 'rgb(var(--brand-50) / <alpha-value>)',
+                100: 'rgb(var(--brand-100) / <alpha-value>)',
+                200: 'rgb(var(--brand-200) / <alpha-value>)',
+                300: 'rgb(var(--brand-300) / <alpha-value>)',
+                400: 'rgb(var(--brand-400) / <alpha-value>)',
+                500: 'rgb(var(--brand-500) / <alpha-value>)',
+                600: 'rgb(var(--brand-600) / <alpha-value>)',
+                700: 'rgb(var(--brand-700) / <alpha-value>)',
+                800: 'rgb(var(--brand-800) / <alpha-value>)',
+                900: 'rgb(var(--brand-900) / <alpha-value>)',
+                950: 'rgb(var(--brand-950) / <alpha-value>)',
               },
             },
           },
@@ -32,6 +32,14 @@
     </script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@mdi/font@7.4.47/css/materialdesignicons.min.css" />
     <style>
+      /* Prevent white flash on dark mode */
+      html {
+        background-color: #1b1f18;
+      }
+      html.light {
+        background-color: #f9fafb;
+      }
+      
       /* Custom scrollbar for category filter - hidden */
       .scrollbar-hide::-webkit-scrollbar {
         display: none;
@@ -827,7 +835,8 @@
             <!-- Settings Section -->
             <div class="mb-6 p-4 bg-gray-50 dark:bg-brand-800 rounded-lg border border-gray-200 dark:border-brand-700">
               <h3 class="text-sm font-semibold text-gray-900 dark:text-white mb-3">Display Settings</h3>
-              <div>
+              
+              <div class="mb-4">
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Links per page
                 </label>
@@ -843,6 +852,36 @@
                   <option value="500">500 links</option>
                 </select>
                 <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Number of links to display per page</p>
+              </div>
+
+              <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Brand color
+                </label>
+                <div class="flex gap-2 items-center">
+                  <input
+                    type="color"
+                    x-model="brandColor"
+                    @change="updateBrandColor(brandColor)"
+                    class="h-10 w-20 rounded border border-gray-300 dark:border-brand-700 cursor-pointer"
+                  />
+                  <input
+                    type="text"
+                    x-model="brandColor"
+                    @change="updateBrandColor(brandColor)"
+                    placeholder="#687061"
+                    pattern="^#[0-9A-Fa-f]{6}$"
+                    class="flex-1 px-3 py-2 border border-gray-300 dark:border-brand-700 rounded-md bg-white dark:bg-brand-900 text-gray-900 dark:text-white font-mono text-sm"
+                  />
+                  <button
+                    @click="resetBrandColor()"
+                    class="px-3 py-2 bg-gray-200 dark:bg-brand-800 text-gray-700 dark:text-gray-300 rounded-md hover:bg-gray-300 dark:hover:bg-brand-700 transition-colors text-sm"
+                    title="Reset to default"
+                  >
+                    <i class="mdi mdi-refresh"></i>
+                  </button>
+                </div>
+                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Choose your preferred theme color</p>
               </div>
             </div>
 
@@ -1144,6 +1183,7 @@
           totalPages: 1,
           totalLinks: 0,
           linksPerPage: 20,
+          brandColor: '#738562',
           isDragging: false,
           hasDragged: false,
           dragStartX: 0,
@@ -1571,8 +1611,11 @@
             try {
               const response = await fetch('/api/user_settings.php');
               const data = await response.json();
+              
               if (data.success && data.settings) {
-                this.linksPerPage = data.settings.links_per_page;
+                this.linksPerPage = data.settings.links_per_page || 20;
+                this.brandColor = data.settings.brand_color || '#687061';
+                this.applyBrandColor();
               }
             } catch (error) {
               console.error('Failed to load settings:', error);
@@ -1596,6 +1639,59 @@
               console.error('Failed to update settings:', error);
               this.showToast('Failed to update settings', 'error');
             }
+          },
+
+          async updateBrandColor(color) {
+            try {
+              const response = await fetch('/api/user_settings.php', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ brand_color: color })
+              });
+              
+              const data = await response.json();
+              
+              if (data.success) {
+                this.brandColor = color;
+                this.applyBrandColor();
+                this.showToast('Brand color updated!', 'success');
+              }
+            } catch (error) {
+              console.error('Error updating brand color:', error);
+              this.showToast('Failed to update color', 'error');
+            }
+          },
+
+          resetBrandColor() {
+            this.updateBrandColor('#687061');
+          },
+
+          applyBrandColor() {
+            // Convert hex to RGB
+            const hex = this.brandColor.replace('#', '');
+            const r = parseInt(hex.substr(0, 2), 16);
+            const g = parseInt(hex.substr(2, 2), 16);
+            const b = parseInt(hex.substr(4, 2), 16);
+            
+            // Helper to clamp RGB values
+            const clamp = (val) => Math.max(0, Math.min(255, val));
+            
+            // Calculate lighter shades (50-400)
+            document.documentElement.style.setProperty('--brand-50', `${clamp(r + 80)} ${clamp(g + 80)} ${clamp(b + 80)}`);
+            document.documentElement.style.setProperty('--brand-100', `${clamp(r + 60)} ${clamp(g + 60)} ${clamp(b + 60)}`);
+            document.documentElement.style.setProperty('--brand-200', `${clamp(r + 40)} ${clamp(g + 40)} ${clamp(b + 40)}`);
+            document.documentElement.style.setProperty('--brand-300', `${clamp(r + 25)} ${clamp(g + 25)} ${clamp(b + 25)}`);
+            document.documentElement.style.setProperty('--brand-400', `${clamp(r + 10)} ${clamp(g + 10)} ${clamp(b + 10)}`);
+            
+            // Base color (500)
+            document.documentElement.style.setProperty('--brand-500', `${r} ${g} ${b}`);
+            
+            // Darker shades (600-950)
+            document.documentElement.style.setProperty('--brand-600', `${clamp(r - 15)} ${clamp(g - 15)} ${clamp(b - 15)}`);
+            document.documentElement.style.setProperty('--brand-700', `${clamp(r - 30)} ${clamp(g - 30)} ${clamp(b - 30)}`);
+            document.documentElement.style.setProperty('--brand-800', `${clamp(r - 50)} ${clamp(g - 50)} ${clamp(b - 50)}`);
+            document.documentElement.style.setProperty('--brand-900', `${clamp(r - 65)} ${clamp(g - 65)} ${clamp(b - 65)}`);
+            document.documentElement.style.setProperty('--brand-950', `${clamp(r - 85)} ${clamp(g - 85)} ${clamp(b - 85)}`);
           },
 
           async loadCategories() {
