@@ -13,6 +13,9 @@
 9. Disable signup (login from new users)
 10. Make it possible to share links with other users, possible by sharing a secret long code, or similar, or a invite link, which can be shared.
 11. Migrate the link and category metadata/options to a solution, maybe like the one used in user settings? (or?)
+12. Config for "site url" and "subpath"/subdomain, for people running it behind a proxy
+13. Consider moving the db migrations to another path, so it's not linked to the filesystem, like the `db`
+14. Possible take a look at the `test.php` site: What needs to be done? Is it secure?
 
 ## Bugs
 
