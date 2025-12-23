@@ -1,6 +1,6 @@
-# To do overview
+# To do
 
-## Features and nice to have
+## Next up
 
 1. Make restore function
 2. Update data retention disclaimer
@@ -19,4 +19,12 @@
 
 ## Bugs
 
-None
+None defined right now
+
+## Future Enhancements and Ideas
+
+- Browser extension for quick saving
+- Import from browser bookmarks
+- Full-text search
+- Link previews/thumbnails
+- Archive.org integration
