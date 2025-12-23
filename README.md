@@ -129,6 +129,8 @@ Hidden Shelf/
 
    The Tailwind CSS build process runs automatically during container creation.
 
+   Start the app again with `docker compose down -v && docker compose up -d --build && docker logs -f hiddenshelf`
+
 2. **Access the app**
 
    - **Test page:** http://localhost:8000/public/test.php (verify setup)
@@ -279,14 +281,4 @@ The app uses vanilla PHP with no framework dependencies:
 
 ## License
 
-MIT
-
-## Future Enhancements
-
-- [ ] Browser extension for quick saving
-- [ ] Bookmarklet
-- [ ] Import from browser bookmarks
-- [ ] Full-text search
-- [ ] Link previews/thumbnails
-- [ ] Archive.org integration
-- [ ] Export to JSON/CSV
+<TBD>
