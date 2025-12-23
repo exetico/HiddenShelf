@@ -237,7 +237,7 @@
                 >
                   <i :class="category.icon || 'mdi-folder'" class="mdi text-lg" :style="filterCategory == category.id ? '' : `color: ${category.color || '#6B7280'}`"></i>
                   <span class="text-sm font-medium" x-text="category.name"></span>
-                  <span class="text-xs opacity-75" x-text="`(${links.filter(l => l.category_id == category.id).length})`"></span>
+                  <span class="text-xs opacity-75" x-text="`(${category.link_count || 0})`"></span>
                 </button>
               </template>
             </div>
@@ -782,6 +782,28 @@
               <p class="text-lg text-gray-900 dark:text-white font-medium" x-text="user?.email"></p>
             </div>
 
+            <!-- Settings Section -->
+            <div class="mb-6 p-4 bg-gray-50 dark:bg-brand-800 rounded-lg border border-gray-200 dark:border-brand-700">
+              <h3 class="text-sm font-semibold text-gray-900 dark:text-white mb-3">Display Settings</h3>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Links per page
+                </label>
+                <select
+                  x-model.number="linksPerPage"
+                  @change="updateLinksPerPage(linksPerPage)"
+                  class="w-full px-3 py-2 border border-gray-300 dark:border-brand-700 rounded-md bg-white dark:bg-brand-900 text-gray-900 dark:text-white"
+                >
+                  <option value="20">20 links</option>
+                  <option value="50">50 links</option>
+                  <option value="100">100 links</option>
+                  <option value="250">250 links</option>
+                  <option value="500">500 links</option>
+                </select>
+                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Number of links to display per page</p>
+              </div>
+            </div>
+
             <div class="space-y-3">
               <button
                 @click="logout"
@@ -962,6 +984,7 @@
           currentPage: 1,
           totalPages: 1,
           totalLinks: 0,
+          linksPerPage: 20,
           isDragging: false,
           hasDragged: false,
           dragStartX: 0,
@@ -1156,6 +1179,7 @@
             this.initTheme();
             this.initRouting();
             await this.checkAuth();
+            await this.loadSettings();
             await this.loadCategories();
             await this.ensureUnsortedCategory();
             await this.loadLinks();
@@ -1187,7 +1211,7 @@
           async loadLinks(append = false) {
             try {
               const page = append ? this.currentPage + 1 : 1;
-              let url = `/api/links.php?page=${page}`;
+              let url = `/api/links.php?page=${page}&limit=${this.linksPerPage}`;
               if (this.filterCategory) {
                 url += "&category_id=" + this.filterCategory;
               }
@@ -1221,6 +1245,37 @@
 
           async loadMoreLinks() {
             await this.loadLinks(true);
+          },
+
+          async loadSettings() {
+            try {
+              const response = await fetch('/api/user_settings.php');
+              const data = await response.json();
+              if (data.success && data.settings) {
+                this.linksPerPage = data.settings.links_per_page;
+              }
+            } catch (error) {
+              console.error('Failed to load settings:', error);
+            }
+          },
+
+          async updateLinksPerPage(value) {
+            try {
+              const response = await fetch('/api/user_settings.php', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ links_per_page: value })
+              });
+              const data = await response.json();
+              if (data.success) {
+                this.linksPerPage = value;
+                this.showToast('Settings updated', 'success');
+                await this.loadLinks(); // Reload with new limit
+              }
+            } catch (error) {
+              console.error('Failed to update settings:', error);
+              this.showToast('Failed to update settings', 'error');
+            }
           },
 
           async loadCategories() {

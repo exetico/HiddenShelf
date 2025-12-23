@@ -97,7 +97,12 @@ try {
         requireAuth();
         
         $page = max(1, (int)($_GET['page'] ?? 1));
-        $limit = LINKS_PER_PAGE;
+        
+        // Get limit from request, validate it, or use default
+        $requestedLimit = (int)($_GET['limit'] ?? LINKS_PER_PAGE);
+        $validLimits = [20, 50, 100, 250, 500];
+        $limit = in_array($requestedLimit, $validLimits) ? $requestedLimit : LINKS_PER_PAGE;
+        
         $offset = ($page - 1) * $limit;
         
         $categoryId = $_GET['category_id'] ?? null;
