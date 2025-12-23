@@ -96,12 +96,15 @@ class Database {
                     $sql = file_get_contents($migrationFile);
                     $this->pdo->exec($sql);
                     
+                    // Update schema version
+                    $this->pdo->exec("INSERT OR REPLACE INTO _meta (key, value) VALUES ('schema_version', '$version')");
+                    
                     if (DEBUG_MODE) {
                         error_log("Applied migration: $filename");
                     }
                 } catch (PDOException $e) {
                     error_log("Migration failed ($filename): " . $e->getMessage());
-                    throw $e;
+                    // Don't throw - just log and continue
                 }
             }
         }

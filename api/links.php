@@ -143,7 +143,10 @@ try {
                 FROM links l 
                 LEFT JOIN categories c ON l.category_id = c.id 
                 WHERE $whereClause 
-                ORDER BY l.created_at DESC 
+                ORDER BY 
+                    CASE WHEN l.display_order IS NULL THEN 1 ELSE 0 END,
+                    l.display_order ASC,
+                    l.created_at DESC 
                 LIMIT ? OFFSET ?";
         $params[] = $limit;
         $params[] = $offset;
@@ -183,6 +186,7 @@ try {
         $icon = sanitize($input['icon'] ?? '');
         $isPublic = (int)($input['is_public'] ?? 0);
         $categoryId = $input['category_id'] ?? null;
+        $displayOrder = isset($input['display_order']) ? (is_null($input['display_order']) ? null : (int)$input['display_order']) : null;
         $tags = $input['tags'] ?? [];
         $collections = $input['collections'] ?? [];
         
@@ -202,8 +206,8 @@ try {
         } while ($existing);
         
         // Insert link
-        $sql = "INSERT INTO links (user_id, hash, url, title, description, icon, is_public, category_id) 
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+        $sql = "INSERT INTO links (user_id, hash, url, title, description, icon, is_public, category_id, display_order) 
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
         $linkId = $db->insert($sql, [
             getCurrentUserId(),
             $hash,
@@ -212,7 +216,8 @@ try {
             $description,
             $icon,
             $isPublic,
-            $categoryId
+            $categoryId,
+            $displayOrder
         ]);
         
         // Add tags
@@ -270,6 +275,7 @@ try {
         $icon = sanitize($input['icon'] ?? $existing['icon']);
         $isPublic = isset($input['is_public']) ? (int)$input['is_public'] : $existing['is_public'];
         $categoryId = $input['category_id'] ?? $existing['category_id'];
+        $displayOrder = isset($input['display_order']) ? (is_null($input['display_order']) ? null : (int)$input['display_order']) : $existing['display_order'];
         
         // Validate
         if (empty($url) || !isValidUrl($url)) {
@@ -282,9 +288,9 @@ try {
         
         // Update link
         $sql = "UPDATE links 
-                SET url = ?, title = ?, description = ?, icon = ?, is_public = ?, category_id = ?, updated_at = CURRENT_TIMESTAMP 
+                SET url = ?, title = ?, description = ?, icon = ?, is_public = ?, category_id = ?, display_order = ?, updated_at = CURRENT_TIMESTAMP 
                 WHERE id = ?";
-        $db->query($sql, [$url, $title, $description, $icon, $isPublic, $categoryId, $id]);
+        $db->query($sql, [$url, $title, $description, $icon, $isPublic, $categoryId, $displayOrder, $id]);
         
         // Update tags if provided
         if (isset($input['tags'])) {

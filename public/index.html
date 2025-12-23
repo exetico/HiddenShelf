@@ -263,7 +263,7 @@
                       @touchend="cancelLongPress($event)"
                       @touchcancel="cancelLongPress($event)"
                       @click="handleLinkClick(link, $event)"
-                      class="group hover:bg-gray-50 dark:hover:bg-brand-800 p-2 rounded-md transition-colors flex flex-wrap items-center gap-2 cursor-pointer block no-underline"
+                      class="group hover:bg-gray-50 dark:hover:bg-brand-800 p-2 rounded-md transition-colors flex flex-wrap items-center gap-2 cursor-pointer block no-underline relative"
                     >
                       <i :class="link.icon || 'mdi-link-variant'" class="mdi text-lg flex-shrink-0" :style="`color: ${getLinkIconColor(link)}`"></i>
                       <div class="flex-1 min-w-0 sm:min-w-[200px]">
@@ -285,6 +285,23 @@
                         >
                           <i class="mdi mdi-link-variant"></i>
                         </button>
+                        <!-- Reorder arrows (desktop only) -->
+                        <div class="hidden md:flex flex-col gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button
+                            @click.stop.prevent="moveLink(link, 'up')"
+                            class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 text-xs leading-none"
+                            title="Move up"
+                          >
+                            <i class="mdi mdi-chevron-up"></i>
+                          </button>
+                          <button
+                            @click.stop.prevent="moveLink(link, 'down')"
+                            class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 text-xs leading-none"
+                            title="Move down"
+                          >
+                            <i class="mdi mdi-chevron-down"></i>
+                          </button>
+                        </div>
                       </div>
                     </a>
                   </template>
@@ -313,7 +330,7 @@
                       @touchend="cancelLongPress($event)"
                       @touchcancel="cancelLongPress($event)"
                       @click="handleLinkClick(link, $event)"
-                      class="group hover:bg-gray-50 dark:hover:bg-brand-800 p-2 rounded-md transition-colors flex flex-wrap items-center gap-2 cursor-pointer block no-underline"
+                      class="group hover:bg-gray-50 dark:hover:bg-brand-800 p-2 rounded-md transition-colors flex flex-wrap items-center gap-2 cursor-pointer block no-underline relative"
                     >
                       <i :class="link.icon || 'mdi-link-variant'" class="mdi text-lg flex-shrink-0" :style="`color: ${getLinkIconColor(link)}`"></i>
                       <div class="flex-1 min-w-0 sm:min-w-[200px]">
@@ -335,6 +352,23 @@
                         >
                           <i class="mdi mdi-link-variant"></i>
                         </button>
+                        <!-- Reorder arrows (desktop only) -->
+                        <div class="hidden md:flex flex-col gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button
+                            @click.stop.prevent="moveLink(link, 'up')"
+                            class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 text-xs leading-none"
+                            title="Move up"
+                          >
+                            <i class="mdi mdi-chevron-up"></i>
+                          </button>
+                          <button
+                            @click.stop.prevent="moveLink(link, 'down')"
+                            class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 text-xs leading-none"
+                            title="Move down"
+                          >
+                            <i class="mdi mdi-chevron-down"></i>
+                          </button>
+                        </div>
                       </div>
                     </a>
                   </template>
@@ -851,24 +885,90 @@
       >
         <div class="bg-white dark:bg-brand-900 rounded-lg shadow-xl max-w-md w-full transition-colors">
           <div class="p-6">
-            <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-4">Edit Link?</h3>
-            <p class="text-sm text-gray-600 dark:text-gray-400 mb-6">
-              Would you like to edit 
-              <span class="font-medium text-gray-900 dark:text-white" x-text="longPressLink?.title"></span>?
+            <div class="mb-4">
+              <p class="text-sm text-gray-600 dark:text-gray-400 mb-1">Quick actions for:</p>
+              <h3 class="text-lg font-semibold text-gray-900 dark:text-white" x-text="longPressLink?.title"></h3>
+            </div>
+            
+            <div class="flex flex-col gap-2">
+              <button
+                @click="confirmEdit()"
+                class="w-full px-4 py-3 bg-brand-600 text-white rounded-md hover:bg-brand-700 transition-colors flex items-center justify-center gap-2"
+              >
+                <i class="mdi mdi-pencil"></i>
+                <span>Edit</span>
+              </button>
+              
+              <button
+                @click="confirmPin()"
+                class="w-full px-4 py-3 bg-gray-600 dark:bg-brand-700 text-white rounded-md hover:bg-gray-700 dark:hover:bg-brand-600 transition-colors flex items-center justify-center gap-2"
+              >
+                <i class="mdi mdi-sort-numeric-variant"></i>
+                <span>Set Position</span>
+              </button>
+              
+              <button
+                @click="confirmDelete()"
+                class="w-full px-4 py-3 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors flex items-center justify-center gap-2"
+              >
+                <i class="mdi mdi-delete"></i>
+                <span>Delete</span>
+              </button>
+              
+              <button
+                @click="cancelEdit()"
+                class="w-full px-4 py-3 bg-gray-200 dark:bg-brand-800 text-gray-700 dark:text-white rounded-md hover:bg-gray-300 dark:hover:bg-brand-700 transition-colors mt-2"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Position Input Modal -->
+      <div
+        x-show="showPositionModal"
+        @click.self="cancelPosition()"
+        class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60] p-4"
+        style="display: none"
+      >
+        <div class="bg-white dark:bg-brand-900 rounded-lg shadow-xl max-w-md w-full transition-colors">
+          <div class="p-6">
+            <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-2">Set Position</h3>
+            <p class="text-sm text-gray-600 dark:text-gray-400 mb-1">
+              For: <span class="font-medium text-gray-900 dark:text-white" x-text="longPressLink?.title"></span>
             </p>
+            <p class="text-xs text-gray-500 dark:text-gray-500 mb-4">
+              Lower numbers appear first. Leave empty to remove position.
+            </p>
+            
+            <div class="mb-6">
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Position Number
+              </label>
+              <input
+                x-model="positionInput"
+                type="number"
+                min="1"
+                placeholder="e.g., 1, 2, 3... (or leave empty)"
+                class="w-full px-3 py-2 border border-gray-300 dark:border-brand-700 rounded-md bg-white dark:bg-brand-800 text-gray-900 dark:text-white focus:ring-brand-500 focus:border-brand-500"
+                @keydown.enter="savePosition()"
+              />
+            </div>
             
             <div class="flex gap-3">
               <button
-                @click="cancelEdit()"
+                @click="cancelPosition()"
                 class="flex-1 px-4 py-2 bg-gray-200 dark:bg-brand-800 text-gray-700 dark:text-white rounded-md hover:bg-gray-300 dark:hover:bg-brand-700 transition-colors"
               >
                 Cancel
               </button>
               <button
-                @click="confirmEdit()"
+                @click="savePosition()"
                 class="flex-1 px-4 py-2 bg-brand-600 text-white rounded-md hover:bg-brand-700 transition-colors"
               >
-                Edit
+                Save
               </button>
             </div>
           </div>
@@ -1034,6 +1134,8 @@
           longPressLink: null,
           showLongPressModal: false,
           longPressModalJustOpened: false,
+          showPositionModal: false,
+          positionInput: '',
           showAddModal: false,
           editingLink: null,
           form: {
@@ -1148,16 +1250,10 @@
           },
 
           startLongPress(link, event) {
-            console.log('startLongPress', event.type, 'button:', event.button, 'link:', link.title);
             // Only handle left mouse button or touch
-            if (event.type === 'mousedown' && event.button !== 0) {
-              console.log('  -> ignored (not left button)');
-              return;
-            }
+            if (event.type === 'mousedown' && event.button !== 0) return;
             
-            console.log('  -> timer started');
             this.longPressTimer = setTimeout(() => {
-              console.log('  -> LONG PRESS TRIGGERED, showing modal');
               this.longPressLink = link;
               this.showLongPressModal = true;
               this.longPressModalJustOpened = true;
@@ -1170,30 +1266,23 @@
           },
 
           cancelLongPress(event) {
-            console.log('cancelLongPress', event.type, 'timer exists:', !!this.longPressTimer, 'modal showing:', this.showLongPressModal);
-            
             // Only cancel timer if modal hasn't shown yet
             if (this.longPressTimer && !this.showLongPressModal) {
               clearTimeout(this.longPressTimer);
               this.longPressTimer = null;
-              console.log('  -> timer cleared');
             }
           },
 
           handleLinkClick(link, event) {
-            console.log('handleLinkClick', 'modal showing:', this.showLongPressModal, 'link:', link.title);
             // If modal is showing, prevent navigation
             if (this.showLongPressModal) {
-              console.log('  -> navigation prevented (modal is showing)');
               event.preventDefault();
               return false;
             }
-            console.log('  -> normal navigation allowed');
             // Normal click - let it navigate
           },
 
           confirmEdit() {
-            console.log('confirmEdit', 'link:', this.longPressLink?.title);
             if (this.longPressLink) {
               this.editLink(this.longPressLink);
             }
@@ -1201,13 +1290,116 @@
             this.longPressLink = null;
           },
 
-          cancelEdit() {
-            console.log('cancelEdit', 'justOpened:', this.longPressModalJustOpened);
-            // Don't close if modal just opened (prevent mouse release from closing it)
-            if (this.longPressModalJustOpened) {
-              console.log('  -> ignored (modal just opened)');
+          confirmDelete() {
+            if (this.longPressLink && confirm(`Delete "${this.longPressLink.title}"?`)) {
+              this.deleteLink(this.longPressLink.id);
+            }
+            this.showLongPressModal = false;
+            this.longPressLink = null;
+          },
+
+          confirmPin() {
+            if (this.longPressLink) {
+              this.positionInput = this.longPressLink.display_order || '';
+              this.showLongPressModal = false;
+              this.showPositionModal = true;
+            }
+          },
+
+          async savePosition() {
+            if (!this.longPressLink) return;
+            
+            const position = this.positionInput === '' ? null : parseInt(this.positionInput);
+            
+            if (position !== null && (isNaN(position) || position < 1)) {
+              alert('Please enter a valid position number (1 or higher) or leave empty to remove position');
               return;
             }
+            
+            try {
+              const response = await fetch(`/api/links.php?id=${this.longPressLink.id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  display_order: position
+                })
+              });
+              
+              const data = await response.json();
+              
+              if (data.success) {
+                this.showPositionModal = false;
+                this.longPressLink = null;
+                this.positionInput = '';
+                await this.loadLinks();
+              } else {
+                alert(data.error || 'Failed to update position');
+              }
+            } catch (error) {
+              console.error('Error updating position:', error);
+              alert('Failed to update position');
+            }
+          },
+
+          async moveLink(link, direction) {
+            // Get all links in current view
+            let allLinks = this.currentView === 'manage' ? this.links : this.getOrderedLinks();
+            
+            // Find current link index
+            const currentIndex = allLinks.findIndex(l => l.id === link.id);
+            if (currentIndex === -1) return;
+            
+            // Calculate target index
+            const targetIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
+            if (targetIndex < 0 || targetIndex >= allLinks.length) return;
+            
+            const currentLink = allLinks[currentIndex];
+            const targetLink = allLinks[targetIndex];
+            
+            // Get current positions (or assign new ones based on index)
+            const currentPos = currentLink.display_order ?? (currentIndex + 1);
+            const targetPos = targetLink.display_order ?? (targetIndex + 1);
+            
+            try {
+              // Swap positions
+              await fetch(`/api/links.php?id=${currentLink.id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ display_order: targetPos })
+              });
+              
+              await fetch(`/api/links.php?id=${targetLink.id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ display_order: currentPos })
+              });
+              
+              await this.loadLinks();
+            } catch (error) {
+              console.error('Error moving link:', error);
+              alert('Failed to reorder link');
+            }
+          },
+
+          getOrderedLinks() {
+            return [...this.links].sort((a, b) => {
+              if (a.display_order === null && b.display_order === null) return 0;
+              if (a.display_order === null) return 1;
+              if (b.display_order === null) return -1;
+              return a.display_order - b.display_order;
+            });
+          },
+
+          cancelPosition() {
+            this.showPositionModal = false;
+            this.longPressLink = null;
+            this.positionInput = '';
+          },
+
+          cancelEdit() {
+            // Don't close if modal just opened (prevent mouse release from closing it)
+            if (this.longPressModalJustOpened) return;
+            
             this.showLongPressModal = false;
             this.longPressLink = null;
           },
@@ -1837,6 +2029,7 @@
                 category: link.category_name || "",
                 tags: link.tags.map(t => t.name),
                 is_public: link.is_public ? true : false,
+                display_order: link.display_order || null,
               })),
               categories: this.categories.map(cat => ({
                 name: cat.name,
@@ -1976,6 +2169,7 @@
                       category: link.category || "",
                       tags: Array.isArray(link.tags) ? link.tags : [],
                       is_public: link.is_public ? true : false,
+                      display_order: link.display_order || null,
                     });
                   }
                 });
@@ -2059,6 +2253,7 @@
                     category_id: category_id,
                     tags: tagsInput,
                     is_public: link.is_public,
+                    display_order: link.display_order,
                   }),
                 });
               }
