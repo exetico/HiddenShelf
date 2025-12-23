@@ -254,10 +254,20 @@
               <div class="bg-white dark:bg-brand-900 rounded-lg shadow-sm p-3 transition-colors">
                 <div class="space-y-1">
                   <template x-for="link in getUncategorizedLinks()" :key="link.id">
-                    <div class="group hover:bg-gray-50 dark:hover:bg-brand-800 p-2 rounded-md transition-colors flex flex-wrap items-center gap-2">
+                    <a 
+                      :href="link.url" 
+                      target="_blank"
+                      @mousedown="startLongPress(link, $event)"
+                      @mouseup="cancelLongPress($event)"
+                      @touchstart="startLongPress(link, $event)"
+                      @touchend="cancelLongPress($event)"
+                      @touchcancel="cancelLongPress($event)"
+                      @click="handleLinkClick(link, $event)"
+                      class="group hover:bg-gray-50 dark:hover:bg-brand-800 p-2 rounded-md transition-colors flex flex-wrap items-center gap-2 cursor-pointer block no-underline"
+                    >
                       <i :class="link.icon || 'mdi-link-variant'" class="mdi text-lg flex-shrink-0" :style="`color: ${getLinkIconColor(link)}`"></i>
                       <div class="flex-1 min-w-0 sm:min-w-[200px]">
-                        <a :href="link.url" target="_blank" class="font-medium text-gray-900 dark:text-gray-100 group-hover:text-brand-600 dark:group-hover:text-brand-400 text-sm" x-text="link.title"></a>
+                        <div class="font-medium text-gray-900 dark:text-gray-100 group-hover:text-brand-600 dark:group-hover:text-brand-400 text-sm" x-text="link.title"></div>
                         <p class="text-xs text-gray-500 dark:text-gray-400 truncate" x-text="link.url"></p>
                       </div>
                       <div class="flex items-center gap-2 ml-auto">
@@ -269,20 +279,14 @@
                         </div>
                         <button
                           x-show="link.is_public"
-                          @click.prevent="copyPublicLink(link.hash)"
+                          @click.stop.prevent="copyPublicLink(link.hash)"
                           class="text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 text-sm flex-shrink-0"
                           title="Copy public link"
                         >
                           <i class="mdi mdi-link-variant"></i>
                         </button>
-                        <button
-                          @click.prevent="editLink(link)"
-                          class="text-brand-600 dark:text-brand-400 hover:text-brand-700 dark:hover:text-brand-300 text-xs px-2 py-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
-                        >
-                          Edit
-                        </button>
                       </div>
-                    </div>
+                    </a>
                   </template>
                 </div>
               </div>
@@ -300,10 +304,20 @@
               <div class="bg-white dark:bg-brand-900 rounded-lg shadow-sm p-3 transition-colors">
                 <div class="space-y-1">
                   <template x-for="link in category.links" :key="link.id">
-                    <div class="group hover:bg-gray-50 dark:hover:bg-brand-800 p-2 rounded-md transition-colors flex flex-wrap items-center gap-2">
+                    <a 
+                      :href="link.url" 
+                      target="_blank"
+                      @mousedown="startLongPress(link, $event)"
+                      @mouseup="cancelLongPress($event)"
+                      @touchstart="startLongPress(link, $event)"
+                      @touchend="cancelLongPress($event)"
+                      @touchcancel="cancelLongPress($event)"
+                      @click="handleLinkClick(link, $event)"
+                      class="group hover:bg-gray-50 dark:hover:bg-brand-800 p-2 rounded-md transition-colors flex flex-wrap items-center gap-2 cursor-pointer block no-underline"
+                    >
                       <i :class="link.icon || 'mdi-link-variant'" class="mdi text-lg flex-shrink-0" :style="`color: ${getLinkIconColor(link)}`"></i>
                       <div class="flex-1 min-w-0 sm:min-w-[200px]">
-                        <a :href="link.url" target="_blank" class="font-medium text-gray-900 dark:text-gray-100 group-hover:text-brand-600 dark:group-hover:text-brand-400 text-sm" x-text="link.title"></a>
+                        <div class="font-medium text-gray-900 dark:text-gray-100 group-hover:text-brand-600 dark:group-hover:text-brand-400 text-sm" x-text="link.title"></div>
                         <p class="text-xs text-gray-500 dark:text-gray-400 truncate" x-text="link.url"></p>
                       </div>
                       <div class="flex items-center gap-2 ml-auto">
@@ -315,20 +329,14 @@
                         </div>
                         <button
                           x-show="link.is_public"
-                          @click.prevent="copyPublicLink(link.hash)"
+                          @click.stop.prevent="copyPublicLink(link.hash)"
                           class="text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 text-sm flex-shrink-0"
                           title="Copy public link"
                         >
                           <i class="mdi mdi-link-variant"></i>
                         </button>
-                        <button
-                          @click.prevent="editLink(link)"
-                          class="text-brand-600 dark:text-brand-400 hover:text-brand-700 dark:hover:text-brand-300 text-xs px-2 py-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
-                        >
-                          Edit
-                        </button>
                       </div>
-                    </div>
+                    </a>
                   </template>
                 </div>
               </div>
@@ -834,6 +842,39 @@
         </div>
       </div>
 
+      <!-- Long Press Edit Confirmation Modal -->
+      <div
+        x-show="showLongPressModal"
+        @click.self="cancelEdit()"
+        class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60] p-4"
+        style="display: none"
+      >
+        <div class="bg-white dark:bg-brand-900 rounded-lg shadow-xl max-w-md w-full transition-colors">
+          <div class="p-6">
+            <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-4">Edit Link?</h3>
+            <p class="text-sm text-gray-600 dark:text-gray-400 mb-6">
+              Would you like to edit 
+              <span class="font-medium text-gray-900 dark:text-white" x-text="longPressLink?.title"></span>?
+            </p>
+            
+            <div class="flex gap-3">
+              <button
+                @click="cancelEdit()"
+                class="flex-1 px-4 py-2 bg-gray-200 dark:bg-brand-800 text-gray-700 dark:text-white rounded-md hover:bg-gray-300 dark:hover:bg-brand-700 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                @click="confirmEdit()"
+                class="flex-1 px-4 py-2 bg-brand-600 text-white rounded-md hover:bg-brand-700 transition-colors"
+              >
+                Edit
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- Delete Progress Modal -->
       <div
         x-show="showDeleteProgressModal"
@@ -989,6 +1030,10 @@
           hasDragged: false,
           dragStartX: 0,
           dragScrollLeft: 0,
+          longPressTimer: null,
+          longPressLink: null,
+          showLongPressModal: false,
+          longPressModalJustOpened: false,
           showAddModal: false,
           editingLink: null,
           form: {
@@ -1100,6 +1145,71 @@
             setTimeout(() => {
               this.hasDragged = false;
             }, 50);
+          },
+
+          startLongPress(link, event) {
+            console.log('startLongPress', event.type, 'button:', event.button, 'link:', link.title);
+            // Only handle left mouse button or touch
+            if (event.type === 'mousedown' && event.button !== 0) {
+              console.log('  -> ignored (not left button)');
+              return;
+            }
+            
+            console.log('  -> timer started');
+            this.longPressTimer = setTimeout(() => {
+              console.log('  -> LONG PRESS TRIGGERED, showing modal');
+              this.longPressLink = link;
+              this.showLongPressModal = true;
+              this.longPressModalJustOpened = true;
+              
+              // Prevent immediate close from mouse release
+              setTimeout(() => {
+                this.longPressModalJustOpened = false;
+              }, 200);
+            }, 500);
+          },
+
+          cancelLongPress(event) {
+            console.log('cancelLongPress', event.type, 'timer exists:', !!this.longPressTimer, 'modal showing:', this.showLongPressModal);
+            
+            // Only cancel timer if modal hasn't shown yet
+            if (this.longPressTimer && !this.showLongPressModal) {
+              clearTimeout(this.longPressTimer);
+              this.longPressTimer = null;
+              console.log('  -> timer cleared');
+            }
+          },
+
+          handleLinkClick(link, event) {
+            console.log('handleLinkClick', 'modal showing:', this.showLongPressModal, 'link:', link.title);
+            // If modal is showing, prevent navigation
+            if (this.showLongPressModal) {
+              console.log('  -> navigation prevented (modal is showing)');
+              event.preventDefault();
+              return false;
+            }
+            console.log('  -> normal navigation allowed');
+            // Normal click - let it navigate
+          },
+
+          confirmEdit() {
+            console.log('confirmEdit', 'link:', this.longPressLink?.title);
+            if (this.longPressLink) {
+              this.editLink(this.longPressLink);
+            }
+            this.showLongPressModal = false;
+            this.longPressLink = null;
+          },
+
+          cancelEdit() {
+            console.log('cancelEdit', 'justOpened:', this.longPressModalJustOpened);
+            // Don't close if modal just opened (prevent mouse release from closing it)
+            if (this.longPressModalJustOpened) {
+              console.log('  -> ignored (modal just opened)');
+              return;
+            }
+            this.showLongPressModal = false;
+            this.longPressLink = null;
           },
 
           normalizeIcon(icon, context = 'link') {
