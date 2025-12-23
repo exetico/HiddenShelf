@@ -84,13 +84,13 @@
             }"
             class="text-white rounded-lg shadow-lg cursor-pointer hover:shadow-xl transition-shadow overflow-hidden"
           >
-            <div class="px-4 py-3 flex items-start gap-2">
+            <div class="px-4 py-3 flex items-center gap-2">
               <i :class="{
                 'mdi-check-circle': toast.type === 'success',
                 'mdi-information': toast.type === 'info',
                 'mdi-alert': toast.type === 'warning',
                 'mdi-alert-circle': toast.type === 'error'
-              }" class="mdi text-xl mt-0.5"></i>
+              }" class="mdi text-xl"></i>
               <span class="flex-1 text-sm" x-text="toast.message"></span>
               <i class="mdi mdi-close text-lg opacity-70 hover:opacity-100"></i>
             </div>
@@ -860,14 +860,14 @@
                 <input
                   type="color"
                   x-model="brandColor"
-                  @input="updateBrandColor($event.target.value)"
+                  @input="debouncedBrandColorUpdate($event.target.value)"
                   class="h-10 w-20 rounded border border-gray-300 dark:border-brand-700 cursor-pointer"
                 />
                 <div class="flex-1">
                   <input
                     type="text"
                     x-model="brandColor"
-                    @input="updateBrandColor($event.target.value)"
+                    @input="debouncedBrandColorUpdate($event.target.value)"
                     class="w-full px-3 py-2 bg-white dark:bg-brand-800 border border-gray-300 dark:border-brand-700 rounded-md text-gray-900 dark:text-white font-mono text-sm focus:ring-2 focus:ring-brand-500 dark:focus:ring-brand-400 focus:border-transparent transition-colors"
                     placeholder="#687061"
                   />
@@ -1222,7 +1222,7 @@
           },
           newCategoryName: "",
           newCategoryIcon: "",
-          newCategoryColor: "#738562",
+          newCategoryColor: "#6d7665",
           editingCategory: null,
           newTagName: "",
           search: "",
@@ -1231,7 +1231,8 @@
           totalPages: 1,
           totalLinks: 0,
           linksPerPage: 20,
-          brandColor: '#738562',
+          brandColor: '#6d7665',
+          brandColorTimeout: null,
           isDragging: false,
           hasDragged: false,
           dragStartX: 0,
@@ -1699,7 +1700,23 @@
             }
           },
 
-          async updateBrandColor(color) {
+          debouncedBrandColorUpdate(color) {
+            // Apply color immediately for visual feedback
+            this.brandColor = color;
+            this.applyBrandColor();
+            
+            // Clear existing timeout
+            if (this.brandColorTimeout) {
+              clearTimeout(this.brandColorTimeout);
+            }
+            
+            // Set new timeout to save after 1 second of no typing
+            this.brandColorTimeout = setTimeout(() => {
+              this.saveBrandColor(color);
+            }, 1000);
+          },
+
+          async saveBrandColor(color) {
             try {
               const response = await fetch('/api/user_settings.php', {
                 method: 'PUT',
@@ -1710,9 +1727,7 @@
               const data = await response.json();
               
               if (data.success) {
-                this.brandColor = color;
-                this.applyBrandColor();
-                this.showToast('Brand color updated!', 'success');
+                this.showToast('Brand color saved!', 'success');
               }
             } catch (error) {
               console.error('Error updating brand color:', error);
@@ -1721,7 +1736,7 @@
           },
 
           resetBrandColor() {
-            this.updateBrandColor('#687061');
+            this.debouncedBrandColorUpdate('#687061');
           },
 
           applyBrandColor() {
@@ -2296,7 +2311,7 @@
                     validatedData.categories.push({
                       name: cat.name,
                       icon: cat.icon || "",
-                      color: cat.color || "#738562",
+                      color: cat.color || "#6d7665",
                     });
                   }
                 });

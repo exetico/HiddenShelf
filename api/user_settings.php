@@ -34,7 +34,7 @@ try {
         if (!$settings) {
             // Create default settings
             $sql = "INSERT INTO user_settings (user_id, links_per_page, brand_color) VALUES (?, ?, ?)";
-            $db->insert($sql, [$userId, 20, '#738562']);
+            $db->insert($sql, [$userId, 20, '#6d7665']);
             $settings = $db->fetchOne("SELECT * FROM user_settings WHERE user_id = ?", [$userId]);
         }
         
@@ -61,7 +61,7 @@ try {
         
         // Validate brand_color if provided
         if ($brandColor !== null && !preg_match('/^#[0-9A-Fa-f]{6}$/', $brandColor)) {
-            errorResponse('Invalid brand_color value. Must be a valid hex color (e.g., #738562)');
+            errorResponse('Invalid brand_color value. Must be a valid hex color (e.g., #6d7665)');
         }
         
         // Check if settings exist
@@ -92,7 +92,7 @@ try {
         } else {
             // Insert with defaults
             $sql = "INSERT INTO user_settings (user_id, links_per_page, brand_color) VALUES (?, ?, ?)";
-            $db->insert($sql, [$userId, $linksPerPage ?? 20, $brandColor ?? '#738562']);
+            $db->insert($sql, [$userId, $linksPerPage ?? 20, $brandColor ?? '#6d7665']);
         }
         
         $settings = $db->fetchOne("SELECT * FROM user_settings WHERE user_id = ?", [$userId]);
