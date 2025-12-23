@@ -24,6 +24,7 @@
 20. Allow public links to be directly redirected
 21. Make guide on how to deploy to PHP host, without using Docker (preparing -> deploy -> validate)
 22. Add profile email at top of profile, to tell the user how's logged in, or, maybe at the bottom, with version of app, or similar?
+23. Add SSO, even though there's a "Continue as" solution visible
 
 ## Bugs
 
