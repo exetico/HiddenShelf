@@ -5,6 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Hidden Shelf - Save & Share Links</title>
     <link rel="icon" type="image/x-icon" href="favicon.png" />
+    <!-- Apple-specific meta tags -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Hidden Shelf" />
+    <link rel="apple-touch-icon" href="favicon.png" />
+    <!-- Theme color for browser UI - matches brand color -->
+    <meta name="theme-color" content="#687061" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#1b1f18" media="(prefers-color-scheme: dark)" />
     <style>
       /* Prevent white flash on dark mode */
       html {
@@ -333,18 +341,39 @@
                   <span class="text-xs opacity-75" x-text="`(${category.link_count || 0})`"></span>
                 </button>
               </template>
+
+              <!-- Shared Category Buttons -->
+              <template x-for="category in sharedCategories" :key="'shared-' + category.id">
+                <button
+                  @click="if (!hasDragged) { filterCategory = category.id; loadLinks(); }"
+                  :class="filterCategory == category.id ? 'bg-blue-600 text-white' : 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/50'"
+                  class="flex items-center gap-2 px-4 py-2 rounded-lg transition-colors whitespace-nowrap flex-shrink-0"
+                  :title="`Shared by ${category.owner_email}`"
+                >
+                  <i :class="category.icon || 'mdi-folder'" class="mdi text-lg" :style="filterCategory == category.id ? '' : `color: ${category.color || '#6B7280'}`"></i>
+                  <span class="text-sm font-medium" x-text="category.name"></span>
+                  <i class="mdi mdi-account-group text-xs opacity-75"></i>
+                  <span class="text-xs opacity-75" x-text="`(${category.link_count || 0})`"></span>
+                </button>
+              </template>
             </div>
           </div>
 
           <!-- Uncategorized Links -->
           <template x-if="(filterCategory === '' || filterCategory === 'uncategorized') && getUncategorizedLinks().length > 0">
             <div class="mb-8">
-              <div class="flex items-center gap-3 mb-4">
+              <div 
+                class="flex items-center gap-3 mb-4 cursor-pointer select-none"
+                @click="toggleCategoryCollapse('uncategorized')"
+              >
+                <button class="text-gray-400 hover:text-gray-600 dark:hover:text-brand-300 transition-colors">
+                  <i :class="isCategoryCollapsed('uncategorized') ? 'mdi-chevron-right' : 'mdi-chevron-down'" class="mdi text-xl"></i>
+                </button>
                 <i class="mdi mdi-folder-outline text-3xl text-brand-400 dark:text-gray-500"></i>
                 <h2 class="text-2xl font-bold text-gray-700 dark:text-brand-200">Uncategorized</h2>
                 <span class="text-sm text-gray-500 dark:text-brand-400" x-text="`(${getUncategorizedLinks().length})`"></span>
               </div>
-              <div class="bg-white dark:bg-brand-900 rounded-lg shadow-sm p-3 transition-colors">
+              <div x-show="!isCategoryCollapsed('uncategorized')" x-collapse class="bg-white dark:bg-brand-900 rounded-lg shadow-sm p-3 transition-colors">
                 <div class="space-y-1">
                   <template x-for="link in getUncategorizedLinks()" :key="link.id">
                     <a 
@@ -356,6 +385,7 @@
                       @touchend="cancelLongPress($event)"
                       @touchcancel="cancelLongPress($event)"
                       @click="handleLinkClick(link, $event)"
+                      @contextmenu="handleRightClick(link, $event)"
                       class="group hover:bg-gray-50 dark:hover:bg-brand-800 p-2 rounded-md transition-colors flex flex-wrap items-center gap-2 cursor-pointer block no-underline relative"
                     >
                       <i :class="link.icon || 'mdi-link-variant'" class="mdi text-lg flex-shrink-0" :style="`color: ${getLinkIconColor(link)}`"></i>
@@ -406,12 +436,37 @@
           <!-- Categorized Links -->
           <template x-for="category in getCategoriesWithLinks()" :key="category.id">
             <div class="mb-8" x-show="filterCategory === '' || filterCategory == category.id">
-              <div class="flex items-center gap-3 mb-4">
+              <div 
+                class="flex items-center gap-3 mb-4 cursor-pointer select-none"
+                @click="toggleCategoryCollapse(category.id)"
+              >
+                <button class="text-gray-400 hover:text-gray-600 dark:hover:text-brand-300 transition-colors">
+                  <i :class="isCategoryCollapsed(category.id) ? 'mdi-chevron-right' : 'mdi-chevron-down'" class="mdi text-xl"></i>
+                </button>
                 <i :class="category.icon || 'mdi-folder'" class="mdi text-3xl" :style="`color: ${category.color || '#6B7280'}`"></i>
                 <h2 class="text-2xl font-bold text-gray-900 dark:text-brand-100" x-text="category.name"></h2>
                 <span class="text-sm text-gray-500 dark:text-brand-400" x-text="`(${category.links.length})`"></span>
+                <!-- Shared category indicator with leave option -->
+                <template x-if="category.isShared">
+                  <div class="inline-flex items-center gap-2">
+                    <span 
+                      class="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 text-xs rounded-full"
+                      :title="`Shared by ${category.owner_email}`"
+                    >
+                      <i class="mdi mdi-account-group text-xs"></i>
+                      <span x-text="category.owner_email"></span>
+                    </span>
+                    <button
+                      @click.stop="leaveSharedCategory(category.id)"
+                      class="text-gray-400 hover:text-red-500 dark:hover:text-red-400 transition-colors"
+                      title="Leave shared category"
+                    >
+                      <i class="mdi mdi-exit-run text-sm"></i>
+                    </button>
+                  </div>
+                </template>
               </div>
-              <div class="bg-white dark:bg-brand-900 rounded-lg shadow-sm p-3 transition-colors">
+              <div x-show="!isCategoryCollapsed(category.id)" x-collapse class="bg-white dark:bg-brand-900 rounded-lg shadow-sm p-3 transition-colors">
                 <div class="space-y-1">
                   <template x-for="link in category.links" :key="link.id">
                     <a 
@@ -423,6 +478,7 @@
                       @touchend="cancelLongPress($event)"
                       @touchcancel="cancelLongPress($event)"
                       @click="handleLinkClick(link, $event)"
+                      @contextmenu="handleRightClick(link, $event)"
                       class="group hover:bg-gray-50 dark:hover:bg-brand-800 p-2 rounded-md transition-colors flex flex-wrap items-center gap-2 cursor-pointer block no-underline relative"
                     >
                       <i :class="link.icon || 'mdi-link-variant'" class="mdi text-lg flex-shrink-0" :style="`color: ${getLinkIconColor(link)}`"></i>
@@ -815,14 +871,34 @@
                   <div class="flex items-center gap-3">
                     <i :class="cat.icon || 'mdi-folder'" class="mdi text-2xl" :style="`color: ${cat.color || '#6B7280'}`"></i>
                     <div>
-                      <span class="font-medium text-gray-900 dark:text-brand-100" x-text="cat.name"></span>
+                      <div class="flex items-center gap-2">
+                        <span class="font-medium text-gray-900 dark:text-brand-100" x-text="cat.name"></span>
+                        <!-- Shared indicator -->
+                        <span 
+                          x-show="cat.is_shared > 0" 
+                          class="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 text-xs rounded-full"
+                          :title="`Shared with ${cat.member_count || 0} member(s)`"
+                        >
+                          <i class="mdi mdi-account-group text-xs"></i>
+                          <span x-text="cat.member_count || 0"></span>
+                        </span>
+                      </div>
                       <span
-                        class="text-sm text-gray-500 dark:text-brand-400 ml-2"
-                        x-text="`(${cat.link_count || 0} links)`"
+                        class="text-sm text-gray-500 dark:text-brand-400"
+                        x-text="`${cat.link_count || 0} links`"
                       ></span>
                     </div>
                   </div>
                   <div class="flex gap-2">
+                    <button
+                      @click="openShareModal(cat)"
+                      class="text-sm px-2 py-1 rounded transition-colors"
+                      :class="cat.is_shared > 0 ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300' : 'text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300'"
+                      :title="cat.is_shared > 0 ? 'Manage sharing' : 'Share category'"
+                    >
+                      <i class="mdi mdi-share-variant"></i>
+                      <span x-show="cat.is_shared > 0" class="ml-1">Shared</span>
+                    </button>
                     <button
                       @click="editCategory(cat)"
                       class="text-brand-600 dark:text-brand-400 hover:text-brand-700 dark:hover:text-brand-300 text-sm"
@@ -837,12 +913,54 @@
                   </button>
                 </div>
               </template>
+              
+              <!-- Shared with me section -->
+              <template x-if="sharedCategories.length > 0">
+                <div class="mt-6 pt-4 border-t border-gray-200 dark:border-brand-700">
+                  <h3 class="text-lg font-semibold text-gray-700 dark:text-brand-200 mb-3">
+                    <i class="mdi mdi-account-group mr-2"></i>Shared with me
+                  </h3>
+                  <template x-for="cat in sharedCategories" :key="'shared-' + cat.id">
+                    <div class="flex items-center justify-between p-3 bg-blue-50 dark:bg-blue-900/20 rounded-md mb-2">
+                      <div class="flex items-center gap-3">
+                        <i :class="cat.icon || 'mdi-folder'" class="mdi text-2xl" :style="`color: ${cat.color || '#6B7280'}`"></i>
+                        <div>
+                          <span class="font-medium text-gray-900 dark:text-brand-100" x-text="cat.name"></span>
+                          <span class="text-sm text-gray-500 dark:text-brand-400 ml-2" x-text="`(${cat.link_count || 0} links)`"></span>
+                          <div class="text-xs text-blue-600 dark:text-blue-400">
+                            <i class="mdi mdi-account"></i> <span x-text="cat.owner_email"></span>
+                          </div>
+                        </div>
+                      </div>
+                      <button
+                        @click="leaveSharedCategory(cat.id)"
+                        class="text-red-600 dark:text-red-400 hover:text-red-700 text-sm"
+                        title="Leave shared category"
+                      >
+                        Leave
+                      </button>
+                    </div>
+                  </template>
+                </div>
+              </template>
+              
               <div
-                x-show="categories.length === 0"
+                x-show="categories.length === 0 && sharedCategories.length === 0"
                 class="text-gray-500 dark:text-brand-400 text-sm p-3"
               >
                 No categories yet. Create one above!
               </div>
+            </div>
+            
+            <!-- Join share button -->
+            <div class="mt-4 pt-4 border-t border-gray-200 dark:border-brand-700">
+              <button
+                @click="showJoinShareModal = true; showCategoriesModal = false;"
+                class="w-full px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
+              >
+                <i class="mdi mdi-link-plus"></i>
+                Join Shared Category
+              </button>
             </div>
 
             <div class="flex justify-end mt-6">
@@ -851,6 +969,168 @@
                 class="px-4 py-2 bg-gray-600 dark:bg-brand-800 text-white rounded-md hover:bg-gray-700 dark:hover:bg-brand-700 transition-colors"
               >
                 Close
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Share Category Modal -->
+        <div id="share-modal"
+          x-show="showShareModal"
+          class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-[60]"
+          @click.self="showShareModal = false"
+        >
+          <div class="bg-white dark:bg-brand-900 rounded-lg shadow-xl max-w-md w-full p-6">
+            <h2 class="text-xl font-bold mb-4 text-gray-900 dark:text-white flex items-center gap-2">
+              <i class="mdi mdi-share-variant"></i>
+              Share Category
+            </h2>
+            
+            <div class="mb-4">
+              <div class="flex items-center gap-2 mb-2">
+                <i :class="sharingCategory?.icon || 'mdi-folder'" class="mdi text-xl" :style="`color: ${sharingCategory?.color || '#6B7280'}`"></i>
+                <span class="font-medium text-gray-900 dark:text-white" x-text="sharingCategory?.name"></span>
+              </div>
+            </div>
+            
+            <!-- No share code yet -->
+            <div x-show="!shareCode" class="text-center py-4">
+              <p class="text-gray-600 dark:text-brand-400 mb-4">
+                Create a share link to let others view this category's links.
+              </p>
+              <button
+                @click="createShareCode()"
+                class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+              >
+                <i class="mdi mdi-link-plus mr-2"></i>Create Share Link
+              </button>
+            </div>
+            
+            <!-- Has share code -->
+            <div x-show="shareCode">
+              <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 dark:text-brand-300 mb-2">Share Link</label>
+                <div class="flex gap-2">
+                  <input
+                    type="text"
+                    readonly
+                    :value="`${window.location.origin}/public/login.html?share=${shareCode}`"
+                    class="flex-1 px-3 py-2 bg-gray-100 dark:bg-brand-800 border border-gray-300 dark:border-brand-700 rounded-md text-sm text-gray-700 dark:text-brand-300"
+                  />
+                  <button
+                    @click="copyShareLink()"
+                    class="px-3 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+                    title="Copy link"
+                  >
+                    <i class="mdi mdi-content-copy"></i>
+                  </button>
+                </div>
+              </div>
+              
+              <!-- Members -->
+              <div class="mb-4" x-show="shareMembers.length > 0">
+                <label class="block text-sm font-medium text-gray-700 dark:text-brand-300 mb-2">
+                  Members (<span x-text="shareMembers.length"></span>)
+                </label>
+                <div class="space-y-2 max-h-40 overflow-y-auto">
+                  <template x-for="member in shareMembers" :key="member.id">
+                    <div class="flex items-center justify-between p-2 bg-gray-50 dark:bg-brand-800 rounded-md">
+                      <span class="text-sm text-gray-700 dark:text-brand-300" x-text="member.email"></span>
+                      <button
+                        @click="removeMember(member.id)"
+                        class="text-red-600 dark:text-red-400 hover:text-red-700 text-sm"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  </template>
+                </div>
+              </div>
+              
+              <button
+                @click="removeShare()"
+                class="w-full px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors text-sm"
+              >
+                <i class="mdi mdi-link-off mr-2"></i>Remove Sharing
+              </button>
+            </div>
+            
+            <div class="flex justify-end mt-6">
+              <button
+                @click="showShareModal = false"
+                class="px-4 py-2 bg-gray-600 dark:bg-brand-800 text-white rounded-md hover:bg-gray-700 dark:hover:bg-brand-700 transition-colors"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Join Share Modal -->
+        <div id="join-share-modal"
+          x-show="showJoinShareModal"
+          class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-[60]"
+          @click.self="showJoinShareModal = false; joinShareCode = ''; joinShareInfo = null;"
+        >
+          <div class="bg-white dark:bg-brand-900 rounded-lg shadow-xl max-w-md w-full p-6">
+            <h2 class="text-xl font-bold mb-4 text-gray-900 dark:text-white flex items-center gap-2">
+              <i class="mdi mdi-link-plus"></i>
+              Join Shared Category
+            </h2>
+            
+            <div class="mb-4">
+              <label class="block text-sm font-medium text-gray-700 dark:text-brand-300 mb-2">
+                Share Code or Link
+              </label>
+              <div class="flex gap-2">
+                <input
+                  type="text"
+                  x-model="joinShareCode"
+                  @input="joinShareInfo = null"
+                  placeholder="Paste share code or link"
+                  class="flex-1 px-3 py-2 border border-gray-300 dark:border-brand-700 dark:bg-brand-800 dark:text-white rounded-md"
+                />
+                <button
+                  @click="verifyShareCode()"
+                  class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+                >
+                  Verify
+                </button>
+              </div>
+              <p class="text-xs text-gray-500 dark:text-brand-400 mt-1">
+                Enter the share code or paste the full share link
+              </p>
+            </div>
+            
+            <!-- Share Info Preview -->
+            <div x-show="joinShareInfo" class="mb-4 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-md">
+              <div class="flex items-center gap-3 mb-2">
+                <i :class="joinShareInfo?.icon || 'mdi-folder'" class="mdi text-2xl" :style="`color: ${joinShareInfo?.color || '#6B7280'}`"></i>
+                <div>
+                  <div class="font-medium text-gray-900 dark:text-white" x-text="joinShareInfo?.category_name"></div>
+                  <div class="text-sm text-gray-600 dark:text-brand-400">
+                    <span x-text="joinShareInfo?.link_count"></span> links
+                  </div>
+                </div>
+              </div>
+              <div class="text-sm text-blue-600 dark:text-blue-400">
+                <i class="mdi mdi-account"></i> Shared by <span x-text="joinShareInfo?.owner_email"></span>
+              </div>
+              
+              <button
+                @click="acceptShare()"
+                class="w-full mt-4 px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
+              >
+                <i class="mdi mdi-check mr-2"></i>Join Category
+              </button>
+            </div>
+            
+            <div class="flex justify-end">
+              <button
+                @click="showJoinShareModal = false; joinShareCode = ''; joinShareInfo = null;"
+                class="px-4 py-2 bg-gray-600 dark:bg-brand-800 text-white rounded-md hover:bg-gray-700 dark:hover:bg-brand-700 transition-colors"
+              >
+                Cancel
               </button>
             </div>
           </div>
@@ -1096,7 +1376,27 @@
             </div>
             
             <div class="flex flex-col gap-2">
+              <!-- Navigation Options -->
+              <div class="flex gap-2">
+                <button
+                  @click="openLinkInCurrentTab()"
+                  class="flex-1 px-4 py-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
+                >
+                  <i class="mdi mdi-arrow-right"></i>
+                  <span>Open Link</span>
+                </button>
+                
+                <button
+                  @click="openLinkInNewTab()"
+                  class="flex-1 px-4 py-3 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors flex items-center justify-center gap-2"
+                >
+                  <i class="mdi mdi-open-in-new"></i>
+                  <span>New Tab</span>
+                </button>
+              </div>
+              
               <button
+                x-show="!longPressLink?.is_from_shared_category"
                 @click="confirmEdit()"
                 class="w-full px-4 py-3 bg-brand-600 text-white rounded-md hover:bg-brand-700 transition-colors flex items-center justify-center gap-2"
               >
@@ -1105,6 +1405,7 @@
               </button>
               
               <button
+                x-show="!longPressLink?.is_from_shared_category"
                 @click="confirmPin()"
                 class="w-full px-4 py-3 bg-gray-600 dark:bg-brand-700 text-white rounded-md hover:bg-gray-700 dark:hover:bg-brand-600 transition-colors flex items-center justify-center gap-2"
               >
@@ -1113,6 +1414,7 @@
               </button>
               
               <button
+                x-show="!longPressLink?.is_from_shared_category"
                 @click="confirmDelete()"
                 class="w-full px-4 py-3 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors flex items-center justify-center gap-2"
               >
@@ -1350,6 +1652,16 @@
             newTags: 0,
             duplicateTags: 0,
           },
+          collapsedCategories: {}, // Track which categories are collapsed
+          // Category sharing
+          showShareModal: false,
+          sharingCategory: null,
+          shareCode: null,
+          shareMembers: [],
+          showJoinShareModal: false,
+          joinShareCode: '',
+          joinShareInfo: null,
+          sharedCategories: [],
           newCategoryName: "",
           newCategoryIcon: "",
           newCategoryColor: "#6d7665",
@@ -1502,6 +1814,35 @@
                 this.longPressModalJustOpened = false;
               }, 200);
             }, 500);
+          },
+          
+          // Right-click context menu handler
+          handleRightClick(link, event) {
+            event.preventDefault();
+            this.longPressLink = link;
+            this.showLongPressModal = true;
+            this.longPressModalJustOpened = true;
+            setTimeout(() => {
+              this.longPressModalJustOpened = false;
+            }, 200);
+          },
+          
+          // Open link in current tab
+          openLinkInCurrentTab() {
+            if (this.longPressLink?.url) {
+              window.location.href = this.longPressLink.url;
+            }
+            this.showLongPressModal = false;
+            this.longPressLink = null;
+          },
+          
+          // Open link in new tab
+          openLinkInNewTab() {
+            if (this.longPressLink?.url) {
+              window.open(this.longPressLink.url, '_blank');
+            }
+            this.showLongPressModal = false;
+            this.longPressLink = null;
           },
 
           cancelLongPress(event) {
@@ -1705,8 +2046,9 @@
             }
 
             // Listen for hash changes
-            window.addEventListener('hashchange', () => {
+            window.addEventListener('hashchange', async () => {
               const newHash = window.location.hash.slice(1);
+              const oldMode = this.viewMode;
               if (newHash === '/edit') {
                 this.viewMode = 'edit';
               } else if (newHash === '/profile') {
@@ -1715,6 +2057,10 @@
                 this.viewMode = 'view';
               } else {
                 this.viewMode = 'dashboard';
+              }
+              // Reload links when switching between view and edit (shared links differ)
+              if ((oldMode === 'view' || oldMode === 'edit') && (this.viewMode === 'view' || this.viewMode === 'edit') && oldMode !== this.viewMode) {
+                await this.loadLinks();
               }
             });
           },
@@ -1742,6 +2088,21 @@
             await this.ensureUnsortedCategory();
             await this.loadLinks();
             await this.loadTags();
+            
+            // Check for pending share code (from login redirect)
+            this.checkPendingShare();
+          },
+          
+          async checkPendingShare() {
+            const pendingShare = sessionStorage.getItem('hiddenshelf_pending_share');
+            if (pendingShare) {
+              sessionStorage.removeItem('hiddenshelf_pending_share');
+              this.joinShareCode = pendingShare;
+              await this.verifyShareCode();
+              if (this.joinShareInfo) {
+                this.showJoinShareModal = true;
+              }
+            }
           },
 
           async loadAppConfig() {
@@ -1783,7 +2144,9 @@
           async loadLinks(append = false) {
             try {
               const page = append ? this.currentPage + 1 : 1;
-              let url = `/api/links.php?page=${page}&limit=${this.linksPerPage}`;
+              // Only exclude shared links in Edit mode (they're read-only)
+              const includeShared = this.viewMode !== 'edit' ? '1' : '0';
+              let url = `/api/links.php?page=${page}&limit=${this.linksPerPage}&include_shared=${includeShared}`;
               if (this.filterCategory) {
                 url += "&category_id=" + this.filterCategory;
               }
@@ -1929,8 +2292,174 @@
               if (data.success) {
                 this.categories = data.categories;
               }
+              
+              // Also load shared categories
+              await this.loadSharedCategories();
             } catch (error) {
               console.error("Failed to load categories:", error);
+            }
+          },
+          
+          async loadSharedCategories() {
+            try {
+              const response = await fetch("/api/category_shares.php");
+              const data = await response.json();
+              if (data.success) {
+                this.sharedCategories = data.shared_categories || [];
+              }
+            } catch (error) {
+              console.error("Failed to load shared categories:", error);
+            }
+          },
+          
+          async openShareModal(category) {
+            this.sharingCategory = category;
+            this.shareCode = null;
+            this.shareMembers = [];
+            this.showShareModal = true;
+            
+            // Load existing share info
+            try {
+              const response = await fetch(`/api/category_shares.php?category_id=${category.id}`);
+              const data = await response.json();
+              if (data.success) {
+                this.shareCode = data.share?.share_code || null;
+                this.shareMembers = data.members || [];
+              }
+            } catch (error) {
+              console.error("Failed to load share info:", error);
+            }
+          },
+          
+          async createShareCode() {
+            if (!this.sharingCategory) return;
+            
+            try {
+              const response = await fetch("/api/category_shares.php", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ category_id: this.sharingCategory.id })
+              });
+              const data = await response.json();
+              if (data.success) {
+                this.shareCode = data.share.share_code;
+                this.showToast("Share code created!", "success");
+              }
+            } catch (error) {
+              this.showToast("Failed to create share code", "error");
+            }
+          },
+          
+          async removeShare() {
+            if (!this.sharingCategory) return;
+            if (!confirm("Remove sharing? All members will lose access.")) return;
+            
+            try {
+              const response = await fetch(`/api/category_shares.php?category_id=${this.sharingCategory.id}`, {
+                method: "DELETE"
+              });
+              const data = await response.json();
+              if (data.success) {
+                this.shareCode = null;
+                this.shareMembers = [];
+                this.showToast("Sharing removed", "success");
+              }
+            } catch (error) {
+              this.showToast("Failed to remove sharing", "error");
+            }
+          },
+          
+          async removeMember(memberId) {
+            if (!this.sharingCategory) return;
+            
+            try {
+              const response = await fetch(`/api/category_shares.php?category_id=${this.sharingCategory.id}&member_id=${memberId}`, {
+                method: "DELETE"
+              });
+              const data = await response.json();
+              if (data.success) {
+                this.shareMembers = this.shareMembers.filter(m => m.id !== memberId);
+                this.showToast("Member removed", "success");
+              }
+            } catch (error) {
+              this.showToast("Failed to remove member", "error");
+            }
+          },
+          
+          copyShareLink() {
+            if (!this.shareCode) return;
+            const link = `${window.location.origin}/public/login.html?share=${this.shareCode}`;
+            navigator.clipboard.writeText(link);
+            this.showToast("Share link copied!", "success");
+          },
+          
+          async verifyShareCode() {
+            if (!this.joinShareCode) return;
+            
+            // Extract code from URL if a full URL was pasted
+            let code = this.joinShareCode.trim();
+            if (code.includes('share=')) {
+              const match = code.match(/share=([a-f0-9]+)/i);
+              if (match) {
+                code = match[1];
+                this.joinShareCode = code;
+              }
+            }
+            
+            try {
+              const response = await fetch(`/api/category_shares.php?code=${code}`);
+              const data = await response.json();
+              if (data.success) {
+                this.joinShareInfo = data.share;
+              } else {
+                this.showToast(data.error || "Invalid share code", "error");
+                this.joinShareInfo = null;
+              }
+            } catch (error) {
+              this.showToast("Failed to verify share code", "error");
+            }
+          },
+          
+          async acceptShare() {
+            if (!this.joinShareCode) return;
+            
+            try {
+              const response = await fetch("/api/category_shares.php", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ share_code: this.joinShareCode })
+              });
+              const data = await response.json();
+              if (data.success) {
+                this.showToast("Successfully joined shared category!", "success");
+                this.showJoinShareModal = false;
+                this.joinShareCode = '';
+                this.joinShareInfo = null;
+                await this.loadCategories();
+                await this.loadLinks();
+              } else {
+                this.showToast(data.error || "Failed to join", "error");
+              }
+            } catch (error) {
+              this.showToast("Failed to accept share", "error");
+            }
+          },
+          
+          async leaveSharedCategory(categoryId) {
+            if (!confirm("Leave this shared category? You will lose access.")) return;
+            
+            try {
+              const response = await fetch(`/api/category_shares.php?category_id=${categoryId}&leave=1`, {
+                method: "DELETE"
+              });
+              const data = await response.json();
+              if (data.success) {
+                this.sharedCategories = this.sharedCategories.filter(c => c.id !== categoryId);
+                this.showToast("Left shared category", "success");
+                await this.loadLinks();
+              }
+            } catch (error) {
+              this.showToast("Failed to leave category", "error");
             }
           },
 
@@ -2686,12 +3215,42 @@
           },
 
           getCategoriesWithLinks() {
-            return this.categories
-              .map(cat => ({
-                ...cat,
-                links: this.links.filter(link => link.category_id == cat.id)
-              }))
-              .filter(cat => cat.links.length > 0);
+            // Combine own categories with shared categories
+            const ownCats = this.categories.map(cat => ({
+              ...cat,
+              isShared: false,
+              links: this.links.filter(link => link.category_id == cat.id)
+            }));
+            
+            const sharedCats = this.sharedCategories.map(cat => ({
+              ...cat,
+              isShared: true,
+              links: this.links.filter(link => link.category_id == cat.id)
+            }));
+            
+            return [...ownCats, ...sharedCats].filter(cat => cat.links.length > 0);
+          },
+          
+          // Toggle category collapse state
+          toggleCategoryCollapse(categoryId) {
+            this.collapsedCategories[categoryId] = !this.collapsedCategories[categoryId];
+          },
+          
+          // Check if a category is collapsed
+          isCategoryCollapsed(categoryId) {
+            return !!this.collapsedCategories[categoryId];
+          },
+          
+          // Collapse/expand all categories
+          toggleAllCategories(collapse) {
+            const allCats = this.getCategoriesWithLinks();
+            allCats.forEach(cat => {
+              this.collapsedCategories[cat.id] = collapse;
+            });
+            // Also handle uncategorized
+            if (this.getUncategorizedLinks().length > 0) {
+              this.collapsedCategories['uncategorized'] = collapse;
+            }
           },
         };
       }

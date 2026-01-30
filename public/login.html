@@ -5,6 +5,25 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Login - Hidden Shelf</title>
     <link rel="icon" type="image/x-icon" href="favicon.png" />
+    <!-- Apple-specific meta tags -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta
+      name="apple-mobile-web-app-status-bar-style"
+      content="black-translucent"
+    />
+    <meta name="apple-mobile-web-app-title" content="Hidden Shelf" />
+    <link rel="apple-touch-icon" href="favicon.png" />
+    <!-- Theme color for browser UI -->
+    <meta
+      name="theme-color"
+      content="#687061"
+      media="(prefers-color-scheme: light)"
+    />
+    <meta
+      name="theme-color"
+      content="#1b1f18"
+      media="(prefers-color-scheme: dark)"
+    />
     <script
       defer
       src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"
@@ -147,6 +166,13 @@
         >
           Enter your email to receive a magic login link
         </p>
+
+        <!-- Share info message (doesn't hide the form) -->
+        <div
+          x-show="shareInfoMessage"
+          x-text="shareInfoMessage"
+          class="bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800 p-3 rounded-md mb-4 flex items-center gap-2"
+        ></div>
 
         <!-- Error message -->
         <div
@@ -338,6 +364,7 @@
           loading: false,
           errorMessage: "",
           successMessage: "",
+          shareInfoMessage: "",
           showDisclaimerModal: false,
 
           toggleTheme() {
@@ -400,6 +427,14 @@
             const returnTo = sessionStorage.getItem("hiddenshelf_return_to");
             if (returnTo) {
               this.errorMessage = "Please log in to continue.";
+            }
+
+            // Check for share code in URL
+            const shareCode = params.get("share");
+            if (shareCode) {
+              // Store share code for after login
+              sessionStorage.setItem("hiddenshelf_pending_share", shareCode);
+              this.shareInfoMessage = "Log in to join the shared category!";
             }
           },
 

@@ -4,6 +4,16 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>View Link - Hidden Shelf</title>
+    <!-- Apple-specific meta tags -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta
+      name="apple-mobile-web-app-status-bar-style"
+      content="black-translucent"
+    />
+    <meta name="apple-mobile-web-app-title" content="Hidden Shelf" />
+    <link rel="apple-touch-icon" href="favicon.png" />
+    <!-- Theme color for browser UI -->
+    <meta name="theme-color" content="#687061" />
     <link rel="stylesheet" href="output.css" />
     <script
       defer
@@ -164,6 +174,9 @@
               if (data.success) {
                 this.link = data.link;
 
+                // Log the visit (fire and forget)
+                this.logVisit(hash);
+
                 // Check if direct redirect is enabled
                 if (this.link.direct_redirect === 1 && this.link.url) {
                   // Show redirecting state
@@ -184,6 +197,18 @@
               if (!this.redirecting) {
                 this.loading = false;
               }
+            }
+          },
+
+          async logVisit(hash) {
+            try {
+              await fetch("/api/link_visits.php", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ hash }),
+              });
+            } catch (e) {
+              // Silently fail - visit logging is optional
             }
           },
 

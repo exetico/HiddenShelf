@@ -91,10 +91,33 @@ try {
         
         $categoryId = $_GET['category_id'] ?? null;
         $search = $_GET['search'] ?? null;
+        $includeShared = isset($_GET['include_shared']) ? (bool)$_GET['include_shared'] : true;
         
-        // Build query
-        $where = ['l.user_id = ?'];
-        $params = [getCurrentUserId()];
+        // Build query - include own links and links from shared categories
+        $where = [];
+        $params = [];
+        
+        if ($includeShared) {
+            // Get IDs of shared categories user has access to
+            $sharedCatIds = $db->fetchAll(
+                "SELECT category_id FROM category_share_members WHERE user_id = ?",
+                [getCurrentUserId()]
+            );
+            $sharedIds = array_column($sharedCatIds, 'category_id');
+            
+            if (!empty($sharedIds)) {
+                $placeholders = implode(',', array_fill(0, count($sharedIds), '?'));
+                $where[] = "(l.user_id = ? OR l.category_id IN ($placeholders))";
+                $params[] = getCurrentUserId();
+                $params = array_merge($params, $sharedIds);
+            } else {
+                $where[] = 'l.user_id = ?';
+                $params[] = getCurrentUserId();
+            }
+        } else {
+            $where[] = 'l.user_id = ?';
+            $params[] = getCurrentUserId();
+        }
         
         if ($categoryId) {
             $where[] = 'l.category_id = ?';
@@ -117,7 +140,8 @@ try {
         $total = $totalResult['total'];
         
         // Get links
-        $sql = "SELECT l.*, c.name as category_name 
+        $sql = "SELECT l.*, c.name as category_name,
+                       CASE WHEN l.user_id != ? THEN 1 ELSE 0 END as is_from_shared_category
                 FROM links l 
                 LEFT JOIN categories c ON l.category_id = c.id 
                 WHERE $whereClause 
@@ -126,10 +150,12 @@ try {
                     l.display_order ASC,
                     l.created_at DESC 
                 LIMIT ? OFFSET ?";
-        $params[] = $limit;
-        $params[] = $offset;
+        // Add user ID for is_from_shared_category check
+        $linksParams = array_merge([getCurrentUserId()], $params);
+        $linksParams[] = $limit;
+        $linksParams[] = $offset;
         
-        $links = $db->fetchAll($sql, $params);
+        $links = $db->fetchAll($sql, $linksParams);
         
         // Get tags for each link
         foreach ($links as &$link) {
