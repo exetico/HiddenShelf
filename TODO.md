@@ -21,6 +21,9 @@
 17. SEO friendly public link meta data on page
 18. Make a "report public link" function.
 19. Add basic visits count dashboard, maybe over period, and total count, or similar. Basic, on the frontpage. Maybe add a view count for a given link if opened in "edit mode", but prevent too much load of stats, so only show it in the edit link-popup.
+20. Bulk "Direct redirect" set all links
+21. Show "Direct redirect" option on the "Edit overview", for each link
+22. Validate that "Shared category" and "Direct redirect" is part of export->import logics
 
 ## Bugs
 
