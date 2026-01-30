@@ -11,17 +11,17 @@
 7. Make Backup to cloud, or whatever?
 8. Make "Bulk create", right? Instead of it having to loop through everyone, right?
 9. Allow no OAUTH/Maybe local user+password login, or similar?
-10. At "View" consider adding a collapse function for each function... Right? I'm not sure... Possibly
-11. Make it possible to share links with other users, possible by sharing a secret long code, or similar, or a invite link, which can be shared.
+10. At "View" consider adding a collapse function for each Category... Right? I'm not sure... Possibly
+11. Make it possible to share categories with other users, possible by sharing a secret long code, or similar, or a invite link, which can be shared. If it is better, it's also fine to have "collections" with multiple categories, which can be shared. But I think it's fine to only have "categories". If so, the user on the other end, should somehow "accept" the share, so it's not listed in the GUI, through that. here, I'm open for your best suggestion, but do not over-do it.
 12. Migrate the link and category metadata/options to a solution, maybe like the one used in user settings? (or?)
 13. Config for "site url" and "subpath"/subdomain, for people running it behind a proxy
 14. Consider moving the db migrations to another path, so it's not linked to the filesystem, like the `db`
-15. Possible take a look at the `test.php` site: What needs to be done? Is it secure?
+15. Possible take a look at the `debug.php` site: What needs to be done? Is it secure?
 16. Magic links needs to expire aftr usage
 17. Check for SQL injection things, we don't want
-18. Log visits to public links, including time, maybe a masked IP, first two spaces, maybe thee, and browser type.
+18. Log visits on links, including time, maybe a masked IP, first two IP-spaces maybe thee, and browser type. Maybe other useful information of the visit, so it's easy to use for reporting
 19. Make guide on how to deploy to PHP host, without using Docker (preparing -> deploy -> validate)
-20. Add some logic around "sent to public"-URI, of not on public URI... Or?
+20. Add some logic so the user is redirected to front-page, if wrong uri used, or similar. If invalid link, make a toast about that, or? Something linke that?
 21. Make right click trigger the same editor-popup ("Quick actions for:"), and also add "Navigate, here", "Navigate, new window" (maybe better wording)
 22. SEO data, and SEO friendly public link meta data on page
 23. Make a "report public link" function.

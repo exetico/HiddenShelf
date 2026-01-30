@@ -132,8 +132,7 @@ Hidden Shelf/
    Start the app again with `docker compose down -v && docker compose up -d --build && docker logs -f hiddenshelf`
 
 2. **Access the app**
-
-   - **Test page:** http://localhost:8000/public/test.php (verify setup)
+   - **Test page:** http://localhost:8000/public/debug.php (verify setup)
    - **Login page:** http://localhost:8000/public/login.html
    - Database migrations run automatically on first load
    - In dev mode, magic links are logged to Docker logs:
@@ -156,7 +155,6 @@ Hidden Shelf/
    ```
 
 2. **Configure the app**
-
    - Copy `config.example.php` to `config.php`
    - Update email settings (SMTP)
    - Set your app URL
@@ -178,7 +176,6 @@ Hidden Shelf/
    ```
 
 5. **Point your web server to the project root**
-
    - Apache: Enable mod_rewrite
    - The `.htaccess` handles routing
 
