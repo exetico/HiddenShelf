@@ -13,6 +13,20 @@
   <body class="bg-gray-50 min-h-screen">
     <div x-data="viewApp()" x-init="init()">
       <div class="max-w-4xl mx-auto px-4 py-12">
+        <!-- Redirecting State (Fixed Overlay) -->
+        <div x-show="redirecting" class="fixed inset-0 bg-white bg-opacity-95 z-50 flex items-center justify-center">
+          <div class="text-center">
+            <div class="inline-block mb-4">
+              <svg class="animate-spin h-10 w-10 text-blue-600 mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+            </div>
+            <p class="text-gray-800 text-xl font-medium mb-2">Redirecting...</p>
+            <p class="text-gray-500 text-sm max-w-md px-4">Taking you to <span class="font-mono text-xs bg-gray-100 px-2 py-1 rounded break-all" x-text="link?.url"></span></p>
+          </div>
+        </div>
+
         <!-- Loading State -->
         <div x-show="loading" class="text-center">
           <p class="text-gray-600">Loading...</p>
@@ -99,6 +113,7 @@
         return {
           link: null,
           loading: true,
+          redirecting: false,
           error: "",
 
           async init() {
@@ -126,8 +141,13 @@
 
                 // Check if direct redirect is enabled
                 if (this.link.direct_redirect === 1 && this.link.url) {
-                  // Redirect immediately
-                  window.location.href = this.link.url;
+                  // Show redirecting state
+                  this.loading = false;
+                  this.redirecting = true;
+                  // Delay so user sees the redirect message before navigating
+                  setTimeout(() => {
+                    window.location.href = this.link.url;
+                  }, 800);
                   return;
                 }
               } else {
@@ -136,7 +156,9 @@
             } catch (error) {
               this.error = "Failed to load link";
             } finally {
-              this.loading = false;
+              if (!this.redirecting) {
+                this.loading = false;
+              }
             }
           },
 

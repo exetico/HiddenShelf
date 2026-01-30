@@ -12,18 +12,19 @@
 8. Make "Bulk create", right? Instead of it having to loop through everyone, right?
 9. Allow no OAUTH/Maybe local user+password login, or similar?
 10. At "View" consider adding a collapse function for each function... Right? I'm not sure... Possibly
-12. Make it possible to share links with other users, possible by sharing a secret long code, or similar, or a invite link, which can be shared.
-13. Migrate the link and category metadata/options to a solution, maybe like the one used in user settings? (or?)
-14. Config for "site url" and "subpath"/subdomain, for people running it behind a proxy
-15. Consider moving the db migrations to another path, so it's not linked to the filesystem, like the `db`
-16. Possible take a look at the `test.php` site: What needs to be done? Is it secure?
-17. Magic links needs to expire aftr usage
-18. Check for SQL injection things, we don't want
-19. Log visits to public links, including time, maybe a masked IP, first two spaces, maybe thee, and browser type.
-21. Make guide on how to deploy to PHP host, without using Docker (preparing -> deploy -> validate)
-24. Add some logic around "sent to public"-URI, of not on public URI... Or?
-25. Make right click "menu", used on both view and edit mode, with options: "Edit", "Delete" "Move up", "Move down".
-26. SEO data, and SEO friendly public link meta data on page
+11. Make it possible to share links with other users, possible by sharing a secret long code, or similar, or a invite link, which can be shared.
+12. Migrate the link and category metadata/options to a solution, maybe like the one used in user settings? (or?)
+13. Config for "site url" and "subpath"/subdomain, for people running it behind a proxy
+14. Consider moving the db migrations to another path, so it's not linked to the filesystem, like the `db`
+15. Possible take a look at the `test.php` site: What needs to be done? Is it secure?
+16. Magic links needs to expire aftr usage
+17. Check for SQL injection things, we don't want
+18. Log visits to public links, including time, maybe a masked IP, first two spaces, maybe thee, and browser type.
+19. Make guide on how to deploy to PHP host, without using Docker (preparing -> deploy -> validate)
+20. Add some logic around "sent to public"-URI, of not on public URI... Or?
+21. Make right click "menu", used on both view and edit mode, with options: "Edit", "Delete" "Move up", "Move down".
+22. SEO data, and SEO friendly public link meta data on page
+23. Make a "report public link" function.
 
 ## Bugs
 
