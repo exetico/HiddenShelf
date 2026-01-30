@@ -61,6 +61,11 @@ class Auth {
         $email = $tokenData['email'];
         $user = $this->getOrCreateUser($email);
         
+        // Check if user exists (signup might be disabled for new users)
+        if (!$user) {
+            return ['success' => false, 'message' => 'New user registration is disabled. Please contact an administrator.'];
+        }
+        
         // Log user in
         $this->login($user['id'], $user['email']);
         
@@ -69,14 +74,20 @@ class Auth {
     
     /**
      * Get or create user by email
+     * @param bool $allowCreate If false, will not create new users even if SIGNUP_ENABLED
      */
-    private function getOrCreateUser($email) {
+    private function getOrCreateUser($email, $allowCreate = true) {
         // Try to find existing user
         $sql = "SELECT * FROM users WHERE email = ?";
         $user = $this->db->fetchOne($sql, [$email]);
         
         if ($user) {
             return $user;
+        }
+        
+        // Check if signup is enabled
+        if (!$allowCreate || (defined('SIGNUP_ENABLED') && !SIGNUP_ENABLED)) {
+            return null; // Return null to indicate user doesn't exist and can't be created
         }
         
         // Create new user

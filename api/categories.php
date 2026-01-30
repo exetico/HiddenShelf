@@ -46,6 +46,7 @@ try {
         $name = sanitize($input['name'] ?? '');
         $icon = sanitize($input['icon'] ?? '');
         $color = sanitize($input['color'] ?? '');
+        $directRedirectDefault = (int)($input['direct_redirect_default'] ?? 0);
         
         if (empty($name)) {
             errorResponse('Category name is required');
@@ -62,8 +63,8 @@ try {
             successResponse(['category' => $existing], 'Category already exists');
         }
         
-        $sql = "INSERT INTO categories (user_id, name, icon, color) VALUES (?, ?, ?, ?)";
-        $categoryId = $db->insert($sql, [getCurrentUserId(), $name, $icon, $color]);
+        $sql = "INSERT INTO categories (user_id, name, icon, color, direct_redirect_default) VALUES (?, ?, ?, ?, ?)";
+        $categoryId = $db->insert($sql, [getCurrentUserId(), $name, $icon, $color, $directRedirectDefault]);
         
         $category = $db->fetchOne("SELECT * FROM categories WHERE id = ?", [$categoryId]);
         
@@ -88,13 +89,14 @@ try {
         $name = sanitize($input['name'] ?? $existing['name']);
         $icon = sanitize($input['icon'] ?? $existing['icon']);
         $color = sanitize($input['color'] ?? $existing['color']);
+        $directRedirectDefault = isset($input['direct_redirect_default']) ? (int)$input['direct_redirect_default'] : ($existing['direct_redirect_default'] ?? 0);
         
         if (empty($name)) {
             errorResponse('Category name is required');
         }
         
-        $sql = "UPDATE categories SET name = ?, icon = ?, color = ? WHERE id = ?";
-        $db->query($sql, [$name, $icon, $color, $id]);
+        $sql = "UPDATE categories SET name = ?, icon = ?, color = ?, direct_redirect_default = ? WHERE id = ?";
+        $db->query($sql, [$name, $icon, $color, $directRedirectDefault, $id]);
         
         $category = $db->fetchOne("SELECT * FROM categories WHERE id = ?", [$id]);
         

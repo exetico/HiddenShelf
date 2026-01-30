@@ -78,6 +78,12 @@ try {
             $stmt->execute(['google', $googleId, $email, $existingEmailUser['id']]);
             $userId = $existingEmailUser['id'];
         } else {
+            // Check if signup is enabled
+            if (defined('SIGNUP_ENABLED') && !SIGNUP_ENABLED) {
+                header('Location: /public/login.html?error=signup_disabled');
+                exit;
+            }
+            
             // Create new user
             $stmt = $pdo->prepare('INSERT INTO users (email, oauth_provider, oauth_id, oauth_email, created_at) VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)');
             $stmt->execute([$email, 'google', $googleId, $email]);

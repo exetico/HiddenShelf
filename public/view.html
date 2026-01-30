@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
@@ -117,12 +117,19 @@
           async loadLink(hash) {
             try {
               const response = await fetch(
-                `/api/links.php?hash=${encodeURIComponent(hash)}`
+                `/api/links.php?hash=${encodeURIComponent(hash)}`,
               );
               const data = await response.json();
 
               if (data.success) {
                 this.link = data.link;
+
+                // Check if direct redirect is enabled
+                if (this.link.direct_redirect === 1 && this.link.url) {
+                  // Redirect immediately
+                  window.location.href = this.link.url;
+                  return;
+                }
               } else {
                 this.error = data.error || "Link not found or is private";
               }

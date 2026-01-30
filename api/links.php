@@ -165,6 +165,7 @@ try {
         $isPublic = (int)($input['is_public'] ?? 0);
         $categoryId = $input['category_id'] ?? null;
         $displayOrder = isset($input['display_order']) ? (is_null($input['display_order']) ? null : (int)$input['display_order']) : null;
+        $directRedirect = (int)($input['direct_redirect'] ?? 0);
         $tags = $input['tags'] ?? [];
         
         // Validate
@@ -176,6 +177,14 @@ try {
             errorResponse('Title is required');
         }
         
+        // If category is set and direct_redirect not explicitly provided, inherit from category
+        if ($categoryId && !isset($input['direct_redirect'])) {
+            $category = $db->fetchOne("SELECT direct_redirect_default FROM categories WHERE id = ?", [$categoryId]);
+            if ($category && $category['direct_redirect_default']) {
+                $directRedirect = (int)$category['direct_redirect_default'];
+            }
+        }
+        
         // Generate unique hash
         do {
             $hash = generateHash();
@@ -183,8 +192,8 @@ try {
         } while ($existing);
         
         // Insert link
-        $sql = "INSERT INTO links (user_id, hash, url, title, description, icon, is_public, category_id, display_order) 
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        $sql = "INSERT INTO links (user_id, hash, url, title, description, icon, is_public, category_id, display_order, direct_redirect) 
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
         $linkId = $db->insert($sql, [
             getCurrentUserId(),
             $hash,
@@ -194,7 +203,8 @@ try {
             $icon,
             $isPublic,
             $categoryId,
-            $displayOrder
+            $displayOrder,
+            $directRedirect
         ]);
         
         // Add tags
@@ -246,6 +256,7 @@ try {
         $isPublic = isset($input['is_public']) ? (int)$input['is_public'] : $existing['is_public'];
         $categoryId = $input['category_id'] ?? $existing['category_id'];
         $displayOrder = isset($input['display_order']) ? (is_null($input['display_order']) ? null : (int)$input['display_order']) : $existing['display_order'];
+        $directRedirect = isset($input['direct_redirect']) ? (int)$input['direct_redirect'] : ($existing['direct_redirect'] ?? 0);
         
         // Validate
         if (empty($url) || !isValidUrl($url)) {
@@ -258,9 +269,9 @@ try {
         
         // Update link
         $sql = "UPDATE links 
-                SET url = ?, title = ?, description = ?, icon = ?, is_public = ?, category_id = ?, display_order = ?, updated_at = CURRENT_TIMESTAMP 
+                SET url = ?, title = ?, description = ?, icon = ?, is_public = ?, category_id = ?, display_order = ?, direct_redirect = ?, updated_at = CURRENT_TIMESTAMP 
                 WHERE id = ?";
-        $db->query($sql, [$url, $title, $description, $icon, $isPublic, $categoryId, $displayOrder, $id]);
+        $db->query($sql, [$url, $title, $description, $icon, $isPublic, $categoryId, $displayOrder, $directRedirect, $id]);
         
         // Update tags if provided
         if (isset($input['tags'])) {

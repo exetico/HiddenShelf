@@ -36,3 +36,9 @@ define('LINKS_PER_PAGE', 20);
 
 // Development mode
 define('DEBUG_MODE', true); // Set to false in production
+
+// Registration settings
+define('SIGNUP_ENABLED', true); // Set to false to disable new user registration
+
+// App version
+define('APP_VERSION', '1.0.0');
