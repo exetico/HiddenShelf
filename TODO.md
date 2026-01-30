@@ -20,6 +20,7 @@
 16. SEO data for page (overall)
 17. SEO friendly public link meta data on page
 18. Make a "report public link" function.
+19. Add basic visits count dashboard, maybe over period, and total count, or similar. Basic, on the frontpage. Maybe add a view count for a given link if opened in "edit mode", but prevent too much load of stats, so only show it in the edit link-popup.
 
 ## Bugs
 
