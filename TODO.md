@@ -24,6 +24,7 @@
 20. Bulk "Direct redirect" set all links
 21. Show "Direct redirect" option on the "Edit overview", for each link
 22. Validate that "Shared category" and "Direct redirect" is part of export->import logics
+23. Export should not export "Shared links through categories". Maybe tell the user about that, instead.
 
 ## Bugs
 
