@@ -22,7 +22,7 @@
 18. Log visits to public links, including time, maybe a masked IP, first two spaces, maybe thee, and browser type.
 19. Make guide on how to deploy to PHP host, without using Docker (preparing -> deploy -> validate)
 20. Add some logic around "sent to public"-URI, of not on public URI... Or?
-21. Make right click "menu", used on both view and edit mode, with options: "Edit", "Delete" "Move up", "Move down".
+21. Make right click trigger the same editor-popup ("Quick actions for:"), and also add "Navigate, here", "Navigate, new window" (maybe better wording)
 22. SEO data, and SEO friendly public link meta data on page
 23. Make a "report public link" function.
 
