@@ -36,6 +36,7 @@ try {
             $input = getJsonInput();
             $email = $input['email'] ?? '';
             $returnTo = $input['return_to'] ?? null;
+            $redirectOrigin = $input['redirect_origin'] ?? null;
             
             // Store return URL in session if provided
             if ($returnTo) {
@@ -45,7 +46,7 @@ try {
                 $_SESSION['return_to'] = $returnTo;
             }
             
-            $result = $auth->requestMagicLink($email);
+            $result = $auth->requestMagicLink($email, $redirectOrigin);
             
             if ($result['success']) {
                 successResponse([], $result['message']);
@@ -72,15 +73,18 @@ try {
                 
                 // If return URL is just a hash (e.g., #/view), prepend the base path
                 if (strpos($returnTo, '#') === 0) {
-                    $returnTo = '/public/app/index.html' . $returnTo;
+                    $returnTo = base_url('/public/app/index.html') . $returnTo;
                 }
                 
+                // Use redirect_origin from token if available (for dev mode), otherwise use SITE_URL
+                $origin = $result['redirect_origin'] ?? SITE_URL;
+                
                 // Redirect to intended page or default to app
-                header('Location: ' . SITE_URL . $returnTo);
+                header('Location: ' . $origin . $returnTo);
                 exit;
             } else {
                 // Redirect to login with error
-                header('Location: ' . SITE_URL . '/public/app/index.html#/login?error=' . urlencode($result['message']));
+                header('Location: ' . SITE_URL . base_url('/public/app/index.html') . '#/login?error=' . urlencode($result['message']));
                 exit;
             }
             break;

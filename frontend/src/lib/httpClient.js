@@ -1,11 +1,35 @@
+/**
+ * Construct full URL with base path
+ * In dev: Vite proxy handles /api -> backend
+ * In prod: Need to prepend base path to API calls
+ */
+function getFullPath(path) {
+  // If it's already an absolute URL, return as-is
+  if (path.startsWith("http://") || path.startsWith("https://")) {
+    return path;
+  }
+
+  // In production builds, BASE_URL contains the subpath (from vite.config.js base)
+  const basePath = import.meta.env.BASE_URL || "/";
+
+  // Remove trailing slash from basePath and leading slash from path
+  const normalizedBase = basePath.replace(/\/$/, "");
+  const normalizedPath = path.startsWith("/") ? path : `/${path}`;
+
+  return normalizedBase + normalizedPath;
+}
+
 export async function request(path, options = {}) {
-  const response = await fetch(path, {
+  const fullPath = getFullPath(path);
+
+  const response = await fetch(fullPath, {
     credentials: "same-origin",
     headers: {
       "Content-Type": "application/json",
       ...(options.headers || {}),
     },
     ...options,
+    body: options.body ? JSON.stringify(options.body) : undefined,
   });
 
   let payload;

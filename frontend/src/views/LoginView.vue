@@ -90,7 +90,13 @@ async function sendMagicLink() {
 async function loginWithGoogle() {
   try {
     loading.value = true;
-    const response = await fetch("/api/auth/google.php");
+
+    // In dev mode, send redirect_origin so OAuth callback can redirect back to dev server
+    const url = import.meta.env.DEV
+      ? `/api/auth/google.php?redirect_origin=${encodeURIComponent(window.location.origin)}`
+      : "/api/auth/google.php";
+
+    const response = await fetch(url);
     const data = await response.json();
 
     if (data.success && data.authUrl) {

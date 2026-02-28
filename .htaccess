@@ -1,18 +1,22 @@
 <IfModule mod_rewrite.c>
     RewriteEngine On
     
+    # For subpath deployments (e.g., example.com/links/), uncomment and set the base path:
+    # RewriteBase /links/
+    # Make sure BASE_PATH in config.php matches this value
+    
     # Redirect to HTTPS (uncomment in production)
     # RewriteCond %{HTTPS} off
     # RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
     
-    # Public link short URLs (e.g., /h/abc123)
-    RewriteRule ^h/([a-zA-Z0-9]+)$ /public/view.html?hash=$1 [L,QSA]
+    # Public link short URLs (e.g., /h/abc123 or /links/h/abc123)
+    RewriteRule ^h/([a-zA-Z0-9]+)$ public/view.html?hash=$1 [L,QSA]
     
     # Redirect old app location to new Vue app
-    RewriteRule ^public/index\.html$ /public/app/index.html [L,R=301]
+    RewriteRule ^public/index\.html$ public/app/index.html [L,R=301]
     
     # Redirect root to Vue app
-    RewriteRule ^$ /public/app/index.html [L]
+    RewriteRule ^$ public/app/index.html [L]
     
     # Prevent direct access to config and lib
     RewriteRule ^(config\.php|lib/.*) - [F,L]

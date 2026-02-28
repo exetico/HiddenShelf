@@ -12,8 +12,10 @@ class Auth {
     
     /**
      * Request magic link (send email with token)
+     * @param string $email
+     * @param string|null $redirectOrigin Optional origin to redirect to after verification (e.g., http://localhost:5173)
      */
-    public function requestMagicLink($email) {
+    public function requestMagicLink($email, $redirectOrigin = null) {
         if (!isValidEmail($email)) {
             return ['success' => false, 'message' => 'Invalid email address'];
         }
@@ -22,12 +24,12 @@ class Auth {
         $token = generateToken();
         $expiresAt = date('Y-m-d H:i:s', time() + MAGIC_LINK_EXPIRY);
         
-        // Save token to database
-        $sql = "INSERT INTO magic_tokens (email, token, expires_at) VALUES (?, ?, ?)";
-        $this->db->query($sql, [$email, $token, $expiresAt]);
+        // Save token to database with optional redirect origin
+        $sql = "INSERT INTO magic_tokens (email, token, expires_at, redirect_origin) VALUES (?, ?, ?, ?)";
+        $this->db->query($sql, [$email, $token, $expiresAt, $redirectOrigin]);
         
         // Send email
-        Mailer::sendMagicLink($email, $token);
+        Mailer::sendMagicLink($email, $token, $redirectOrigin);
         
         return ['success' => true, 'message' => 'Magic link sent to your email'];
     }
@@ -69,7 +71,12 @@ class Auth {
         // Log user in
         $this->login($user['id'], $user['email']);
         
-        return ['success' => true, 'message' => 'Login successful', 'user' => $user];
+        return [
+            'success' => true, 
+            'message' => 'Login successful', 
+            'user' => $user,
+            'redirect_origin' => $tokenData['redirect_origin'] ?? null
+        ];
     }
     
     /**

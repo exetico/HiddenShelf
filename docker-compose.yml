@@ -28,6 +28,7 @@ services:
       - "5173:5173"
     environment:
       - VITE_API_PROXY_TARGET=http://web
+      - VITE_BASE_PATH=${VITE_BASE_PATH:-/}
       - CHOKIDAR_USEPOLLING=true
     volumes:
       - ./:/app
@@ -46,6 +47,7 @@ services:
     command: sh -c "npm ci && npm run build"
     environment:
       - VITE_API_PROXY_TARGET=http://web
+      - VITE_BASE_PATH=${VITE_BASE_PATH:-/}
     volumes:
       - ./:/app
       - frontend-node-modules:/app/frontend/node_modules

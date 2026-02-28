@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../../config.php';
 require_once __DIR__ . '/../../vendor/autoload.php';
+require_once __DIR__ . '/../../lib/helpers.php';
 require_once __DIR__ . '/../../lib/Database.php';
 
 use League\OAuth2\Client\Provider\Google;
@@ -15,7 +16,7 @@ $clientSecret = getenv('GOOGLE_CLIENT_SECRET');
 $redirectUri = getenv('GOOGLE_REDIRECT_URI') ?: 'http://localhost:8080/api/auth/google-callback.php';
 
 if (!$clientId || !$clientSecret) {
-    header('Location: /public/app/index.html#/login?error=oauth_not_configured');
+    header('Location: ' . base_url('/public/app/index.html') . '#/login?error=oauth_not_configured');
     exit;
 }
 
@@ -27,7 +28,7 @@ $provider = new Google([
 
 // Check for errors
 if (isset($_GET['error'])) {
-    header('Location: /public/app/index.html#/login?error=oauth_denied');
+    header('Location: ' . base_url('/public/app/index.html') . '#/login?error=oauth_denied');
     exit;
 }
 
@@ -36,7 +37,7 @@ if (empty($_GET['state']) || !isset($_SESSION['oauth2state']) || ($_GET['state']
     if (isset($_SESSION['oauth2state'])) {
         unset($_SESSION['oauth2state']);
     }
-    header('Location: /public/app/index.html#/login?error=invalid_state');
+    header('Location: ' . base_url('/public/app/index.html') . '#/login?error=invalid_state');
     exit;
 }
 
@@ -80,7 +81,7 @@ try {
         } else {
             // Check if signup is enabled
             if (defined('SIGNUP_ENABLED') && !SIGNUP_ENABLED) {
-                header('Location: /public/app/index.html#/login?error=signup_disabled');
+                header('Location: ' . base_url('/public/app/index.html') . '#/login?error=signup_disabled');
                 exit;
             }
             
@@ -116,12 +117,16 @@ try {
         unset($_SESSION['hiddenshelf_return_to']);
     }
     
+    // Use redirect_origin from session if available (for dev mode), otherwise use base_url
+    $origin = $_SESSION['oauth_redirect_origin'] ?? '';
+    unset($_SESSION['oauth_redirect_origin']);
+    
     // Redirect to Vue app
-    header('Location: /public/app/index.html#' . $returnPath);
+    header('Location: ' . $origin . base_url('/public/app/index.html') . '#' . $returnPath);
     exit;
 
 } catch (Exception $e) {
     error_log('Google OAuth Error: ' . $e->getMessage());
-    header('Location: /public/app/index.html#/login?error=oauth_failed');
+    header('Location: ' . base_url('/public/app/index.html') . '#/login?error=oauth_failed');
     exit;
 }

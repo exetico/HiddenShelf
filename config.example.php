@@ -9,7 +9,8 @@
 define('DB_PATH', __DIR__ . '/db/database.sqlite');
 
 // Site configuration
-define('SITE_URL', 'http://localhost:8000'); // Update with your domain
+define('SITE_URL', 'http://localhost:8000'); // Update with your domain (e.g., https://example.com)
+define('BASE_PATH', ''); // Subpath if app is not at root (e.g., '/links' for example.com/links/)
 define('SITE_NAME', 'Hidden Shelf');
 
 // Email configuration (SMTP)

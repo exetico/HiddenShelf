@@ -131,3 +131,15 @@ function getJsonInput() {
 function sanitize($string) {
     return trim(strip_tags($string));
 }
+
+/**
+ * Construct URL with BASE_PATH prefix
+ * 
+ * @param string $path Path relative to site root (should start with /)
+ * @return string Full path with BASE_PATH prefix
+ */
+function base_url($path = '') {
+    $basePath = rtrim(BASE_PATH, '/');
+    $path = '/' . ltrim($path, '/');
+    return $basePath . $path;
+}

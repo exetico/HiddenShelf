@@ -9,8 +9,11 @@ use PHPMailer\PHPMailer\Exception;
 class Mailer {
     /**
      * Send magic link email
+     * @param string $email
+     * @param string $token
+     * @param string|null $redirectOrigin Optional origin for dev mode display
      */
-    public static function sendMagicLink($email, $token) {
+    public static function sendMagicLink($email, $token, $redirectOrigin = null) {
         $magicLink = SITE_URL . '/api/auth.php?action=verify&token=' . urlencode($token);
         
         $subject = 'Your login link for ' . SITE_NAME;
@@ -32,7 +35,11 @@ If you didn't request this, you can safely ignore this email.
         
         // For development: just log the link
         if (DEBUG_MODE) {
-            error_log("Magic link for $email: { $magicLink }");
+            $logMessage = "Magic link for $email: $magicLink";
+            if ($redirectOrigin) {
+                $logMessage .= " (will redirect to: $redirectOrigin/public/app/index.html#/dashboard)";
+            }
+            error_log($logMessage);
             return true;
         }
         

@@ -7,11 +7,20 @@ export const authApi = {
   },
   logout: async () =>
     request("/api/auth.php?action=logout", { method: "POST" }),
-  sendMagicLink: async (email) =>
-    request("/api/auth.php?action=login", {
+  sendMagicLink: async (email) => {
+    const body = { email };
+
+    // In dev mode (Vite dev server), send current origin so magic link redirects back here
+    // In prod, don't send origin - let backend use SITE_URL
+    if (import.meta.env.DEV) {
+      body.redirect_origin = window.location.origin;
+    }
+
+    return request("/api/auth.php?action=login", {
       method: "POST",
-      body: { email },
-    }),
+      body,
+    });
+  },
   verify: async (token) =>
     request(`/api/auth.php?action=verify&token=${encodeURIComponent(token)}`),
 };

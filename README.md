@@ -361,6 +361,88 @@ define('SMTP_PORT', 8025); // Normally 587
 define('SMTP_ENCRYPTION', '');
 ```
 
+### Deployment Configuration
+
+#### Custom Domain
+
+Update `SITE_URL` in `config.php` to match your production domain:
+
+```php
+define('SITE_URL', 'https://links.example.com');
+```
+
+#### Subpath Deployment
+
+If deploying under a subpath (e.g., `example.com/links/`), configure these values:
+
+**1. Backend (`config.php`):**
+
+```php
+define('BASE_PATH', '/links');  // Match your subpath
+```
+
+**2. Frontend (`.htaccess`):**
+
+Uncomment and set the `RewriteBase` directive:
+
+```apache
+RewriteBase /links/
+```
+
+**3. Frontend Build:**
+
+Set environment variable before building:
+
+```bash
+export VITE_BASE_PATH=/links
+make build-frontend
+```
+
+**Or in Docker (`.env` file):**
+
+```env
+VITE_BASE_PATH=/links
+```
+
+Then rebuild:
+
+```bash
+docker compose --profile build run --rm frontend-build
+```
+
+**4. Update Google OAuth Redirect URI:**
+
+If using Google OAuth, update the redirect URI to include the subpath:
+
+```
+https://example.com/links/api/auth/google-callback.php
+```
+
+**Complete Example for `example.com/myshelves/`:**
+
+```php
+// config.php
+define('SITE_URL', 'https://example.com');
+define('BASE_PATH', '/myshelves');
+```
+
+```apache
+# .htaccess
+RewriteBase /myshelves/
+```
+
+```bash
+# Build command
+VITE_BASE_PATH=/myshelves make build-frontend
+```
+
+**Important Notes:**
+
+- `BASE_PATH` should NOT have a trailing slash
+- `BASE_PATH` should start with `/`
+- Both frontend and backend BASE_PATH must match
+- Keep `BASE_PATH` empty (`''`) for root deployments
+
 ## How It Works
 
 ### Authentication Flow

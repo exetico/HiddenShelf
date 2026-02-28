@@ -141,6 +141,8 @@ Hidden Shelf is a link-saving and sharing application that has been **migrated f
 5. **Legacy files** - Don't edit `public/index.html` or `public/login.html` (use Vue app)
 6. **Magic links in logs** - Check `docker compose logs -f web` for login links in dev
 7. **Google OAuth** - Callback redirects to `#/login?error=...` on failure
+8. **Document new features** - When introducing new logic or features, update this file and README.md to keep documentation current
+9. **Dev vs Prod** - Magic link and OAuth redirects use `redirect_origin` in dev mode to handle port differences (5173 vs 8000)
 
 ## File Locations Quick Reference
 

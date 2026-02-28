@@ -37,6 +37,12 @@ session_name(SESSION_NAME);
 session_start();
 $_SESSION['oauth2state'] = $provider->getState();
 
+// Store redirect_origin if provided (for dev mode compatibility)
+$redirectOrigin = $_GET['redirect_origin'] ?? null;
+if ($redirectOrigin) {
+    $_SESSION['oauth_redirect_origin'] = $redirectOrigin;
+}
+
 echo json_encode([
     'success' => true,
     'authUrl' => $authorizationUrl
