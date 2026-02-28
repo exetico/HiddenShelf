@@ -67,7 +67,7 @@ try {
                 }
                 
                 // Check if there's a return URL stored
-                $returnTo = $_SESSION['return_to'] ?? '/public/app/index.html';
+                $returnTo = $_SESSION['return_to'] ?? '#/dashboard';
                 unset($_SESSION['return_to']); // Clear it after using
                 
                 // If return URL is just a hash (e.g., #/view), prepend the base path
