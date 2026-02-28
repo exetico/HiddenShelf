@@ -1,5 +1,5 @@
 <script setup>
-import { reactive, watch } from "vue";
+import { reactive, watch, computed } from "vue";
 import BaseModal from "@/components/common/BaseModal.vue";
 
 const props = defineProps({
@@ -22,9 +22,23 @@ const form = reactive({
   description: "",
   icon: "",
   category_id: "",
-  tagsInput: "",
+  tags: [],
+  newTagInput: "",
   is_public: false,
   direct_redirect: false,
+});
+
+// Normalize icon: auto-prepend mdi- if needed
+const normalizedIcon = computed(() => {
+  const raw = form.icon?.trim();
+  if (!raw) return "mdi-link-variant";
+  if (raw.startsWith("mdi-")) return raw;
+  return `mdi-${raw}`;
+});
+
+const iconWasNormalized = computed(() => {
+  const raw = form.icon?.trim();
+  return raw && !raw.startsWith("mdi-");
 });
 
 watch(
@@ -35,24 +49,52 @@ watch(
     form.description = model?.description || "";
     form.icon = model?.icon || "";
     form.category_id = model?.category_id || "";
-    form.tagsInput = (model?.tags || []).map((tag) => tag.name).join(", ");
+    form.tags = (model?.tags || []).map((tag) => tag.name);
+    form.newTagInput = "";
     form.is_public = Boolean(model?.is_public);
     form.direct_redirect = Boolean(model?.direct_redirect);
   },
   { immediate: true },
 );
 
+function addTag() {
+  const input = form.newTagInput.trim();
+  if (!input) return;
+  const newTags = input
+    .split(",")
+    .map((t) => t.trim())
+    .filter(Boolean);
+  for (const tag of newTags) {
+    if (!form.tags.includes(tag)) {
+      form.tags.push(tag);
+    }
+  }
+  form.newTagInput = "";
+}
+
+function removeTag(index) {
+  form.tags.splice(index, 1);
+}
+
+function handleTagKeydown(event) {
+  if (event.key === "Enter" || event.key === ",") {
+    event.preventDefault();
+    addTag();
+  }
+  if (event.key === "Backspace" && !form.newTagInput && form.tags.length) {
+    form.tags.pop();
+  }
+}
+
 function submit() {
+  if (form.newTagInput.trim()) addTag();
   emit("save", {
     title: form.title,
     url: form.url,
     description: form.description,
-    icon: form.icon,
+    icon: form.icon?.trim() ? normalizedIcon.value : "",
     category_id: form.category_id || null,
-    tags: form.tagsInput
-      .split(",")
-      .map((tag) => tag.trim())
-      .filter(Boolean),
+    tags: form.tags,
     is_public: form.is_public ? 1 : 0,
     direct_redirect: form.direct_redirect ? 1 : 0,
   });
@@ -84,23 +126,31 @@ function submit() {
         placeholder="Description"
         class="w-full px-3 py-2 rounded-md border border-gray-300 dark:border-brand-700 dark:bg-brand-800"
       />
-      <div class="flex items-center gap-2">
-        <input
-          v-model="form.icon"
-          placeholder="Icon (mdi-link-variant)"
-          class="flex-1 px-3 py-2 rounded-md border border-gray-300 dark:border-brand-700 dark:bg-brand-800"
-        />
-        <i
-          :class="form.icon || 'mdi-link-variant'"
-          class="mdi text-2xl text-brand-600"
-        ></i>
-        <a
-          href="https://pictogrammers.com/library/mdi/"
-          target="_blank"
-          class="text-xs text-brand-600 dark:text-brand-400 hover:underline whitespace-nowrap"
+      <div>
+        <div class="flex items-center gap-2">
+          <input
+            v-model="form.icon"
+            placeholder="Icon (e.g. wifi, mdi-wifi)"
+            class="flex-1 px-3 py-2 rounded-md border border-gray-300 dark:border-brand-700 dark:bg-brand-800"
+          />
+          <i :class="normalizedIcon" class="mdi text-2xl text-brand-600"></i>
+          <a
+            href="https://pictogrammers.com/library/mdi/"
+            target="_blank"
+            class="text-xs text-brand-600 dark:text-brand-400 hover:underline whitespace-nowrap"
+          >
+            Browse icons →
+          </a>
+        </div>
+        <p
+          v-if="iconWasNormalized"
+          class="text-xs text-brand-500 dark:text-brand-400 mt-1"
         >
-          Browse icons →
-        </a>
+          Will use
+          <code class="bg-gray-100 dark:bg-brand-800 px-1 rounded">{{
+            normalizedIcon
+          }}</code>
+        </p>
       </div>
       <select
         v-model="form.category_id"
@@ -115,11 +165,40 @@ function submit() {
           {{ category.name }}
         </option>
       </select>
-      <input
-        v-model="form.tagsInput"
-        placeholder="tags, separated, by, comma"
-        class="w-full px-3 py-2 rounded-md border border-gray-300 dark:border-brand-700 dark:bg-brand-800"
-      />
+
+      <!-- Tags input with pills -->
+      <div>
+        <div
+          class="flex flex-wrap items-center gap-1.5 px-3 py-2 rounded-md border border-gray-300 dark:border-brand-700 dark:bg-brand-800 min-h-[42px] cursor-text"
+          @click="$refs.tagInput?.focus()"
+        >
+          <span
+            v-for="(tag, index) in form.tags"
+            :key="index"
+            class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-brand-100 dark:bg-brand-700 text-brand-700 dark:text-brand-200 border border-brand-200 dark:border-brand-600"
+          >
+            {{ tag }}
+            <button
+              type="button"
+              class="text-brand-400 hover:text-brand-700 dark:hover:text-white leading-none"
+              @click.stop="removeTag(index)"
+            >
+              ×
+            </button>
+          </span>
+          <input
+            ref="tagInput"
+            v-model="form.newTagInput"
+            placeholder="Add tags..."
+            class="flex-1 min-w-[80px] bg-transparent border-none outline-none text-sm p-0"
+            @keydown="handleTagKeydown"
+            @blur="addTag"
+          />
+        </div>
+        <p class="text-xs text-gray-400 dark:text-brand-500 mt-1">
+          Press Enter or comma to add
+        </p>
+      </div>
 
       <label class="flex items-center gap-2 text-sm">
         <input v-model="form.is_public" type="checkbox" />

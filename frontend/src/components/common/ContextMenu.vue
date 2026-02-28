@@ -18,9 +18,14 @@ const router = useRouter();
 const appStore = useAppStore();
 const toastStore = useToastStore();
 
-// Position modal
+// Position modal — store link id separately so it survives parent close
 const showPositionModal = ref(false);
 const positionInput = ref("");
+const positionLinkId = ref(null);
+
+// Delete confirmation modal
+const showDeleteModal = ref(false);
+const deleteLinkData = ref(null);
 
 // Prevent closing on immediate mouseup after opening
 let justOpened = false;
@@ -53,7 +58,6 @@ function openInNewTab() {
 
 function editLink() {
   if (props.link) {
-    // Navigate to edit view and open edit modal for this link
     router.push({ name: "edit", query: { editId: props.link.id } });
   }
   emit("close");
@@ -61,6 +65,7 @@ function editLink() {
 
 function setPosition() {
   if (props.link) {
+    positionLinkId.value = props.link.id;
     positionInput.value = props.link.display_order || "";
     showPositionModal.value = true;
   }
@@ -70,7 +75,7 @@ function setPosition() {
 async function savePosition() {
   if (!positionInput.value && positionInput.value !== 0) return;
   try {
-    await appStore.updateLink(props.link.id, {
+    await appStore.updateLink(positionLinkId.value, {
       display_order: Number(positionInput.value),
     });
     toastStore.success("Position updated");
@@ -80,11 +85,21 @@ async function savePosition() {
   showPositionModal.value = false;
 }
 
-async function deleteLink() {
-  if (props.link && window.confirm(`Delete "${props.link.title}"?`)) {
-    await appStore.deleteLink(props.link.id);
+function deleteLink() {
+  if (props.link) {
+    deleteLinkData.value = { id: props.link.id, title: props.link.title };
+    showDeleteModal.value = true;
   }
   emit("close");
+}
+
+async function confirmDelete() {
+  try {
+    await appStore.deleteLink(deleteLinkData.value.id);
+  } catch {
+    // error handled by store
+  }
+  showDeleteModal.value = false;
 }
 
 // Watch for open prop to trigger onOpen
@@ -210,6 +225,44 @@ watch(
             @click="savePosition"
           >
             Save
+          </button>
+        </div>
+      </div>
+    </div>
+  </Teleport>
+
+  <!-- Delete Confirmation Modal -->
+  <Teleport to="body">
+    <div
+      v-if="showDeleteModal && deleteLinkData"
+      class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[70] p-4"
+      @click.self="showDeleteModal = false"
+    >
+      <div
+        class="bg-white dark:bg-brand-900 rounded-lg shadow-xl max-w-sm w-full p-6"
+      >
+        <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+          Delete Link
+        </h3>
+        <p class="text-gray-600 dark:text-brand-300 mb-4">
+          Are you sure you want to delete
+          <strong class="text-gray-900 dark:text-white">{{
+            deleteLinkData.title
+          }}</strong
+          >? This cannot be undone.
+        </p>
+        <div class="flex justify-end gap-2">
+          <button
+            class="px-4 py-2 rounded-md border border-gray-300 dark:border-brand-700"
+            @click="showDeleteModal = false"
+          >
+            Cancel
+          </button>
+          <button
+            class="px-4 py-2 rounded-md bg-red-600 text-white hover:bg-red-700"
+            @click="confirmDelete"
+          >
+            Delete
           </button>
         </div>
       </div>

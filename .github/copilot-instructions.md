@@ -98,7 +98,7 @@ Hidden Shelf is a link-saving and sharing application that has been **migrated f
 
 ### Migration Status
 
-- **Completed:** Core app, authentication, link management, categories, tags, profile, sharing, import/export, context menus, category filter bar, brand colors, danger zone
+- **Completed:** Core app, authentication, link management, categories, tags, profile, sharing, import/export, context menus, category filter bar, brand colors, danger zone, category sharing UI, tag pill input, icon auto-prefix
 - **Legacy Files:** `public/index.html`, `public/login.html` (old Alpine.js app - deprecated)
 - **Still Used:** `public/view.html` (public link viewer - Alpine.js, not migrated)
 
@@ -160,6 +160,9 @@ Hidden Shelf is a link-saving and sharing application that has been **migrated f
 9. **Dev vs Prod** - Magic link and OAuth redirects use `redirect_origin` in dev mode to handle port differences (5173 vs 8000)
 10. **Modals must use Teleport** - Always wrap modal/overlay markup in `<Teleport to="body">` to avoid inheriting parent layout styles
 11. **MDI icons, not Material Symbols** - The project uses `@mdi/font` CDN, not Google Material Symbols
+12. **Delete confirmations use modals** - Never use `window.confirm()` — all destructive actions use a styled confirmation modal with Teleport
+13. **Icon auto-prefix** - The `LinkFormModal` auto-prepends `mdi-` if the user omits it (e.g., typing "wifi" becomes "mdi-wifi")
+14. **Favicon** - `favicon.png` lives in both `public/` (PHP) and `frontend/public/` (Vite dev). HTML references `/favicon.png`
 
 ## File Locations Quick Reference
 

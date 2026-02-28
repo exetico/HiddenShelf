@@ -210,10 +210,10 @@
                   // Show redirecting state
                   this.loading = false;
                   this.redirecting = true;
-                  // Delay so user sees the redirect message before navigating
+                  // Delay so user can see the overlay and click "stay on page" if needed
                   this.redirectTimer = setTimeout(() => {
                     window.location.href = this.link.url;
-                  }, 800);
+                  }, 2000);
                   return;
                 }
               } else {

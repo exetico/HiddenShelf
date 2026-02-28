@@ -196,17 +196,18 @@ This document provides a comprehensive overview of all features, functionality, 
 
 ### Tag Display
 
-- **Link Cards**: Show up to 3 tags, with "+N more" indicator
-- **Tag Input**: Comma-separated tag entry
-- **Tag Management**: Dedicated interface for tag operations
+- **Link Cards**: Show up to 3 tags as styled pills, with "+N more" indicator
+- **Tag Input**: Pill-based input with Enter/comma to add; Backspace to remove last; styled labels with × remove button
+- **Tag Management**: Dedicated interface for tag operations with delete confirmation modals
 
 ## Sharing & Collaboration
 
 ### Category Sharing System
 
 - **Share Code Generation**: Unique codes for category access
+- **Share UI in Category Manager**: Share button per category opens modal with share URL, copy button, and member list
 - **Public Share Links**: URLs with embedded share codes
-- **Member Management**: Add/remove users from shared categories
+- **Member Management**: View members with access to shared category
 - **Permission Model**: Read-only access to shared content
 
 ### Share Workflow
@@ -516,8 +517,10 @@ This document provides a comprehensive overview of all features, functionality, 
 - **Long Press**: Mobile context menu for links
 - **Drag and Drop**: Category scrolling and reordering
 - **Keyboard Navigation**: Accessible interaction
-- **Toast Notifications**: Success/error feedback
-- **Modal System**: Overlay interfaces for forms
+- **Toast Notifications**: Success/error feedback (including copy URL confirmation)
+- **Modal System**: Overlay interfaces for forms, with Teleport to body
+- **Delete Confirmations**: All destructive actions use styled confirmation modals (never `window.confirm`)
+- **Icon Auto-Prefix**: `LinkFormModal` auto-prepends `mdi-` when user omits it (e.g., "wifi" → "mdi-wifi") with preview
 
 ### Responsive Design
 
