@@ -130,7 +130,7 @@ function clearRememberedEmail() {
 
 <template>
   <div
-    class="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center px-4"
+    class="min-h-screen bg-brand-50 dark:bg-brand-950 flex items-center justify-center px-4"
   >
     <div class="max-w-md w-full space-y-8">
       <!-- Logo/Header -->

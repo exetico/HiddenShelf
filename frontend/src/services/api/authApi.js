@@ -18,7 +18,7 @@ export const authApi = {
 
     return request("/api/auth.php?action=login", {
       method: "POST",
-      body,
+      body: JSON.stringify(body),
     });
   },
   verify: async (token) =>

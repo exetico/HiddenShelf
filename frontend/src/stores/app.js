@@ -99,22 +99,30 @@ export const useAppStore = defineStore("app", {
       set("--brand-950", r - 85, g - 85, b - 85);
     },
     async loadLinks({ reset = false } = {}) {
-      if (reset) {
-        this.page = 1;
-      }
-      const response = await linksApi.list({
-        page: this.page,
-        limit: this.settings.links_per_page,
-        categoryId:
-          this.filterCategory === "uncategorized" ? "" : this.filterCategory,
-        search: this.search,
-      });
+      if (this._loadingLinks) return;
+      this._loadingLinks = true;
+      try {
+        if (reset) {
+          this.page = 1;
+        }
+        const response = await linksApi.list({
+          page: this.page,
+          limit: this.settings.links_per_page,
+          categoryId:
+            this.filterCategory === "uncategorized" ? "" : this.filterCategory,
+          search: this.search,
+        });
 
-      this.total = response.pagination.total;
-      this.links = reset ? response.links : [...this.links, ...response.links];
+        this.total = response.pagination.total;
+        this.links = reset
+          ? response.links
+          : [...this.links, ...response.links];
+      } finally {
+        this._loadingLinks = false;
+      }
     },
     async loadMore() {
-      if (!this.hasMore) return;
+      if (!this.hasMore || this._loadingLinks) return;
       this.page += 1;
       await this.loadLinks();
     },

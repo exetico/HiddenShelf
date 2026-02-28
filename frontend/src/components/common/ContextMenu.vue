@@ -72,6 +72,18 @@ function setPosition() {
   emit("close");
 }
 
+async function resetPosition() {
+  if (props.link) {
+    try {
+      await appStore.updateLink(props.link.id, { display_order: 0 });
+      toastStore.success("Position reset");
+    } catch {
+      toastStore.error("Failed to reset position");
+    }
+  }
+  emit("close");
+}
+
 async function savePosition() {
   if (!positionInput.value && positionInput.value !== 0) return;
   try {
@@ -162,14 +174,22 @@ watch(
               <span>Edit</span>
             </button>
 
-            <button
-              v-if="!link.is_from_shared_category"
-              class="w-full px-4 py-3 bg-gray-600 dark:bg-brand-700 text-white rounded-md hover:bg-gray-700 dark:hover:bg-brand-600 transition-colors flex items-center justify-center gap-2"
-              @click="setPosition"
-            >
-              <i class="mdi mdi-sort-numeric-variant"></i>
-              <span>Set Position</span>
-            </button>
+            <div v-if="!link.is_from_shared_category" class="flex gap-2">
+              <button
+                class="flex-1 px-4 py-3 bg-gray-600 dark:bg-brand-700 text-white rounded-md hover:bg-gray-700 dark:hover:bg-brand-600 transition-colors flex items-center justify-center gap-2"
+                @click="setPosition"
+              >
+                <i class="mdi mdi-sort-numeric-variant"></i>
+                <span>Set Position</span>
+              </button>
+              <button
+                class="flex-1 px-4 py-3 bg-gray-500 dark:bg-brand-800 text-white rounded-md hover:bg-gray-600 dark:hover:bg-brand-700 transition-colors flex items-center justify-center gap-2"
+                @click="resetPosition"
+              >
+                <i class="mdi mdi-sort-variant-remove"></i>
+                <span>Reset Position</span>
+              </button>
+            </div>
 
             <button
               v-if="!link.is_from_shared_category"

@@ -76,6 +76,12 @@ describe("CategoryManager", () => {
   it("emits create event on form submit", async () => {
     const wrapper = mountManager();
 
+    // Open create form first (hidden by default)
+    const addBtn = wrapper
+      .findAll("button")
+      .find((b) => b.text().includes("Add category"));
+    await addBtn.trigger("click");
+
     await wrapper
       .find('input[placeholder="Category name"]')
       .setValue("New Cat");

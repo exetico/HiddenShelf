@@ -22,6 +22,7 @@ const name = ref("");
 const icon = ref("mdi-folder");
 const color = ref("#687061");
 const directRedirectDefault = ref(false);
+const showCreateForm = ref(false);
 
 // Edit state
 const editingId = ref(null);
@@ -55,6 +56,7 @@ function createCategory() {
   icon.value = "mdi-folder";
   color.value = "#687061";
   directRedirectDefault.value = false;
+  showCreateForm.value = false;
 }
 
 function startEdit(category) {
@@ -160,8 +162,22 @@ async function removeSharing() {
 <template>
   <BaseModal :open="open" title="Categories" @close="emit('close')">
     <div class="space-y-4">
-      <!-- Create form -->
-      <form class="space-y-2" @submit.prevent="createCategory">
+      <!-- Add Category toggle button -->
+      <button
+        v-if="!showCreateForm"
+        class="w-full px-3 py-2 rounded-md border-2 border-dashed border-gray-300 dark:border-brand-700 text-gray-600 dark:text-brand-400 hover:border-brand-500 hover:text-brand-600 dark:hover:border-brand-500 dark:hover:text-brand-300 transition-colors flex items-center justify-center gap-2"
+        @click="showCreateForm = true"
+      >
+        <i class="mdi mdi-plus"></i>
+        Add category
+      </button>
+
+      <!-- Create form (hidden by default) -->
+      <form
+        v-if="showCreateForm"
+        class="space-y-2"
+        @submit.prevent="createCategory"
+      >
         <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
           <input
             v-model="name"
@@ -198,6 +214,13 @@ async function removeSharing() {
             class="px-3 py-2 rounded-md bg-brand-600 text-white hover:bg-brand-700"
           >
             Create category
+          </button>
+          <button
+            type="button"
+            class="px-3 py-2 rounded-md border border-gray-300 dark:border-brand-700 text-gray-600 dark:text-brand-400 hover:bg-gray-100 dark:hover:bg-brand-800"
+            @click="showCreateForm = false"
+          >
+            Cancel
           </button>
           <a
             href="https://pictogrammers.com/library/mdi/"
