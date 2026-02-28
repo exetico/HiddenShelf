@@ -11,10 +11,10 @@
       content="black-translucent"
     />
     <meta name="apple-mobile-web-app-title" content="Hidden Shelf" />
-    <link rel="apple-touch-icon" href="favicon.png" />
+    <link rel="apple-touch-icon" href="/public/favicon.png" />
     <!-- Theme color for browser UI -->
     <meta name="theme-color" content="#687061" />
-    <link rel="stylesheet" href="output.css" />
+    <link rel="stylesheet" href="/public/output.css" />
     <script
       defer
       src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"
@@ -153,7 +153,16 @@
 
           async init() {
             const params = new URLSearchParams(window.location.search);
-            const hash = params.get("hash");
+            let hash = params.get("hash");
+
+            // Also support /h/:hash URL format (used by short links)
+            if (!hash) {
+              const pathMatch =
+                window.location.pathname.match(/\/h\/([a-zA-Z0-9]+)/);
+              if (pathMatch) {
+                hash = pathMatch[1];
+              }
+            }
 
             if (!hash) {
               this.error = "No link hash provided";

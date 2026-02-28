@@ -20,6 +20,14 @@ export default defineConfig({
         target: apiProxyTarget,
         changeOrigin: true,
       },
+      "/h": {
+        target: apiProxyTarget,
+        changeOrigin: true,
+      },
+      "/public": {
+        target: apiProxyTarget,
+        changeOrigin: true,
+      },
     },
   },
   build: {
