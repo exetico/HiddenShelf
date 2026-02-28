@@ -136,10 +136,10 @@ function clearRememberedEmail() {
       <!-- Logo/Header -->
       <div class="text-center">
         <i class="mdi mdi-link-variant text-6xl text-brand-500"></i>
-        <h2 class="mt-4 text-3xl font-bold text-gray-900 dark:text-white">
+        <h2 class="mt-4 text-3xl font-bold text-brand-900 dark:text-white">
           Hidden Shelf
         </h2>
-        <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
+        <p class="mt-2 text-sm text-brand-600 dark:text-brand-400">
           Sign in with your email
         </p>
       </div>
@@ -147,27 +147,27 @@ function clearRememberedEmail() {
       <!-- Login Form -->
       <div
         v-if="!sent"
-        class="bg-white dark:bg-gray-800 py-8 px-6 shadow-lg rounded-lg"
+        class="bg-white dark:bg-brand-900 py-8 px-6 shadow-lg rounded-lg"
       >
         <!-- Remembered Email -->
         <div
           v-if="rememberedEmail && email !== rememberedEmail"
-          class="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800"
+          class="mb-4 p-3 bg-brand-50 dark:bg-brand-900/20 rounded-lg border border-brand-200 dark:border-brand-800"
         >
-          <p class="text-sm text-blue-700 dark:text-blue-300 mb-2">
+          <p class="text-sm text-brand-700 dark:text-brand-300 mb-2">
             Welcome back!
           </p>
           <div class="flex gap-2">
             <button
               @click="useRememberedEmail"
-              class="text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline"
+              class="text-sm font-medium text-brand-600 dark:text-brand-400 hover:underline"
             >
               Continue as {{ rememberedEmail }}
             </button>
-            <span class="text-gray-400">·</span>
+            <span class="text-brand-400">·</span>
             <button
               @click="clearRememberedEmail"
-              class="text-sm text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+              class="text-sm text-brand-500 hover:text-brand-700 dark:hover:text-brand-300"
             >
               Use different email
             </button>
@@ -192,12 +192,12 @@ function clearRememberedEmail() {
           <div class="relative my-3">
             <div class="absolute inset-0 flex items-center">
               <div
-                class="w-full border-t border-gray-300 dark:border-gray-600"
+                class="w-full border-t border-brand-200 dark:border-brand-700"
               ></div>
             </div>
             <div class="relative flex justify-center text-xs">
               <span
-                class="px-2 bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-400"
+                class="px-2 bg-white dark:bg-brand-900 text-brand-500 dark:text-brand-400"
               >
                 or
               </span>
@@ -208,7 +208,7 @@ function clearRememberedEmail() {
           <button
             @click="loginWithGoogle"
             :disabled="loading"
-            class="w-full flex items-center justify-center gap-3 py-2.5 px-4 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 focus:ring-4 focus:ring-gray-200 dark:focus:ring-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
+            class="w-full flex items-center justify-center gap-3 py-2.5 px-4 bg-white dark:bg-brand-800 text-brand-700 dark:text-brand-200 border border-brand-300 dark:border-brand-700 rounded-lg hover:bg-brand-50 dark:hover:bg-brand-700 focus:ring-4 focus:ring-brand-200 dark:focus:ring-brand-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
           >
             <svg
               class="w-5 h-5"
@@ -237,7 +237,7 @@ function clearRememberedEmail() {
 
           <button
             @click="clearRememberedEmail"
-            class="w-full text-sm text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 py-2"
+            class="w-full text-sm text-brand-600 dark:text-brand-400 hover:text-brand-800 dark:hover:text-brand-200 py-2"
           >
             Use a different email
           </button>
@@ -251,7 +251,7 @@ function clearRememberedEmail() {
           <div>
             <label
               for="email"
-              class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+              class="block text-sm font-medium text-brand-700 dark:text-brand-300 mb-2"
             >
               Email address
             </label>
@@ -261,7 +261,7 @@ function clearRememberedEmail() {
               type="email"
               required
               :disabled="loading"
-              class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-brand-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed"
+              class="w-full px-3 py-2 border border-brand-300 dark:border-brand-700 rounded-lg bg-white dark:bg-brand-800 text-brand-900 dark:text-white focus:ring-2 focus:ring-brand-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed"
               placeholder="you@example.com"
             />
           </div>
@@ -283,12 +283,12 @@ function clearRememberedEmail() {
         >
           <div class="absolute inset-0 flex items-center">
             <div
-              class="w-full border-t border-gray-300 dark:border-gray-600"
+              class="w-full border-t border-brand-200 dark:border-brand-700"
             ></div>
           </div>
           <div class="relative flex justify-center text-xs">
             <span
-              class="px-2 bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-400"
+              class="px-2 bg-white dark:bg-brand-900 text-brand-500 dark:text-brand-400"
             >
               or
             </span>
@@ -300,7 +300,7 @@ function clearRememberedEmail() {
           v-if="(!rememberedEmail || email !== rememberedEmail) && !sent"
           @click="loginWithGoogle"
           :disabled="loading"
-          class="w-full flex items-center justify-center gap-3 py-2.5 px-4 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 focus:ring-4 focus:ring-gray-200 dark:focus:ring-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
+          class="w-full flex items-center justify-center gap-3 py-2.5 px-4 bg-white dark:bg-brand-800 text-brand-700 dark:text-brand-200 border border-brand-300 dark:border-brand-700 rounded-lg hover:bg-brand-50 dark:hover:bg-brand-700 focus:ring-4 focus:ring-brand-200 dark:focus:ring-brand-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
         >
           <svg
             class="w-5 h-5"
@@ -341,16 +341,16 @@ function clearRememberedEmail() {
       <!-- Success State -->
       <div
         v-else
-        class="bg-white dark:bg-gray-800 py-8 px-6 shadow-lg rounded-lg text-center"
+        class="bg-white dark:bg-brand-900 py-8 px-6 shadow-lg rounded-lg text-center"
       >
         <i class="mdi mdi-email-check text-5xl text-green-500 mb-4"></i>
-        <h3 class="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+        <h3 class="text-xl font-semibold text-brand-900 dark:text-white mb-2">
           Check your email
         </h3>
-        <p class="text-gray-600 dark:text-gray-400 mb-4">
+        <p class="text-brand-600 dark:text-brand-400 mb-4">
           We sent a magic link to <strong>{{ email }}</strong>
         </p>
-        <p class="text-sm text-gray-500 dark:text-gray-500">
+        <p class="text-sm text-brand-500 dark:text-brand-500">
           Click the link in the email to sign in. The link expires in 15
           minutes.
         </p>
