@@ -7,4 +7,11 @@ export const authApi = {
   },
   logout: async () =>
     request("/api/auth.php?action=logout", { method: "POST" }),
+  sendMagicLink: async (email) =>
+    request("/api/auth.php?action=login", {
+      method: "POST",
+      body: { email },
+    }),
+  verify: async (token) =>
+    request(`/api/auth.php?action=verify&token=${encodeURIComponent(token)}`),
 };

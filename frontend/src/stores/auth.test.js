@@ -14,6 +14,9 @@ import { authApi } from "@/services/api/authApi";
 describe("auth store", () => {
   beforeEach(() => {
     setActivePinia(createPinia());
+    // Mock window.location.hash to prevent redirect loops in tests
+    delete window.location;
+    window.location = { hash: "" };
   });
 
   it("sets user when bootstrap succeeds", async () => {
@@ -34,5 +37,17 @@ describe("auth store", () => {
 
     expect(store.user).toBeNull();
     expect(store.ready).toBe(true);
+  });
+
+  it("redirects to login on logout", async () => {
+    authApi.logout.mockResolvedValue({});
+    const store = useAuthStore();
+    store.user = { email: "test@example.com" };
+
+    await store.logout();
+
+    expect(store.user).toBeNull();
+    expect(window.location.hash).toBe("#/login");
+    expect(authApi.logout).toHaveBeenCalled();
   });
 });
