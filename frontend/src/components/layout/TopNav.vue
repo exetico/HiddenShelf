@@ -33,7 +33,7 @@ function goTo(name) {
       <div class="flex items-center gap-2 sm:gap-3">
         <div class="bg-gray-100 dark:bg-brand-800 rounded-lg p-1 flex gap-1">
           <button
-            class="px-3 py-1.5 text-sm rounded-md transition-colors"
+            class="px-3 py-1.5 text-sm rounded-md transition-colors flex items-center gap-1.5"
             :class="
               activeRoute === 'view'
                 ? 'bg-brand-600 text-white'
@@ -41,10 +41,11 @@ function goTo(name) {
             "
             @click="goTo('view')"
           >
+            <i class="mdi mdi-view-list"></i>
             View
           </button>
           <button
-            class="px-3 py-1.5 text-sm rounded-md transition-colors"
+            class="px-3 py-1.5 text-sm rounded-md transition-colors flex items-center gap-1.5"
             :class="
               activeRoute === 'edit'
                 ? 'bg-brand-600 text-white'
@@ -52,6 +53,7 @@ function goTo(name) {
             "
             @click="goTo('edit')"
           >
+            <i class="mdi mdi-pencil"></i>
             Edit
           </button>
         </div>
@@ -68,7 +70,14 @@ function goTo(name) {
           class="p-2 rounded-md text-gray-700 dark:text-brand-200 hover:bg-gray-100 dark:hover:bg-brand-800"
           @click="toggleTheme"
         >
-          {{ mode === "dark" ? "☀️" : "🌙" }}
+          <i
+            :class="
+              mode === 'dark'
+                ? 'mdi mdi-weather-sunny'
+                : 'mdi mdi-weather-night'
+            "
+            class="text-lg"
+          ></i>
         </button>
       </div>
     </div>

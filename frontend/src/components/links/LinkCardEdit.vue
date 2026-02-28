@@ -1,5 +1,8 @@
 <script setup>
-defineProps({
+import { computed } from "vue";
+import { useAppStore } from "@/stores/app";
+
+const props = defineProps({
   link: {
     type: Object,
     required: true,
@@ -7,6 +10,14 @@ defineProps({
 });
 
 defineEmits(["edit", "delete", "copyPublic"]);
+
+const appStore = useAppStore();
+
+const iconColor = computed(() => {
+  if (!props.link.category_id) return "#3B82F6";
+  const cat = appStore.categories.find((c) => c.id === props.link.category_id);
+  return cat?.color || "#3B82F6";
+});
 </script>
 
 <template>
@@ -14,13 +25,20 @@ defineEmits(["edit", "delete", "copyPublic"]);
     class="bg-white dark:bg-brand-900 border border-gray-200 dark:border-brand-800 rounded-lg p-4"
   >
     <div class="flex items-start justify-between gap-3">
-      <div class="min-w-0">
-        <h3 class="font-semibold text-gray-900 dark:text-white truncate">
-          {{ link.title }}
-        </h3>
-        <p class="text-xs text-gray-500 dark:text-brand-400 truncate">
-          {{ link.url }}
-        </p>
+      <div class="flex items-start gap-2 min-w-0">
+        <i
+          :class="link.icon || 'mdi-link-variant'"
+          class="mdi text-lg mt-0.5 flex-shrink-0"
+          :style="`color: ${iconColor}`"
+        ></i>
+        <div class="min-w-0">
+          <h3 class="font-semibold text-gray-900 dark:text-white truncate">
+            {{ link.title }}
+          </h3>
+          <p class="text-xs text-gray-500 dark:text-brand-400 truncate">
+            {{ link.url }}
+          </p>
+        </div>
       </div>
       <div class="flex gap-2 text-sm">
         <button

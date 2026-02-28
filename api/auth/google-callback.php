@@ -118,11 +118,16 @@ try {
     }
     
     // Use redirect_origin from session if available (for dev mode), otherwise use base_url
-    $origin = $_SESSION['oauth_redirect_origin'] ?? '';
+    $redirectOrigin = $_SESSION['oauth_redirect_origin'] ?? null;
     unset($_SESSION['oauth_redirect_origin']);
     
-    // Redirect to Vue app
-    header('Location: ' . $origin . base_url('/public/app/index.html') . '#' . $returnPath);
+    if ($redirectOrigin) {
+        // Dev mode: redirect to dev server origin with just the hash
+        header('Location: ' . $redirectOrigin . '/#' . $returnPath);
+    } else {
+        // Production: use full path
+        header('Location: ' . base_url('/public/app/index.html') . '#' . $returnPath);
+    }
     exit;
 
 } catch (Exception $e) {

@@ -71,16 +71,24 @@ try {
                 $returnTo = $_SESSION['return_to'] ?? '#/dashboard';
                 unset($_SESSION['return_to']); // Clear it after using
                 
-                // If return URL is just a hash (e.g., #/view), prepend the base path
-                if (strpos($returnTo, '#') === 0) {
-                    $returnTo = base_url('/public/app/index.html') . $returnTo;
-                }
-                
                 // Use redirect_origin from token if available (for dev mode), otherwise use SITE_URL
-                $origin = $result['redirect_origin'] ?? SITE_URL;
+                $redirectOrigin = $result['redirect_origin'] ?? null;
                 
-                // Redirect to intended page or default to app
-                header('Location: ' . $origin . $returnTo);
+                if ($redirectOrigin) {
+                    // Dev mode: redirect to dev server origin with just the hash
+                    // (Vite serves Vue app from root, no /public/app/index.html needed)
+                    $hashPart = $returnTo;
+                    if (strpos($returnTo, '#') !== 0) {
+                        $hashPart = '#/dashboard';
+                    }
+                    header('Location: ' . $redirectOrigin . '/' . $hashPart);
+                } else {
+                    // Production: use SITE_URL + full path
+                    if (strpos($returnTo, '#') === 0) {
+                        $returnTo = base_url('/public/app/index.html') . $returnTo;
+                    }
+                    header('Location: ' . SITE_URL . $returnTo);
+                }
                 exit;
             } else {
                 // Redirect to login with error

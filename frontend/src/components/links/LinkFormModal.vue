@@ -84,11 +84,24 @@ function submit() {
         placeholder="Description"
         class="w-full px-3 py-2 rounded-md border border-gray-300 dark:border-brand-700 dark:bg-brand-800"
       />
-      <input
-        v-model="form.icon"
-        placeholder="Icon (mdi-link-variant)"
-        class="w-full px-3 py-2 rounded-md border border-gray-300 dark:border-brand-700 dark:bg-brand-800"
-      />
+      <div class="flex items-center gap-2">
+        <input
+          v-model="form.icon"
+          placeholder="Icon (mdi-link-variant)"
+          class="flex-1 px-3 py-2 rounded-md border border-gray-300 dark:border-brand-700 dark:bg-brand-800"
+        />
+        <i
+          :class="form.icon || 'mdi-link-variant'"
+          class="mdi text-2xl text-brand-600"
+        ></i>
+        <a
+          href="https://pictogrammers.com/library/mdi/"
+          target="_blank"
+          class="text-xs text-brand-600 dark:text-brand-400 hover:underline whitespace-nowrap"
+        >
+          Browse icons →
+        </a>
+      </div>
       <select
         v-model="form.category_id"
         class="w-full px-3 py-2 rounded-md border border-gray-300 dark:border-brand-700 dark:bg-brand-800"
@@ -112,7 +125,7 @@ function submit() {
         <input v-model="form.is_public" type="checkbox" />
         Public link
       </label>
-      <label class="flex items-center gap-2 text-sm">
+      <label v-if="form.is_public" class="flex items-center gap-2 text-sm">
         <input v-model="form.direct_redirect" type="checkbox" />
         Direct redirect
       </label>

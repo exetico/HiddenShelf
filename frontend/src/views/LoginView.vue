@@ -129,9 +129,7 @@ function clearRememberedEmail() {
     <div class="max-w-md w-full space-y-8">
       <!-- Logo/Header -->
       <div class="text-center">
-        <span class="material-symbols-outlined text-6xl text-brand-500"
-          >link</span
-        >
+        <i class="mdi mdi-link-variant text-6xl text-brand-500"></i>
         <h2 class="mt-4 text-3xl font-bold text-gray-900 dark:text-white">
           Hidden Shelf
         </h2>
@@ -180,9 +178,7 @@ function clearRememberedEmail() {
             :disabled="loading"
             class="w-full flex justify-center items-center gap-2 py-2.5 px-4 bg-brand-500 hover:bg-brand-600 text-white font-medium rounded-lg focus:ring-4 focus:ring-brand-300 dark:focus:ring-brand-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
-            <span v-if="loading" class="material-symbols-outlined animate-spin"
-              >progress_activity</span
-            >
+            <i v-if="loading" class="mdi mdi-loading mdi-spin"></i>
             <span>{{ loading ? "Sending..." : "Send magic link" }}</span>
           </button>
 
@@ -269,9 +265,7 @@ function clearRememberedEmail() {
             :disabled="loading"
             class="w-full flex justify-center items-center gap-2 py-2.5 px-4 bg-brand-500 hover:bg-brand-600 text-white font-medium rounded-lg focus:ring-4 focus:ring-brand-300 dark:focus:ring-brand-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
-            <span v-if="loading" class="material-symbols-outlined animate-spin"
-              >progress_activity</span
-            >
+            <i v-if="loading" class="mdi mdi-loading mdi-spin"></i>
             <span>{{ loading ? "Sending..." : "Send magic link" }}</span>
           </button>
         </form>
@@ -343,9 +337,7 @@ function clearRememberedEmail() {
         v-else
         class="bg-white dark:bg-gray-800 py-8 px-6 shadow-lg rounded-lg text-center"
       >
-        <span class="material-symbols-outlined text-5xl text-green-500 mb-4"
-          >mail</span
-        >
+        <i class="mdi mdi-email-check text-5xl text-green-500 mb-4"></i>
         <h3 class="text-xl font-semibold text-gray-900 dark:text-white mb-2">
           Check your email
         </h3>

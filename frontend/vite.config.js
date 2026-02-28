@@ -24,7 +24,15 @@ export default defineConfig({
         target: apiProxyTarget,
         changeOrigin: true,
       },
-      "/public": {
+      "/public/view.html": {
+        target: apiProxyTarget,
+        changeOrigin: true,
+      },
+      "/public/output.css": {
+        target: apiProxyTarget,
+        changeOrigin: true,
+      },
+      "/public/favicon.png": {
         target: apiProxyTarget,
         changeOrigin: true,
       },

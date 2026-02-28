@@ -1,11 +1,14 @@
 <script setup>
-import { onMounted, ref } from "vue";
+import { onMounted, ref, watch } from "vue";
+import { useRoute, useRouter } from "vue-router";
 import { useAppStore } from "@/stores/app";
 import LinkCardEdit from "@/components/links/LinkCardEdit.vue";
 import LinkFormModal from "@/components/links/LinkFormModal.vue";
 import CategoryManager from "@/components/categories/CategoryManager.vue";
 import TagManager from "@/components/tags/TagManager.vue";
 
+const route = useRoute();
+const router = useRouter();
 const appStore = useAppStore();
 
 const showLinkModal = ref(false);
@@ -13,11 +16,36 @@ const showCategoryModal = ref(false);
 const showTagModal = ref(false);
 const activeLink = ref(null);
 
+function openEditById(editId) {
+  const id = Number(editId);
+  const link = appStore.links.find((l) => l.id === id);
+  if (link) {
+    activeLink.value = link;
+    showLinkModal.value = true;
+    // Clean the query param so it doesn't re-trigger
+    router.replace({ name: "edit" });
+  }
+}
+
 onMounted(async () => {
   if (!appStore.links.length) {
     await appStore.loadLinks({ reset: true });
   }
+  // Check for editId query param (from context menu "Edit" on view page)
+  if (route.query.editId) {
+    openEditById(route.query.editId);
+  }
 });
+
+// Also watch for query changes (navigating while already on edit page)
+watch(
+  () => route.query.editId,
+  (editId) => {
+    if (editId) {
+      openEditById(editId);
+    }
+  },
+);
 
 function openCreate() {
   activeLink.value = null;
@@ -95,6 +123,7 @@ async function copyPublic(hash) {
       :categories="appStore.categories"
       @close="showCategoryModal = false"
       @create="appStore.createCategory"
+      @update="(id, payload) => appStore.updateCategory(id, payload)"
       @remove="appStore.deleteCategory"
     />
 

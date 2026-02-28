@@ -29,7 +29,8 @@ export async function request(path, options = {}) {
       ...(options.headers || {}),
     },
     ...options,
-    body: options.body ? JSON.stringify(options.body) : undefined,
+    // Body is already a string (callers use JSON.stringify) so pass as-is
+    body: options.body || undefined,
   });
 
   let payload;
