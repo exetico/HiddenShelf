@@ -28,13 +28,24 @@ const router = createRouter({
 router.beforeEach(async (to) => {
   const authStore = useAuthStore();
 
-  // Allow access to public routes
-  if (to.meta.public) {
-    return true;
-  }
-
+  // Always bootstrap auth so we know the real auth state
   if (!authStore.ready) {
     await authStore.bootstrap();
+  }
+
+  // Allow access to public routes
+  if (to.meta.public) {
+    // If authenticated user visits login, save share code and redirect away
+    if (authStore.isAuthenticated && to.name === "login") {
+      if (to.query.share) {
+        sessionStorage.setItem("hiddenshelf_pending_share", to.query.share);
+      }
+      const returnTo =
+        sessionStorage.getItem("hiddenshelf_return_to") || "/dashboard";
+      sessionStorage.removeItem("hiddenshelf_return_to");
+      return returnTo;
+    }
+    return true;
   }
 
   if (!authStore.isAuthenticated) {
