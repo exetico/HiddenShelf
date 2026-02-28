@@ -132,6 +132,11 @@ async function copyShareUrl() {
   toastStore.success("Share URL copied");
 }
 
+async function copyShareCode() {
+  await navigator.clipboard.writeText(shareData.value.share_code);
+  toastStore.success("Share code copied");
+}
+
 const showRemoveSharingConfirm = ref(false);
 
 async function removeMember(memberId) {
@@ -403,6 +408,23 @@ async function removeSharing() {
             <button
               class="px-3 py-1.5 rounded-md bg-brand-600 text-white text-sm hover:bg-brand-700 flex-shrink-0"
               @click="copyShareUrl"
+            >
+              Copy
+            </button>
+          </div>
+
+          <p class="text-sm text-gray-600 dark:text-brand-300 mb-3">
+            Or share the code:
+          </p>
+          <div
+            class="flex items-center gap-2 bg-gray-50 dark:bg-brand-800 rounded-md p-3 mb-4"
+          >
+            <code class="flex-1 text-sm font-mono truncate select-all">{{
+              shareData.share_code
+            }}</code>
+            <button
+              class="px-3 py-1.5 rounded-md bg-brand-600 text-white text-sm hover:bg-brand-700 flex-shrink-0"
+              @click="copyShareCode"
             >
               Copy
             </button>

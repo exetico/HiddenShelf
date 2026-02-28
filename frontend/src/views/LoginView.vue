@@ -14,12 +14,14 @@ const email = ref("");
 const loading = ref(false);
 const sent = ref(false);
 const rememberedEmail = ref(null);
+const shareNotice = ref(false);
 
 onMounted(() => {
   // Check for share code in URL — store before auth check
   const shareParam = route.query.share;
   if (shareParam) {
     sessionStorage.setItem("hiddenshelf_pending_share", shareParam);
+    shareNotice.value = true;
   }
 
   // Check if already authenticated
@@ -141,6 +143,19 @@ function clearRememberedEmail() {
         </h2>
         <p class="mt-2 text-sm text-brand-600 dark:text-brand-400">
           Sign in with your email
+        </p>
+      </div>
+
+      <!-- Share Notice -->
+      <div
+        v-if="shareNotice"
+        class="flex items-center gap-3 bg-brand-100 dark:bg-brand-900/60 border border-brand-300 dark:border-brand-700 rounded-lg p-4"
+      >
+        <i
+          class="mdi mdi-account-group text-2xl text-brand-600 dark:text-brand-400"
+        ></i>
+        <p class="text-sm text-brand-800 dark:text-brand-200">
+          You've been invited to a shared category. Log in or sign up to join.
         </p>
       </div>
 
