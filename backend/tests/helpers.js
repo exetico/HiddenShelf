@@ -8,9 +8,10 @@ import { Hono } from "hono";
 import { initDb, getDb, closeDb } from "../src/lib/database.js";
 import { sessionMiddleware, sessions } from "../src/middleware/session.js";
 import { cors } from "hono/cors";
+import config from "../src/config.js";
 
 // Routes
-import authRoutes from "../src/routes/auth.js";
+import authRoutes, { loginAttempts } from "../src/routes/auth.js";
 import linksRoutes from "../src/routes/links.js";
 import categoriesRoutes from "../src/routes/categories.js";
 import tagsRoutes from "../src/routes/tags.js";
@@ -26,13 +27,37 @@ export function createTestApp() {
   // Close any previous connection
   closeDb();
   sessions.clear();
+  loginAttempts.clear();
 
   // Init in-memory DB
   initDb(":memory:");
 
   const app = new Hono();
 
-  app.use("*", cors({ origin: "*", credentials: true }));
+  app.use(
+    "*",
+    cors({
+      origin: (origin) => {
+        if (!origin) return config.siteUrl;
+        try {
+          const parsed = new URL(origin);
+          const siteUrlParsed = new URL(config.siteUrl);
+          if (parsed.hostname === siteUrlParsed.hostname) return origin;
+          if (
+            parsed.hostname === "localhost" ||
+            parsed.hostname === "127.0.0.1"
+          )
+            return origin;
+        } catch {
+          /* reject */
+        }
+        return null;
+      },
+      allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+      allowHeaders: ["Content-Type"],
+      credentials: true,
+    }),
+  );
   app.use("*", sessionMiddleware());
 
   app.route("/api/auth", authRoutes);
@@ -89,4 +114,5 @@ export async function json(res) {
 export function cleanup() {
   closeDb();
   sessions.clear();
+  loginAttempts.clear();
 }

@@ -73,6 +73,12 @@ export function sessionMiddleware() {
 
     await next();
 
+    // Determine if we should set the Secure flag
+    // In production (non-localhost SITE_URL), always set Secure
+    const isProduction =
+      !config.siteUrl.includes("localhost") &&
+      !config.siteUrl.includes("127.0.0.1");
+
     // Set / clear session cookie on response
     if (sessionId && session) {
       const cookie = buildCookie(COOKIE_NAME, sessionId, {
@@ -80,6 +86,7 @@ export function sessionMiddleware() {
         sameSite: "Lax",
         path: "/",
         maxAge: config.sessionLifetime,
+        secure: isProduction,
       });
       c.header("Set-Cookie", cookie, { append: true });
     } else if (!session) {
@@ -89,6 +96,7 @@ export function sessionMiddleware() {
         sameSite: "Lax",
         path: "/",
         maxAge: 0,
+        secure: isProduction,
       });
       c.header("Set-Cookie", cookie, { append: true });
     }

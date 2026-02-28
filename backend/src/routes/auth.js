@@ -20,18 +20,59 @@ import {
   successResponse,
   errorResponse,
   baseUrl,
+  isAllowedRedirectOrigin,
+  getClientIp,
 } from "../lib/helpers.js";
 import { requireAuth } from "../middleware/auth.js";
 import config from "../config.js";
 
 const auth = new Hono();
 
+// ─── Rate limiter for login endpoint ─────────────────────────────
+
+const loginAttempts = new Map(); // ip → { count, resetAt }
+const RATE_LIMIT_WINDOW = 15 * 60 * 1000; // 15 minutes
+const RATE_LIMIT_MAX = 10; // max attempts per window
+
+function checkRateLimit(ip) {
+  const now = Date.now();
+  const entry = loginAttempts.get(ip);
+
+  if (!entry || entry.resetAt < now) {
+    loginAttempts.set(ip, { count: 1, resetAt: now + RATE_LIMIT_WINDOW });
+    return true; // allowed
+  }
+
+  entry.count++;
+  if (entry.count > RATE_LIMIT_MAX) {
+    return false; // rate limited
+  }
+  return true;
+}
+
+// Clean up rate limiter periodically
+setInterval(() => {
+  const now = Date.now();
+  for (const [ip, entry] of loginAttempts) {
+    if (entry.resetAt < now) loginAttempts.delete(ip);
+  }
+}, 60_000);
+
 // ─── POST /login — request magic link ────────────────────────────
 
 auth.post("/login", async (c) => {
   const body = await c.req.json().catch(() => ({}));
   const email = sanitize(body.email || "");
-  const redirectOrigin = body.redirect_origin || null;
+  const rawRedirect = body.redirect_origin || null;
+
+  // Rate limit by IP
+  const ip = getClientIp(c);
+  if (!checkRateLimit(ip)) {
+    return c.json(
+      { error: "Too many login attempts. Please try again later." },
+      429,
+    );
+  }
 
   if (body.return_to) {
     c.session.set("return_to", body.return_to);
@@ -40,6 +81,11 @@ auth.post("/login", async (c) => {
   if (!isValidEmail(email)) {
     return errorResponse(c, "Invalid email address");
   }
+
+  // Validate redirect_origin to prevent open redirect
+  const redirectOrigin = isAllowedRedirectOrigin(rawRedirect)
+    ? rawRedirect
+    : null;
 
   const db = getDb();
   const token = generateToken();
@@ -115,7 +161,7 @@ auth.get("/verify", async (c) => {
   c.session.delete("return_to");
 
   const redirectOrigin = tokenData.redirect_origin;
-  if (redirectOrigin) {
+  if (redirectOrigin && isAllowedRedirectOrigin(redirectOrigin)) {
     const hashPart = returnTo.startsWith("#") ? returnTo : "#/dashboard";
     return c.redirect(`${redirectOrigin}/${hashPart}`);
   }
@@ -151,9 +197,9 @@ auth.get("/google", (c) => {
     return errorResponse(c, "Google OAuth not configured", 500);
   }
 
-  const redirectOrigin = c.req.query("redirect_origin") || null;
-  if (redirectOrigin) {
-    c.session.set("oauth_redirect_origin", redirectOrigin);
+  const rawRedirectOrigin = c.req.query("redirect_origin") || null;
+  if (rawRedirectOrigin && isAllowedRedirectOrigin(rawRedirectOrigin)) {
+    c.session.set("oauth_redirect_origin", rawRedirectOrigin);
   }
 
   const state = generateToken(16);
@@ -264,7 +310,7 @@ auth.get("/google/callback", async (c) => {
     const returnPath = c.session.get("return_to") || "/dashboard";
     c.session.delete("return_to");
 
-    if (redirectOrigin) {
+    if (redirectOrigin && isAllowedRedirectOrigin(redirectOrigin)) {
       return c.redirect(`${redirectOrigin}/#${returnPath}`);
     }
     return c.redirect(`${appUrl}#${returnPath}`);
@@ -275,3 +321,6 @@ auth.get("/google/callback", async (c) => {
 });
 
 export default auth;
+
+// Export for testing
+export { loginAttempts };

@@ -48,16 +48,53 @@ export function isValidEmail(email) {
 }
 
 /**
- * Validate a URL.
+ * Validate a URL — only allows http: and https: protocols.
+ * Rejects javascript:, data:, vbscript:, and other dangerous schemes.
  */
 export function isValidUrl(url) {
   try {
-    new URL(url);
-    return true;
+    const parsed = new URL(url);
+    return parsed.protocol === "http:" || parsed.protocol === "https:";
   } catch {
     return false;
   }
 }
+
+/**
+ * Check if a redirect origin is allowed (same host or known dev origins).
+ * Prevents open redirect attacks via redirect_origin parameter.
+ */
+export function isAllowedRedirectOrigin(origin) {
+  if (!origin || typeof origin !== "string") return false;
+
+  try {
+    const parsed = new URL(origin);
+    const siteUrlParsed = new URL(config.siteUrl);
+
+    // Allow same hostname (production)
+    if (parsed.hostname === siteUrlParsed.hostname) return true;
+
+    // Allow localhost origins (dev servers on different ports)
+    if (parsed.hostname === "localhost" || parsed.hostname === "127.0.0.1") {
+      return true;
+    }
+
+    return false;
+  } catch {
+    return false;
+  }
+}
+
+/** Maximum input field lengths to prevent storage abuse */
+export const MAX_LENGTHS = {
+  url: 2048,
+  title: 255,
+  description: 5000,
+  icon: 100,
+  categoryName: 100,
+  tagName: 50,
+  email: 254,
+};
 
 /**
  * Return a JSON success response (same shape as PHP successResponse).

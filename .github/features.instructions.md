@@ -526,6 +526,10 @@ This document provides a comprehensive overview of all features, functionality, 
 - **XSS Protection**: Output escaping
 - **CSRF Protection**: Token validation on state-changing operations
 - **Session Security**: Secure session configuration
+- **Input Length Validation**: All user inputs enforced against `MAX_LENGTHS` constants (`helpers.js`):
+  - URL: 2048 chars, Title: 255, Description: 5000, Icon: 100, Category name: 100, Tag name: 50, Email: 254
+  - Enforced in `links.js` (POST/PUT), `categories.js` (POST/PUT), `tags.js` (POST)
+- **URL Protocol Whitelist**: `isValidUrl()` only accepts `http:` and `https:` protocols — rejects `javascript:`, `data:`, `vbscript:`, etc.
 
 ### Privacy Features
 
@@ -539,6 +543,36 @@ This document provides a comprehensive overview of all features, functionality, 
 - **One-time Tokens**: Magic links expire after single use (15 minutes)
 - **Secure Generation**: `crypto.randomBytes()`-based token generation
 - **Session Timeout**: 30-day session lifetime
+- **Rate Limiting**: In-memory rate limiter on POST `/api/auth/login` — 10 attempts per IP per 15-minute window, returns HTTP 429 when exceeded. Uses `getClientIp()` helper with `X-Forwarded-For` support. Limiter state stored in `loginAttempts` Map (exported for test cleanup).
+
+### Open Redirect Prevention
+
+- **`redirect_origin` validation**: All `redirect_origin` parameters in magic link login (POST), verify (GET), and Google OAuth (GET `/google`, GET `/google/callback`) are validated via `isAllowedRedirectOrigin()`:
+  - Allows origins matching `config.siteUrl` hostname
+  - Allows `localhost` and `127.0.0.1` (dev servers)
+  - Rejects all other origins (set to `null`)
+- **Location**: `backend/src/lib/helpers.js` (`isAllowedRedirectOrigin`), enforced in `backend/src/routes/auth.js`
+
+### CORS Configuration
+
+- **Dynamic Origin Handler**: Replaced `origin: "*"` with a function-based handler in `index.js`:
+  - Allows requests from the same hostname as `config.siteUrl`
+  - Allows `localhost` / `127.0.0.1` origins (for dev)
+  - Returns `null` (disallow) for all other origins
+  - Works properly with `credentials: true`
+
+### Session Cookie Security
+
+- **HttpOnly**: Session cookies set with `HttpOnly` flag (prevents JavaScript access)
+- **SameSite=Lax**: Prevents cross-site request forgery
+- **Secure flag (production)**: Automatically adds `Secure` flag when `config.siteUrl` does not contain `localhost` or `127.0.0.1` — ensures cookies are only sent over HTTPS in production
+- **Location**: `backend/src/middleware/session.js`
+
+### Debug Mode
+
+- **Default off**: `debugMode` defaults to `false` when `DEBUG_MODE` env var is unset (previously defaulted to `true`)
+- Prevents accidental exposure of error details and magic link URLs in production
+- Dev environments set `DEBUG_MODE=true` explicitly in `docker-compose.yml`
 
 ## Configuration
 
@@ -596,7 +630,25 @@ This document provides a comprehensive overview of all features, functionality, 
 | `views/ProfileView.test.js`                     | 12    | Email, app version, share code verify/preview, URL extraction, danger zone, delete modal, shared categories |
 | `views/LoginView.test.js`                       | 5     | Share code sessionStorage persistence, auth redirect, email input                                           |
 
-**Total: 80 tests across 11 files**
+**Frontend Total: 80 tests across 11 files**
+
+### Backend Test Files & Coverage
+
+| File                       | Tests | Covers                                                                                                                |
+| -------------------------- | ----- | --------------------------------------------------------------------------------------------------------------------- |
+| `tests/auth.test.js`       | 13    | Magic link login, verify, logout, session, Google OAuth flow                                                          |
+| `tests/links.test.js`      | 21    | Link CRUD, pagination, category filtering, tag filtering                                                              |
+| `tests/categories.test.js` | 10    | Category CRUD, ordering, user isolation                                                                               |
+| `tests/tags.test.js`       | 8     | Tag CRUD, user isolation                                                                                              |
+| `tests/shares.test.js`     | 12    | Share create/join/leave, member management, shared data access                                                        |
+| `tests/linkVisits.test.js` | 8     | Visit tracking, IP masking, public link access                                                                        |
+| `tests/settings.test.js`   | 7     | User settings CRUD, brand color, links per page                                                                       |
+| `tests/config.test.js`     | 1     | Public app config endpoint                                                                                            |
+| `tests/security.test.js`   | 22    | Open redirect prevention, input validation (length + protocol), rate limiting, debug mode, session cookies, CORS, XSS |
+
+**Backend Total: 102 tests across 9 files**
+
+**Combined Total: 182 tests (80 frontend + 102 backend)**
 
 ### Testing Patterns
 

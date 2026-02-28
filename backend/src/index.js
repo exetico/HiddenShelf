@@ -45,7 +45,31 @@ const app = new Hono();
 app.use(
   "*",
   cors({
-    origin: "*",
+    origin: (origin) => {
+      // Allow same-origin requests (no Origin header)
+      if (!origin) return config.siteUrl;
+
+      // Allow the configured site URL
+      try {
+        const parsed = new URL(origin);
+        const siteUrlParsed = new URL(config.siteUrl);
+
+        // Same hostname
+        if (parsed.hostname === siteUrlParsed.hostname) return origin;
+
+        // Allow localhost (dev servers on different ports)
+        if (
+          parsed.hostname === "localhost" ||
+          parsed.hostname === "127.0.0.1"
+        ) {
+          return origin;
+        }
+      } catch {
+        // invalid origin, reject
+      }
+
+      return null; // disallow
+    },
     allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowHeaders: ["Content-Type"],
     credentials: true,

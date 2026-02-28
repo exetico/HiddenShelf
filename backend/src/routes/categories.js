@@ -10,7 +10,12 @@
 
 import { Hono } from "hono";
 import { getDb } from "../lib/database.js";
-import { sanitize, successResponse, errorResponse } from "../lib/helpers.js";
+import {
+  sanitize,
+  successResponse,
+  errorResponse,
+  MAX_LENGTHS,
+} from "../lib/helpers.js";
 import { requireAuth } from "../middleware/auth.js";
 
 const categories = new Hono();
@@ -48,6 +53,11 @@ categories.post("/", requireAuth(), async (c) => {
   const directRedirectDefault = input.direct_redirect_default ? 1 : 0;
 
   if (!name) return errorResponse(c, "Category name is required");
+  if (name.length > MAX_LENGTHS.categoryName)
+    return errorResponse(
+      c,
+      `Category name must not exceed ${MAX_LENGTHS.categoryName} characters`,
+    );
 
   // Check duplicate
   const existing = db
@@ -98,6 +108,11 @@ categories.put("/", requireAuth(), async (c) => {
       : existing.direct_redirect_default || 0;
 
   if (!name) return errorResponse(c, "Category name is required");
+  if (name.length > MAX_LENGTHS.categoryName)
+    return errorResponse(
+      c,
+      `Category name must not exceed ${MAX_LENGTHS.categoryName} characters`,
+    );
 
   db.prepare(
     "UPDATE categories SET name = ?, icon = ?, color = ?, direct_redirect_default = ? WHERE id = ?",

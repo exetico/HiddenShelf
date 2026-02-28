@@ -18,6 +18,7 @@ import {
   generateHash,
   successResponse,
   errorResponse,
+  MAX_LENGTHS,
 } from "../lib/helpers.js";
 import { requireAuth, optionalAuth } from "../middleware/auth.js";
 import config from "../config.js";
@@ -205,6 +206,28 @@ links.post("/", requireAuth(), async (c) => {
     return errorResponse(c, "Valid URL is required");
   if (!title) return errorResponse(c, "Title is required");
 
+  // Length validation
+  if (url.length > MAX_LENGTHS.url)
+    return errorResponse(
+      c,
+      `URL must not exceed ${MAX_LENGTHS.url} characters`,
+    );
+  if (title.length > MAX_LENGTHS.title)
+    return errorResponse(
+      c,
+      `Title must not exceed ${MAX_LENGTHS.title} characters`,
+    );
+  if (description.length > MAX_LENGTHS.description)
+    return errorResponse(
+      c,
+      `Description must not exceed ${MAX_LENGTHS.description} characters`,
+    );
+  if (icon.length > MAX_LENGTHS.icon)
+    return errorResponse(
+      c,
+      `Icon must not exceed ${MAX_LENGTHS.icon} characters`,
+    );
+
   // Inherit direct_redirect from category if not explicitly provided
   if (categoryId && input.direct_redirect === undefined) {
     const cat = db
@@ -289,6 +312,28 @@ links.put("/", requireAuth(), async (c) => {
   if (!url || !isValidUrl(url))
     return errorResponse(c, "Valid URL is required");
   if (!title) return errorResponse(c, "Title is required");
+
+  // Length validation
+  if (url.length > MAX_LENGTHS.url)
+    return errorResponse(
+      c,
+      `URL must not exceed ${MAX_LENGTHS.url} characters`,
+    );
+  if (title.length > MAX_LENGTHS.title)
+    return errorResponse(
+      c,
+      `Title must not exceed ${MAX_LENGTHS.title} characters`,
+    );
+  if (description.length > MAX_LENGTHS.description)
+    return errorResponse(
+      c,
+      `Description must not exceed ${MAX_LENGTHS.description} characters`,
+    );
+  if (icon.length > MAX_LENGTHS.icon)
+    return errorResponse(
+      c,
+      `Icon must not exceed ${MAX_LENGTHS.icon} characters`,
+    );
 
   db.prepare(
     `UPDATE links

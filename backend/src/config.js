@@ -43,7 +43,7 @@ const config = {
   linksPerPage: parseInt(process.env.LINKS_PER_PAGE || "20", 10),
 
   // Development
-  debugMode: (process.env.DEBUG_MODE || "true") === "true",
+  debugMode: (process.env.DEBUG_MODE || "false") === "true",
 
   // Registration
   signupEnabled: (process.env.SIGNUP_ENABLED || "true") === "true",

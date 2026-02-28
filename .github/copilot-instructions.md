@@ -110,7 +110,7 @@ You need to read the copilot-instructions, and if you introduce features, you mu
 
 ### Migration Status
 
-- **Completed:** Core app, authentication, link management, categories, tags, profile, sharing, import/export, context menus, category filter bar, brand colors, danger zone, category sharing UI, tag pill input, icon auto-prefix, edit mode search/filter, category collapse/expand, X of Y counter, join share verify/preview flow, pending share code persistence, remove member/sharing, shared-with-me in CategoryManager, app version display, toast progress bar, dashboard theme toggle, public/private emoji on edit cards, Delete Everything styled modal, Danger Zone smooth animation, PHP→Hono backend migration
+- **Completed:** Core app, authentication, link management, categories, tags, profile, sharing, import/export, context menus, category filter bar, brand colors, danger zone, category sharing UI, tag pill input, icon auto-prefix, edit mode search/filter, category collapse/expand, X of Y counter, join share verify/preview flow, pending share code persistence, remove member/sharing, shared-with-me in CategoryManager, app version display, toast progress bar, dashboard theme toggle, public/private emoji on edit cards, Delete Everything styled modal, Danger Zone smooth animation, PHP→Hono backend migration, security audit (rate limiting, open redirect prevention, CORS hardening, input validation, URL protocol whitelist, debug mode default, session cookie flags)
 - **Still Used:** `public/view.html` (public link viewer - Alpine.js, not migrated)
 
 ### URL Structure

@@ -9,7 +9,12 @@
 
 import { Hono } from "hono";
 import { getDb } from "../lib/database.js";
-import { sanitize, successResponse, errorResponse } from "../lib/helpers.js";
+import {
+  sanitize,
+  successResponse,
+  errorResponse,
+  MAX_LENGTHS,
+} from "../lib/helpers.js";
 import { requireAuth } from "../middleware/auth.js";
 
 const tags = new Hono();
@@ -40,6 +45,11 @@ tags.post("/", requireAuth(), async (c) => {
   const name = sanitize(input.name || "");
 
   if (!name) return errorResponse(c, "Tag name is required");
+  if (name.length > MAX_LENGTHS.tagName)
+    return errorResponse(
+      c,
+      `Tag name must not exceed ${MAX_LENGTHS.tagName} characters`,
+    );
 
   const existing = db
     .prepare("SELECT * FROM tags WHERE name = ? AND user_id = ?")
