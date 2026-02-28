@@ -121,8 +121,8 @@ function stopDrag() {
         :key="'shared-' + category.id"
         :class="
           String(appStore.filterCategory) === String(category.id)
-            ? 'bg-blue-600 text-white'
-            : 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/50'
+            ? 'bg-brand-600 text-white'
+            : 'bg-brand-50 dark:bg-brand-900/30 text-brand-700 dark:text-brand-300 hover:bg-brand-100 dark:hover:bg-brand-900/50'
         "
         class="flex items-center gap-2 px-4 py-2 rounded-lg transition-colors whitespace-nowrap flex-shrink-0"
         :title="`Shared by ${category.owner_email}`"
