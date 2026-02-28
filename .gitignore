@@ -36,3 +36,6 @@ Thumbs.db
 tmp/
 temp/
 cache/
+
+# Frontend
+/frontend/node_modules

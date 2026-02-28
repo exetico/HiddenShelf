@@ -23,8 +23,9 @@ WORKDIR /var/www/html
 # Copy application files
 COPY . /var/www/html/
 
-# Install Node dependencies and build Tailwind CSS
+# Install Node dependencies and build frontend assets
 RUN npm install && npm run build:css
+RUN cd frontend && npm install && npm run build
 
 # Install dependencies via Composer
 RUN composer install --no-dev --optimize-autoloader

@@ -19,6 +19,56 @@ services:
     networks:
       - hiddenshelf-network
 
+  frontend:
+    image: node:20-alpine
+    container_name: hiddenshelf-frontend
+    working_dir: /app/frontend
+    command: sh -c "npm ci && npm run dev -- --host 0.0.0.0 --port 5173"
+    ports:
+      - "5173:5173"
+    environment:
+      - VITE_API_PROXY_TARGET=http://web
+      - CHOKIDAR_USEPOLLING=true
+    volumes:
+      - ./:/app
+      - frontend-node-modules:/app/frontend/node_modules
+    depends_on:
+      - web
+    networks:
+      - hiddenshelf-network
+    profiles:
+      - dev
+
+  frontend-build:
+    image: node:20-alpine
+    container_name: hiddenshelf-frontend-build
+    working_dir: /app/frontend
+    command: sh -c "npm ci && npm run build"
+    environment:
+      - VITE_API_PROXY_TARGET=http://web
+    volumes:
+      - ./:/app
+      - frontend-node-modules:/app/frontend/node_modules
+    networks:
+      - hiddenshelf-network
+    profiles:
+      - build
+
+  frontend-test:
+    image: node:20-alpine
+    container_name: hiddenshelf-frontend-test
+    working_dir: /app/frontend
+    command: sh -c "npm ci && npm run test -- --run"
+    environment:
+      - CI=true
+    volumes:
+      - ./:/app
+      - frontend-node-modules:/app/frontend/node_modules
+    networks:
+      - hiddenshelf-network
+    profiles:
+      - test
+
 networks:
   hiddenshelf-network:
     driver: bridge
@@ -26,3 +76,4 @@ networks:
 volumes:
   # Named volume for database persistence
   db-data:
+  frontend-node-modules:

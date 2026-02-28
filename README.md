@@ -121,29 +121,68 @@ Hidden Shelf/
 
 ### Option 1: Docker (Recommended)
 
-1. **Start with Docker Compose**
+1. **Core app (PHP + Apache)**
 
    ```bash
-   docker-compose up -d
+   docker compose up -d --build web
    ```
 
-   The Tailwind CSS build process runs automatically during container creation.
+2. **Choose frontend workflow**
+   - **Vue dev server (HMR, proxied API):**
 
-   Start the app again with `docker compose down -v && docker compose up -d --build && docker logs -f hiddenshelf`
+     ```bash
+     docker compose --profile dev up --build web frontend
+     ```
 
-2. **Access the app**
-   - **Test page:** http://localhost:8000/public/debug.php (verify setup)
+     Open: http://localhost:5173
+
+   - **One-off production frontend build (outputs to `public/app`):**
+
+     ```bash
+     docker compose --profile build run --rm frontend-build
+     ```
+
+     Then open built app from PHP server: http://localhost:8000/public/app/index.html
+
+   - **Run frontend test suite in Docker:**
+
+     ```bash
+     docker compose --profile test run --rm frontend-test
+     ```
+
+3. **Access the app**
+   - **Debug page:** http://localhost:8000/public/debug.php (verify setup)
    - **Login page:** http://localhost:8000/public/login.html
+   - **Built Vue app:** http://localhost:8000/public/app/index.html
    - Database migrations run automatically on first load
    - In dev mode, magic links are logged to Docker logs:
      ```bash
-     docker-compose logs -f web
+     docker compose logs -f web
      ```
 
-3. **Stop the app**
+4. **Useful lifecycle commands**
+
    ```bash
-   docker-compose down
+   docker compose down
+   docker compose down -v
+   docker compose logs -f web
    ```
+
+#### Quick Commands (Using Makefile)
+
+For convenience, use these shortcuts instead of full `docker compose` commands:
+
+```bash
+make help            # Show all available commands
+make up              # Start core app
+make dev             # Start dev mode (backend + Vue HMR)
+make build-frontend  # Build Vue frontend for production
+make test-frontend   # Run frontend tests
+make logs            # Follow backend logs
+make down            # Stop all services
+make clean           # Stop and remove volumes
+make install         # Install frontend deps locally (for IDE)
+```
 
 ### Option 2: Manual Installation
 
