@@ -8,8 +8,11 @@
     # Public link short URLs (e.g., /h/abc123)
     RewriteRule ^h/([a-zA-Z0-9]+)$ /public/view.html?hash=$1 [L,QSA]
     
-    # Redirect root to login or app
-    RewriteRule ^$ /public/login.html [L]
+    # Redirect old app location to new Vue app
+    RewriteRule ^public/index\.html$ /public/app/index.html [L,R=301]
+    
+    # Redirect root to Vue app
+    RewriteRule ^$ /public/app/index.html [L]
     
     # Prevent direct access to config and lib
     RewriteRule ^(config\.php|lib/.*) - [F,L]

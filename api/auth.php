@@ -80,7 +80,7 @@ try {
                 exit;
             } else {
                 // Redirect to login with error
-                header('Location: ' . SITE_URL . '/public/login.html?error=' . urlencode($result['message']));
+                header('Location: ' . SITE_URL . '/public/app/index.html#/login?error=' . urlencode($result['message']));
                 exit;
             }
             break;

@@ -15,7 +15,7 @@ $clientSecret = getenv('GOOGLE_CLIENT_SECRET');
 $redirectUri = getenv('GOOGLE_REDIRECT_URI') ?: 'http://localhost:8080/api/auth/google-callback.php';
 
 if (!$clientId || !$clientSecret) {
-    header('Location: /public/login.html?error=oauth_not_configured');
+    header('Location: /public/app/index.html#/login?error=oauth_not_configured');
     exit;
 }
 
@@ -27,7 +27,7 @@ $provider = new Google([
 
 // Check for errors
 if (isset($_GET['error'])) {
-    header('Location: /public/login.html?error=oauth_denied');
+    header('Location: /public/app/index.html#/login?error=oauth_denied');
     exit;
 }
 
@@ -36,7 +36,7 @@ if (empty($_GET['state']) || !isset($_SESSION['oauth2state']) || ($_GET['state']
     if (isset($_SESSION['oauth2state'])) {
         unset($_SESSION['oauth2state']);
     }
-    header('Location: /public/login.html?error=invalid_state');
+    header('Location: /public/app/index.html#/login?error=invalid_state');
     exit;
 }
 
@@ -80,7 +80,7 @@ try {
         } else {
             // Check if signup is enabled
             if (defined('SIGNUP_ENABLED') && !SIGNUP_ENABLED) {
-                header('Location: /public/login.html?error=signup_disabled');
+                header('Location: /public/app/index.html#/login?error=signup_disabled');
                 exit;
             }
             
@@ -109,12 +109,19 @@ try {
         'samesite' => 'Lax'
     ]);
 
-    // Redirect to app
-    header('Location: /public/index.html?login=success');
+    // Check for pending share code
+    $returnPath = '/';
+    if (isset($_SESSION['hiddenshelf_return_to'])) {
+        $returnPath = $_SESSION['hiddenshelf_return_to'];
+        unset($_SESSION['hiddenshelf_return_to']);
+    }
+    
+    // Redirect to Vue app
+    header('Location: /public/app/index.html#' . $returnPath);
     exit;
 
 } catch (Exception $e) {
     error_log('Google OAuth Error: ' . $e->getMessage());
-    header('Location: /public/login.html?error=oauth_failed');
+    header('Location: /public/app/index.html#/login?error=oauth_failed');
     exit;
 }
