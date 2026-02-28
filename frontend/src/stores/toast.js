@@ -1,6 +1,7 @@
 import { defineStore } from "pinia";
 
 let nextId = 1;
+const TOAST_DURATION = 3500;
 
 export const useToastStore = defineStore("toast", {
   state: () => ({
@@ -9,8 +10,14 @@ export const useToastStore = defineStore("toast", {
   actions: {
     push(type, message) {
       const id = nextId++;
-      this.items.push({ id, type, message });
-      window.setTimeout(() => this.remove(id), 3500);
+      this.items.push({
+        id,
+        type,
+        message,
+        duration: TOAST_DURATION,
+        createdAt: Date.now(),
+      });
+      window.setTimeout(() => this.remove(id), TOAST_DURATION);
     },
     remove(id) {
       this.items = this.items.filter((item) => item.id !== id);

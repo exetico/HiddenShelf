@@ -18,6 +18,22 @@ const showCategoryModal = ref(false);
 const showTagModal = ref(false);
 const activeLink = ref(null);
 
+// Search + filter
+const localSearch = ref(appStore.search);
+const localFilterCategory = ref(appStore.filterCategory);
+let searchTimeout = null;
+
+watch(localSearch, (val) => {
+  clearTimeout(searchTimeout);
+  searchTimeout = setTimeout(() => {
+    appStore.search = val;
+  }, 300);
+});
+
+watch(localFilterCategory, (val) => {
+  appStore.filterCategory = val;
+});
+
 // Delete confirmation modal
 const showDeleteModal = ref(false);
 const deleteTarget = ref(null);
@@ -47,6 +63,14 @@ watch(
     if (editId) {
       openEditById(editId);
     }
+  },
+);
+
+// Reload links when search/filter changes
+watch(
+  () => [appStore.search, appStore.filterCategory],
+  async () => {
+    await appStore.loadLinks({ reset: true });
   },
 );
 
@@ -109,7 +133,43 @@ async function copyPublic(hash) {
       </button>
     </div>
 
-    <div class="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+    <!-- Search and category filter -->
+    <div
+      class="bg-white dark:bg-brand-900 rounded-lg border border-gray-200 dark:border-brand-800 p-3 flex flex-col sm:flex-row gap-2"
+    >
+      <input
+        v-model="localSearch"
+        type="search"
+        placeholder="Search links..."
+        class="flex-1 min-w-[200px] px-3 py-2 rounded-md border border-gray-300 dark:border-brand-700 dark:bg-brand-800"
+      />
+      <select
+        v-model="localFilterCategory"
+        class="px-3 py-2 rounded-md border border-gray-300 dark:border-brand-700 dark:bg-brand-800"
+      >
+        <option value="">All Categories</option>
+        <option
+          v-for="cat in appStore.categories"
+          :key="cat.id"
+          :value="cat.id"
+        >
+          {{ cat.name }}
+        </option>
+      </select>
+    </div>
+
+    <!-- Pagination info -->
+    <p
+      v-if="appStore.total > 0"
+      class="text-sm text-gray-500 dark:text-brand-400"
+    >
+      Showing {{ appStore.links.length }} of {{ appStore.total }} links
+    </p>
+
+    <div
+      v-if="appStore.links.length"
+      class="grid gap-3 md:grid-cols-2 lg:grid-cols-3"
+    >
       <LinkCardEdit
         v-for="link in appStore.links"
         :key="link.id"
@@ -118,6 +178,20 @@ async function copyPublic(hash) {
         @delete="handleDelete"
         @copy-public="copyPublic"
       />
+    </div>
+
+    <div v-else class="py-10 text-center text-gray-500 dark:text-brand-400">
+      <i class="mdi mdi-link-off text-6xl block mb-2"></i>
+      No links yet. Add your first link!
+    </div>
+
+    <div v-if="appStore.hasMore" class="text-center">
+      <button
+        class="px-4 py-2 rounded-md bg-brand-600 text-white hover:bg-brand-700"
+        @click="appStore.loadMore()"
+      >
+        Load more
+      </button>
     </div>
 
     <LinkFormModal

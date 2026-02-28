@@ -13,6 +13,9 @@ const toastStore = useToastStore();
 const contextLink = ref(null);
 const showContextMenu = ref(false);
 
+// Collapse state
+const collapsedCategories = ref({});
+
 watch(
   () => [appStore.search, appStore.filterCategory],
   async () => {
@@ -84,6 +87,10 @@ function closeContextMenu() {
   showContextMenu.value = false;
   contextLink.value = null;
 }
+
+function toggleCategory(key) {
+  collapsedCategories.value[key] = !collapsedCategories.value[key];
+}
 </script>
 
 <template>
@@ -103,9 +110,28 @@ function closeContextMenu() {
       />
     </div>
 
+    <!-- Pagination info -->
+    <p
+      v-if="appStore.total > 0"
+      class="text-sm text-gray-500 dark:text-brand-400"
+    >
+      Showing {{ appStore.links.length }} of {{ appStore.total }} links
+    </p>
+
     <section v-if="groupedCategories.length" class="space-y-6">
       <article v-for="group in groupedCategories" :key="group.key">
-        <div class="flex items-center gap-2 mb-2">
+        <button
+          class="flex items-center gap-2 mb-2 w-full text-left group"
+          @click="toggleCategory(group.key)"
+        >
+          <i
+            class="mdi transition-transform text-sm text-gray-400 dark:text-brand-500"
+            :class="
+              collapsedCategories[group.key]
+                ? 'mdi-chevron-right'
+                : 'mdi-chevron-down'
+            "
+          ></i>
           <i
             :class="group.icon"
             class="mdi text-lg"
@@ -121,22 +147,33 @@ function closeContextMenu() {
           <span class="text-sm text-gray-500 dark:text-brand-400"
             >({{ group.links.length }})</span
           >
-        </div>
-        <div
-          class="bg-white dark:bg-brand-900 rounded-lg border border-gray-200 dark:border-brand-800 p-2 space-y-1"
+        </button>
+        <transition
+          enter-active-class="transition-all duration-200 ease-out overflow-hidden"
+          leave-active-class="transition-all duration-200 ease-in overflow-hidden"
+          enter-from-class="max-h-0 opacity-0"
+          enter-to-class="max-h-[2000px] opacity-100"
+          leave-from-class="max-h-[2000px] opacity-100"
+          leave-to-class="max-h-0 opacity-0"
         >
-          <LinkCardView
-            v-for="link in group.links"
-            :key="link.id"
-            :link="link"
-            @copy-public="copyPublic"
-            @context-action="handleContextAction"
-          />
-        </div>
+          <div
+            v-show="!collapsedCategories[group.key]"
+            class="bg-white dark:bg-brand-900 rounded-lg border border-gray-200 dark:border-brand-800 p-2 space-y-1"
+          >
+            <LinkCardView
+              v-for="link in group.links"
+              :key="link.id"
+              :link="link"
+              @copy-public="copyPublic"
+              @context-action="handleContextAction"
+            />
+          </div>
+        </transition>
       </article>
     </section>
 
     <div v-else class="py-10 text-center text-gray-500 dark:text-brand-400">
+      <i class="mdi mdi-link-off text-6xl block mb-2"></i>
       No links found.
     </div>
 

@@ -18,6 +18,12 @@ export const sharesApi = {
     });
     return response.share;
   },
+  verifyShareCode: async (code) => {
+    const response = await request(
+      `/api/category_shares.php?code=${encodeURIComponent(code)}`,
+    );
+    return response.share;
+  },
   acceptShare: async (shareCode) =>
     request("/api/category_shares.php", {
       method: "POST",
@@ -25,6 +31,15 @@ export const sharesApi = {
     }),
   leaveSharedCategory: async (categoryId) =>
     request(`/api/category_shares.php?category_id=${categoryId}&leave=1`, {
+      method: "DELETE",
+    }),
+  removeMember: async (categoryId, memberId) =>
+    request(
+      `/api/category_shares.php?category_id=${categoryId}&member_id=${memberId}`,
+      { method: "DELETE" },
+    ),
+  removeSharing: async (categoryId) =>
+    request(`/api/category_shares.php?category_id=${categoryId}`, {
       method: "DELETE",
     }),
 };

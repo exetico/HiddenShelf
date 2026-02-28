@@ -6,6 +6,7 @@ import { useToastStore } from "@/stores/toast";
 import { linksApi } from "@/services/api/linksApi";
 import { categoriesApi } from "@/services/api/categoriesApi";
 import { tagsApi } from "@/services/api/tagsApi";
+import { sharesApi } from "@/services/api/sharesApi";
 import ImportExportModal from "@/components/common/ImportExportModal.vue";
 
 const authStore = useAuthStore();
@@ -17,15 +18,67 @@ const form = reactive({
   brand_color: appStore.settings.brand_color,
 });
 
-const shareCode = reactive({
-  code: "",
-});
+// Join shared category state
+const shareCode = reactive({ code: "" });
+const showJoinModal = ref(false);
+const joinLoading = ref(false);
+const joinPreview = ref(null);
+const joinError = ref("");
+
+function extractShareCode(input) {
+  const trimmed = input.trim();
+  // If it looks like a URL, extract the code from ?share=
+  const match = trimmed.match(/[?&]share=([^&]+)/);
+  if (match) return match[1];
+  // Otherwise treat the whole input as the code
+  return trimmed;
+}
+
+async function verifyShareCode() {
+  const code = extractShareCode(shareCode.code);
+  if (!code) return;
+  joinLoading.value = true;
+  joinError.value = "";
+  joinPreview.value = null;
+  try {
+    const data = await sharesApi.verifyShareCode(code);
+    joinPreview.value = { ...data, code };
+    showJoinModal.value = true;
+  } catch (e) {
+    joinError.value = e.message || "Invalid or expired share code";
+  }
+  joinLoading.value = false;
+}
+
+async function confirmJoinShare() {
+  if (!joinPreview.value?.code) return;
+  joinLoading.value = true;
+  try {
+    await appStore.acceptShare(joinPreview.value.code);
+    shareCode.code = "";
+    joinPreview.value = null;
+    showJoinModal.value = false;
+  } catch (e) {
+    toastStore.error(e.message || "Failed to join");
+  }
+  joinLoading.value = false;
+}
+
+function cancelJoinShare() {
+  showJoinModal.value = false;
+  joinPreview.value = null;
+  joinError.value = "";
+}
 
 const showImportExport = ref(false);
 const showDangerZone = ref(false);
 const showDeleteProgress = ref(false);
 const deleteProgress = ref("");
 const deleteProgressPercent = ref(0);
+
+// Delete Everything confirmation modal
+const showDeleteModal = ref(false);
+const deleteConfirmInput = ref("");
 
 async function saveSettings() {
   await appStore.updateSettings({
@@ -39,10 +92,9 @@ function resetBrandColor() {
   saveSettings();
 }
 
-async function joinShare() {
-  if (!shareCode.code.trim()) return;
-  await appStore.acceptShare(shareCode.code.trim());
-  shareCode.code = "";
+function openDeleteEverythingModal() {
+  deleteConfirmInput.value = "";
+  showDeleteModal.value = true;
 }
 
 async function confirmDeleteEverything() {
@@ -50,21 +102,12 @@ async function confirmDeleteEverything() {
     appStore.total + appStore.categories.length + appStore.tags.length;
   const expectedAnswer = `delete ${totalCount} now`;
 
-  const userInput = window.prompt(
-    `This will permanently delete ALL your data including:\n\n` +
-      `• All links (${appStore.total})\n` +
-      `• All categories (${appStore.categories.length})\n` +
-      `• All tags (${appStore.tags.length})\n\n` +
-      `This action CANNOT be undone!\n\n` +
-      `To confirm, type: ${expectedAnswer}`,
-  );
-
-  if (userInput !== expectedAnswer) {
-    if (userInput !== null) {
-      toastStore.error("Confirmation failed. Please type the exact phrase.");
-    }
+  if (deleteConfirmInput.value !== expectedAnswer) {
+    toastStore.error("Confirmation failed. Please type the exact phrase.");
     return;
   }
+
+  showDeleteModal.value = false;
 
   showDeleteProgress.value = true;
   deleteProgress.value = "Fetching all data...";
@@ -248,18 +291,23 @@ async function confirmDeleteEverything() {
       class="bg-white dark:bg-brand-900 rounded-lg border border-gray-200 dark:border-brand-800 p-5 space-y-3"
     >
       <h2 class="text-lg font-semibold">Shared categories</h2>
-      <form class="flex gap-2" @submit.prevent="joinShare">
+      <form class="flex gap-2" @submit.prevent="verifyShareCode">
         <input
           v-model="shareCode.code"
-          placeholder="Share code"
+          placeholder="Share code or URL"
           class="flex-1 px-3 py-2 rounded-md border border-gray-300 dark:border-brand-700 dark:bg-brand-800"
         />
         <button
-          class="px-4 py-2 rounded-md bg-brand-600 text-white hover:bg-brand-700"
+          class="px-4 py-2 rounded-md bg-brand-600 text-white hover:bg-brand-700 flex items-center gap-1"
+          :disabled="joinLoading"
         >
-          Join
+          <i v-if="joinLoading" class="mdi mdi-loading mdi-spin"></i>
+          Verify
         </button>
       </form>
+      <p v-if="joinError" class="text-sm text-red-600 dark:text-red-400">
+        {{ joinError }}
+      </p>
 
       <ul class="space-y-2">
         <li
@@ -306,23 +354,40 @@ async function confirmDeleteEverything() {
           Danger Zone
         </h2>
         <i
-          class="mdi text-red-600 dark:text-red-400 transition-transform"
+          class="mdi text-red-600 dark:text-red-400 transition-transform duration-200"
           :class="showDangerZone ? 'mdi-chevron-up' : 'mdi-chevron-down'"
         ></i>
       </button>
 
-      <div v-if="showDangerZone" class="mt-4">
-        <p class="text-sm text-gray-600 dark:text-brand-400 mb-4">
-          These actions are irreversible. Please be certain before proceeding.
-        </p>
-        <button
-          class="w-full px-4 py-2 bg-red-600 dark:bg-red-700 text-white rounded-md hover:bg-red-700 dark:hover:bg-red-600 transition-colors"
-          @click="confirmDeleteEverything"
-        >
-          Delete Everything
-        </button>
-      </div>
+      <transition
+        enter-active-class="transition-all duration-200 ease-out overflow-hidden"
+        leave-active-class="transition-all duration-200 ease-in overflow-hidden"
+        enter-from-class="max-h-0 opacity-0"
+        enter-to-class="max-h-40 opacity-100"
+        leave-from-class="max-h-40 opacity-100"
+        leave-to-class="max-h-0 opacity-0"
+      >
+        <div v-if="showDangerZone" class="mt-4">
+          <p class="text-sm text-gray-600 dark:text-brand-400 mb-4">
+            These actions are irreversible. Please be certain before proceeding.
+          </p>
+          <button
+            class="w-full px-4 py-2 bg-red-600 dark:bg-red-700 text-white rounded-md hover:bg-red-700 dark:hover:bg-red-600 transition-colors"
+            @click="openDeleteEverythingModal"
+          >
+            Delete Everything
+          </button>
+        </div>
+      </transition>
     </article>
+
+    <!-- App Version -->
+    <p
+      v-if="appStore.appConfig.app_version"
+      class="text-center text-xs text-gray-400 dark:text-brand-600"
+    >
+      {{ appStore.appConfig.site_name }} v{{ appStore.appConfig.app_version }}
+    </p>
 
     <!-- Delete Progress Modal -->
     <Teleport to="body">
@@ -348,6 +413,114 @@ async function confirmDeleteEverything() {
           <p class="text-right text-xs text-gray-500 mt-1">
             {{ deleteProgressPercent }}%
           </p>
+        </div>
+      </div>
+    </Teleport>
+
+    <!-- Join Share Preview Modal -->
+    <Teleport to="body">
+      <div
+        v-if="showJoinModal && joinPreview"
+        class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60] p-4"
+        @click.self="cancelJoinShare"
+      >
+        <div
+          class="bg-white dark:bg-brand-900 rounded-lg shadow-xl max-w-sm w-full p-6"
+        >
+          <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+            Join Shared Category
+          </h3>
+          <div
+            class="flex items-center gap-3 mb-4 p-3 bg-gray-50 dark:bg-brand-800 rounded-md"
+          >
+            <i
+              :class="joinPreview.icon || 'mdi-folder'"
+              class="mdi text-2xl"
+              :style="`color: ${joinPreview.color || '#6B7280'}`"
+            ></i>
+            <div>
+              <p class="font-semibold text-gray-900 dark:text-white">
+                {{ joinPreview.category_name }}
+              </p>
+              <p class="text-xs text-gray-500 dark:text-brand-400">
+                Shared by {{ joinPreview.owner_email }} ·
+                {{ joinPreview.link_count }} links
+              </p>
+            </div>
+          </div>
+          <div class="flex justify-end gap-2">
+            <button
+              class="px-4 py-2 rounded-md border border-gray-300 dark:border-brand-700"
+              @click="cancelJoinShare"
+            >
+              Cancel
+            </button>
+            <button
+              class="px-4 py-2 rounded-md bg-brand-600 text-white hover:bg-brand-700 flex items-center gap-1"
+              :disabled="joinLoading"
+              @click="confirmJoinShare"
+            >
+              <i v-if="joinLoading" class="mdi mdi-loading mdi-spin"></i>
+              Join
+            </button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
+    <!-- Delete Everything Confirmation Modal -->
+    <Teleport to="body">
+      <div
+        v-if="showDeleteModal"
+        class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60] p-4"
+        @click.self="showDeleteModal = false"
+      >
+        <div
+          class="bg-white dark:bg-brand-900 rounded-lg shadow-xl max-w-md w-full p-6"
+        >
+          <h3 class="text-lg font-semibold text-red-600 dark:text-red-400 mb-2">
+            Delete Everything
+          </h3>
+          <p class="text-sm text-gray-600 dark:text-brand-300 mb-3">
+            This will permanently delete ALL your data:
+          </p>
+          <ul class="text-sm text-gray-600 dark:text-brand-300 mb-4 space-y-1">
+            <li>• All links ({{ appStore.total }})</li>
+            <li>• All categories ({{ appStore.categories.length }})</li>
+            <li>• All tags ({{ appStore.tags.length }})</li>
+          </ul>
+          <p class="text-sm text-gray-600 dark:text-brand-300 mb-2">
+            Type
+            <strong class="text-gray-900 dark:text-white"
+              >delete
+              {{
+                appStore.total +
+                appStore.categories.length +
+                appStore.tags.length
+              }}
+              now</strong
+            >
+            to confirm:
+          </p>
+          <input
+            v-model="deleteConfirmInput"
+            class="w-full px-3 py-2 rounded-md border border-gray-300 dark:border-brand-700 dark:bg-brand-800 mb-4"
+            placeholder="Type the confirmation phrase..."
+          />
+          <div class="flex justify-end gap-2">
+            <button
+              class="px-4 py-2 rounded-md border border-gray-300 dark:border-brand-700"
+              @click="showDeleteModal = false"
+            >
+              Cancel
+            </button>
+            <button
+              class="px-4 py-2 rounded-md bg-red-600 text-white hover:bg-red-700"
+              @click="confirmDeleteEverything"
+            >
+              Delete Everything
+            </button>
+          </div>
         </div>
       </div>
     </Teleport>

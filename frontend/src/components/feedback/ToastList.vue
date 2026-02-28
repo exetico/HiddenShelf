@@ -10,7 +10,7 @@ const toastStore = useToastStore();
       <div
         v-for="item in toastStore.items"
         :key="item.id"
-        class="rounded-lg text-white shadow-lg px-4 py-3 cursor-pointer"
+        class="rounded-lg text-white shadow-lg px-4 py-3 cursor-pointer overflow-hidden relative"
         :class="{
           'bg-green-600': item.type === 'success',
           'bg-red-600': item.type === 'error',
@@ -19,6 +19,10 @@ const toastStore = useToastStore();
         @click="toastStore.remove(item.id)"
       >
         {{ item.message }}
+        <div
+          class="absolute bottom-0 left-0 h-0.5 bg-white/40 toast-progress"
+          :style="{ animationDuration: item.duration + 'ms' }"
+        ></div>
       </div>
     </transition-group>
   </div>
@@ -33,5 +37,16 @@ const toastStore = useToastStore();
 .toast-leave-to {
   opacity: 0;
   transform: translateX(8px);
+}
+.toast-progress {
+  animation: shrink linear forwards;
+}
+@keyframes shrink {
+  from {
+    width: 100%;
+  }
+  to {
+    width: 0%;
+  }
 }
 </style>

@@ -69,13 +69,21 @@ const iconColor = computed(() => {
           >{{ tag.name }}</span
         >
       </div>
-      <button
-        v-if="link.is_public"
-        class="text-xs text-green-600 dark:text-green-400"
-        @click="$emit('copyPublic', link.hash)"
-      >
-        Copy public URL
-      </button>
+      <div class="flex items-center gap-2">
+        <span
+          class="text-xs text-gray-400 dark:text-brand-500"
+          :title="link.is_public ? 'Public link' : 'Private link'"
+        >
+          {{ link.is_public ? "🔓" : "🔒" }}
+        </span>
+        <button
+          v-if="link.is_public"
+          class="text-xs text-green-600 dark:text-green-400"
+          @click="$emit('copyPublic', link.hash)"
+        >
+          Copy public URL
+        </button>
+      </div>
     </div>
   </article>
 </template>

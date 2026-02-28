@@ -1,6 +1,6 @@
 # Hidden Shelf - Complete Feature Documentation
 
-This document provides a comprehensive overview of all features, functionality, and technical details in the current Hidden Shelf implementation. This serves as a migration reference for rebuilding the project with a modern structure.
+This document provides a comprehensive overview of all features, functionality, and technical details in the current Hidden Shelf implementation (Vue 3 edition). It serves as the definitive reference for every feature in the app.
 
 ## Table of Contents
 
@@ -18,6 +18,7 @@ This document provides a comprehensive overview of all features, functionality, 
 12. [Public Link Viewing](#public-link-viewing)
 13. [Security Features](#security-features)
 14. [Configuration](#configuration)
+15. [Testing](#testing)
 
 ## Core Architecture
 
@@ -25,20 +26,50 @@ This document provides a comprehensive overview of all features, functionality, 
 
 - **Backend**: PHP 8.x with PDO for database operations
 - **Database**: SQLite with migration system
-- **Frontend**: Alpine.js for reactivity, Tailwind CSS for styling
-- **Authentication**: Magic link email authentication (passwordless)
+- **Frontend**: Vue 3 (Composition API + `<script setup>`), Vite 5, Pinia, Vue Router (hash-based)
+- **Styling**: Tailwind CSS 3.4
+- **Icons**: MDI (Material Design Icons) via `@mdi/font` CDN — `<i class="mdi mdi-*">` syntax
+- **Authentication**: Magic link email authentication (passwordless) + Google OAuth
 - **Session Management**: PHP sessions with configurable lifetime
+- **Testing**: Vitest 1.6 + @vue/test-utils + jsdom
 
 ### File Structure
 
 ```
-├── api/                    # Backend API endpoints
-├── db/                     # Database and migrations
-├── lib/                    # Core PHP utilities
-├── public/                 # Frontend files
-├── config.php              # Configuration
-└── .htaccess              # URL routing
+├── api/                        # Backend API endpoints
+├── db/migrations/              # SQLite migration SQL files
+├── lib/                        # Core PHP utilities (Auth, Database, Mailer)
+├── public/                     # Legacy Alpine.js files + view.html (public link viewer)
+├── frontend/                   # Vue 3 application
+│   ├── src/
+│   │   ├── components/         # Vue components by feature
+│   │   │   ├── categories/     # CategoryManager, CategoryFilterBar
+│   │   │   ├── common/         # BaseModal, ContextMenu, ImportExportModal
+│   │   │   ├── feedback/       # ToastList
+│   │   │   ├── layout/         # AppShell, TopNav
+│   │   │   ├── links/          # LinkCardView, LinkCardEdit, LinkFormModal
+│   │   │   └── tags/           # TagManager
+│   │   ├── composables/        # useTheme
+│   │   ├── lib/                # httpClient
+│   │   ├── router/             # Vue Router index.js (hash mode)
+│   │   ├── services/api/       # API service modules (one per resource)
+│   │   ├── stores/             # Pinia stores (app, auth, toast)
+│   │   ├── test/               # Test setup
+│   │   └── views/              # Route views (Login, Dashboard, View, Edit, Profile)
+│   ├── vite.config.js
+│   └── vitest.config.js
+├── config.php                  # PHP configuration
+├── tailwind.config.js          # Tailwind configuration
+└── docker-compose.yml          # Docker dev/build/test profiles
 ```
+
+### Key Design Patterns
+
+- **Backend Abstraction Layer** — All API calls go through `frontend/src/services/api/` modules. No hardcoded endpoints in components.
+- **Component-Based Architecture** — Components organized by feature domain with reusable common components.
+- **Hash-Based Routing** — Uses `#/` routes (e.g. `#/dashboard`, `#/edit`) to avoid conflicts with PHP server routing.
+- **Teleport Pattern for Modals** — All modals/overlays use `<Teleport to="body">` to escape parent layout styles.
+- **Docker-First Development** — `make dev` for HMR, `make build-frontend` for production, `make test-frontend` for tests.
 
 ## Authentication System
 
@@ -47,71 +78,118 @@ This document provides a comprehensive overview of all features, functionality, 
 - **Email-based login**: No passwords required
 - **One-time tokens**: 15-minute expiry for security
 - **Session persistence**: 30-day session lifetime
-- **Google OAuth integration**: Alternative login method
+- **Google OAuth integration**: Alternative login method via `api/auth/google.php` + `api/auth/google-callback.php`
 - **Return URL support**: Redirect users after login
 
-### Key Features
+### Login Flow Features
 
 - Remember email addresses on device
 - Welcome back flow for returning users
-- Share code handling during login flow
+- **Share code handling during login**: If a `?share=CODE` param is present, it's saved to `sessionStorage` before login so it survives the auth redirect. After login, `checkPendingShare()` in the app store picks it up and triggers the join flow.
 - Beta service disclaimer and data retention warnings
-- Automatic session validation on app load
+- Automatic session validation on app load via `authApi.me()`
 
-### Implementation Files
+### Implementation
 
-- [`api/auth.php`](api/auth.php) - Authentication endpoints
-- [`lib/Auth.php`](lib/Auth.php) - Authentication utilities
-- [`public/login.html`](public/login.html) - Login interface
+- **View**: `LoginView.vue` — extracts `share` query param, stores to sessionStorage, shows email/magic-link form + Google OAuth button
+- **Store**: `auth.js` — manages `user`, `isAuthenticated`, calls `authApi.login()` / `authApi.me()`
+- **API**: `authApi.js` → `api/auth.php`
+- **Backend**: `lib/Auth.php` — token generation, session management
 
 ## User Interface Components
 
-### Main Navigation
+### Main Navigation (`TopNav.vue`)
 
-- **View Mode**: Browse links in organized categories
-- **Edit Mode**: Manage, reorder, and organize links
-- **Dashboard**: Overview with statistics and quick actions
-- **Profile**: Settings and account management
+- Mode switching tabs: Dashboard, View, Edit, Profile
+- User avatar with initials
+- Responsive design
 
-### Layout Structure
+### Layout (`AppShell.vue`)
 
-- Responsive design with mobile-first approach
-- Dark/light theme toggle
-- Sticky navigation with mode switching
-- Profile avatar with user initials
+- Wraps all authenticated views
+- Handles route-to-tab mapping
+- Provides consistent page frame
 
 ### Core Views
 
-#### Dashboard (`viewMode === 'dashboard'`)
+#### Dashboard (`DashboardView.vue`)
 
 - Welcome message with user greeting
-- Statistics grid (total links, categories, tags)
-- Quick action buttons
-- Recent activity overview
+- Statistics grid showing total links, categories, and tags counts
+- **4 quick action buttons**: View links → `#/view`, Edit links → `#/edit`, Profile → `#/profile`, Import Data → `#/profile`
+- **Theme toggle section**: Shows current mode label ("Light mode" / "Dark mode") with sun/moon icon toggle button
 
-#### View Mode (`viewMode === 'view'`)
+#### View Mode (`ViewLinksView.vue`)
 
-- Category-organized link display
-- Collapsible category sections
-- Tag filtering and search
-- Pagination with "Load More" functionality
-- Public link sharing buttons
+- **Category-organized link display**: Links grouped under category headers with colored borders
+- **"Showing X of Y" counter**: Displays `Showing {links.length} of {total} links` at the top
+- **Collapsible category sections**: Click category header or chevron to collapse/expand; chevron rotates (`mdi-chevron-down` → `mdi-chevron-right`); collapsed state tracked per-category in `collapsedCategories` reactive Set
+- **Category filter bar** (`CategoryFilterBar.vue`): Filter visible links by category
+- **Context menu**: Right-click (desktop) or long-press (mobile) on link cards for quick actions
+- **Pagination**: "Load more" button when `links.length < total`
+- **Shared category owner badge**: Shows owner email next to shared category headers
+- **Empty state**: `mdi-link-off` icon with "No links yet" message when no links exist
+- **Link count per group**: Category headers show count of links in that group
 
-#### Edit Mode (`viewMode === 'edit'`)
+#### Edit Mode (`EditLinksView.vue`)
 
-- Full CRUD operations for links
-- Drag-and-drop reordering
-- Bulk operations support
-- Link position management
-- Category and tag management
+- **Search input**: `<input type="search" placeholder="Search links...">` — debounced 300ms sync to `appStore.search`, triggers `loadLinks({ reset: true })`
+- **Category filter dropdown**: `<select>` with "All Categories" + category list — immediate sync (no debounce) to `appStore.filterCategory`, triggers `loadLinks({ reset: true })`
+- **"Showing X of Y" counter**: Same pattern as View mode
+- **Action buttons**: "+ Add link", "Categories", "Tags" — open respective modals
+- **Link cards** (`LinkCardEdit.vue`): Edit-mode cards with public/private emoji, edit/delete actions
+- **Empty state**: `mdi-link-off` icon with "No links yet" message
+- **Pagination**: "Load more" button
+- **Modal management**: `LinkFormModal`, `CategoryManager`, `TagManager` opened via boolean refs
 
-#### Profile (`viewMode === 'profile'`)
+#### Profile (`ProfileView.vue`)
 
-- User settings and preferences
-- Theme customization
-- Data management tools
-- Import/export functionality
-- Danger zone for data deletion
+- Email display with user info
+- **App version display**: Shows version from `appConfig.version` (fetched via `configApi.get()`)
+- **Join Shared Category section**:
+  - Input field with placeholder "Paste share URL or code..."
+  - **URL detection**: `extractShareCode()` regex extracts code from full URLs (e.g., `?share=CODE`) or raw codes
+  - "Verify" button calls `sharesApi.verifyShareCode(code)`
+  - **Preview modal** (Teleport): On successful verification, shows category name, owner email, link count → "Join" / "Cancel" buttons
+  - Error handling: Shows error message in red for invalid/expired codes
+- **Shared categories list**: Lists categories shared with the user, each with owner info and "Leave" button
+- **Danger Zone** (collapsible with smooth `<transition>` animation):
+  - Toggle button expands/collapses section
+  - **Delete Everything modal** (Teleport): Requires typing exact phrase "delete N now" (where N = link count) to enable the delete button. Calls `linksApi.deleteAll()` etc.
+  - Other destructive actions (delete account, etc.)
+- **Import/Export**: Opens `ImportExportModal` component
+- **Brand color picker**: Custom brand color with live preview
+
+### Common Components
+
+#### BaseModal (`BaseModal.vue`)
+
+- Reusable modal with Teleport to body
+- Title, body slot, close button
+- Backdrop click to dismiss
+
+#### ContextMenu (`ContextMenu.vue`)
+
+- Right-click / long-press context menu
+- Teleported to body
+- Position-aware (avoids screen edges)
+
+#### ImportExportModal (`ImportExportModal.vue`)
+
+- Tab interface: Import / Export
+- JSON file upload with validation
+- Progress overlay (Teleport) during import
+- Default category color: `#687061`
+
+### Feedback Components
+
+#### ToastList (`ToastList.vue`)
+
+- Renders toast notifications from `toastStore.items`
+- **CSS classes per type**: success (green), error (red), info (blue)
+- **Progress bar**: Each toast has a `<div class="toast-progress">` with CSS `@keyframes shrink` animation, duration set to `item.duration` ms (default 3500ms)
+- **Click to dismiss**: Clicking a toast removes it immediately via `toastStore.remove(id)`
+- Multiple toasts stack vertically
 
 ## Link Management
 
@@ -120,39 +198,51 @@ This document provides a comprehensive overview of all features, functionality, 
 - **URL**: Target destination (required)
 - **Title**: Display name (required)
 - **Description**: Optional detailed description
-- **Icon**: Material Design Icons support
-- **Category**: Single category assignment
-- **Tags**: Multiple tag assignment
-- **Public/Private**: Visibility setting
+- **Icon**: Material Design Icons support — auto-prefixed with `mdi-` if omitted (e.g., "wifi" → "mdi-wifi") in `LinkFormModal`
+- **Category**: Single category assignment (via dropdown)
+- **Tags**: Multiple tag assignment (pill-based input)
+- **Public/Private**: Visibility toggle
 - **Direct Redirect**: Skip preview page option
 - **Display Order**: Custom positioning
 
+### Link Card — View Mode (`LinkCardView.vue`)
+
+- Displays title, description (or URL fallback), icon, category color border
+- Click opens URL in new tab
+- Public links show share button
+- Context menu on right-click / long-press
+
+### Link Card — Edit Mode (`LinkCardEdit.vue`)
+
+- **Public/Private emoji**: 🔓 (public, title="Public") / 🔒 (private, title="Private") displayed next to title
+- Title, description (URL fallback if empty), icon
+- **Tag pills**: Up to 3 tags shown as styled pills with "+N more" overflow
+- **Copy public URL**: Visible only for public links — emits `copyPublic` with link hash
+- Edit button: Opens `LinkFormModal` with link data
+- Delete button: Emits `delete` with link ID (confirmation handled by parent)
+
+### Link Form (`LinkFormModal.vue`)
+
+- Full CRUD form in modal (Teleport)
+- URL, title, description, icon (with auto-prefix + live preview), category dropdown, tag pill input
+- **Icon auto-prefix**: Typing "wifi" auto-becomes "mdi-wifi" with live icon preview
+- Create / Update mode
+
 ### Link Operations
 
-- **Create**: Add new links with full metadata
-- **Read**: View links with filtering and search
-- **Update**: Edit all link properties
-- **Delete**: Remove links with confirmation
+- **Create**: via `linksApi.create()`
+- **Read**: via `linksApi.list()` with pagination, search, category filter
+- **Update**: via `linksApi.update()`
+- **Delete**: via `linksApi.remove()` with styled confirmation modal
 - **Reorder**: Move links up/down in display order
-- **Duplicate**: Copy existing links
-- **Bulk Edit**: Mass operations on multiple links
-
-### Link Display Features
-
-- **Grid Layout**: Card-based responsive display
-- **List Layout**: Compact row-based display
-- **Category Grouping**: Links organized by category
-- **Search**: Real-time text search across titles/descriptions
-- **Filtering**: Filter by category or tag
-- **Pagination**: Configurable items per page
 
 ### Public Link Sharing
 
-- **Unique Hash Generation**: Each link gets unique identifier
-- **Preview Page**: Default landing page with metadata
-- **Direct Redirect**: Optional immediate redirect
-- **Visit Tracking**: Analytics for public link usage
-- **Share URL Format**: `/h/{hash}` short URLs
+- **Unique Hash Generation**: Each link gets a unique identifier
+- **Preview Page**: Default landing page with metadata (`public/view.html`)
+- **Direct Redirect**: Optional immediate redirect with "stay on page" cancel
+- **Visit Tracking**: Analytics via `api/link_visits.php`
+- **Share URL Format**: `/h/{hash}` short URLs, `/public/view.html?hash={hash}` full URLs
 
 ## Category System
 
@@ -160,23 +250,32 @@ This document provides a comprehensive overview of all features, functionality, 
 
 - **Name**: Category display name
 - **Icon**: Material Design Icons
-- **Color**: Custom color coding
-- **Default Redirect**: Auto-apply direct redirect to new links
+- **Color**: Custom hex color with live preview
+- **Default Redirect**: Auto-apply direct redirect to new links in this category
 - **Link Count**: Automatic counting of contained links
 - **Display Order**: Custom category ordering
 
 ### Category Operations
 
-- **Create**: Add new categories with customization
-- **Edit**: Modify all category properties
-- **Delete**: Remove categories (links become uncategorized)
-- **Share**: Share categories with other users
-- **Filter**: View links by category
+- **Create**: Add via `CategoryManager` — emits create event
+- **Edit**: Toggle edit mode per-category, modify name/icon/color
+- **Delete**: Styled confirmation modal (never `window.confirm`)
+- **Share**: Share categories with other users (see Sharing section)
+- **Filter**: Filter links by category in both View and Edit modes
+
+### CategoryManager (`CategoryManager.vue`)
+
+- Lists all user-owned categories with link counts
+- Create / edit / delete operations
+- **Share button per category**: Opens share modal with URL, copy button, member list
+- **Remove member**: Revoke a specific member's access via `sharesApi.removeMember()`
+- **Remove sharing**: Delete the entire share via `sharesApi.removeSharing()` with confirmation
+- **"Shared with me" section**: Displayed at the bottom when user has shared categories; lists each shared category with owner info and "Leave" button
 
 ### Special Categories
 
-- **Uncategorized**: Automatic category for unassigned links
-- **Shared Categories**: Categories shared by other users
+- **Uncategorized**: Automatic grouping for links without a category
+- **Shared Categories**: Categories shared by other users, visually distinguished with owner badge
 
 ## Tag System
 
@@ -188,55 +287,63 @@ This document provides a comprehensive overview of all features, functionality, 
 
 ### Tag Operations
 
-- **Create**: Add new tags via link editing
+- **Create**: Add new tags via link editing (pill input)
 - **Assign**: Multi-select tag assignment to links
-- **Remove**: Delete tags with usage confirmation
+- **Remove**: Delete tags with confirmation modal
 - **Filter**: View links by tag
 - **Bulk Apply**: Add tags to multiple links
 
 ### Tag Display
 
-- **Link Cards**: Show up to 3 tags as styled pills, with "+N more" indicator
-- **Tag Input**: Pill-based input with Enter/comma to add; Backspace to remove last; styled labels with × remove button
-- **Tag Management**: Dedicated interface for tag operations with delete confirmation modals
+- **Link Cards**: Show up to 3 tags as styled pills, with "+N more" indicator for overflow
+- **Tag Input** (`LinkFormModal`): Pill-based input with Enter/comma to add; Backspace to remove last; styled labels with × remove button
+- **Tag Management** (`TagManager.vue`): Dedicated interface for tag operations with delete confirmation modals
 
 ## Sharing & Collaboration
 
 ### Category Sharing System
 
-- **Share Code Generation**: Unique codes for category access
-- **Share UI in Category Manager**: Share button per category opens modal with share URL, copy button, and member list
-- **Public Share Links**: URLs with embedded share codes
-- **Member Management**: View members with access to shared category
+- **Share Code Generation**: Unique codes for category access via `sharesApi.createCategoryShare()`
+- **Share UI in Category Manager**: Share button per category → modal with share URL, copy button, and member list
+- **Public Share Links**: URLs with embedded share codes (e.g., `?share=CODE`)
+- **Member Management**: View members with access, remove individual members
 - **Permission Model**: Read-only access to shared content
 
-### Share Workflow
+### Join Shared Category Flow
 
-1. **Create Share**: Generate unique share code
-2. **Send Invitation**: Share URL with other users
-3. **Accept Share**: Recipients join through login
-4. **Access Content**: Shared categories appear in recipient's interface
+1. **Enter share code/URL** in Profile view input field
+2. **Verify**: `sharesApi.verifyShareCode(code)` returns category preview (name, owner, link count)
+3. **Preview modal**: Shows category details with "Join" / "Cancel" buttons
+4. **Confirm join**: `sharesApi.acceptShare(code)` adds user as member
+5. **Category appears** in user's "Shared with me" section
+
+### Pending Share Code (Login Integration)
+
+1. User visits app with `?share=CODE` in URL
+2. `LoginView` extracts `share` query param → stores to `sessionStorage('pending_share_code')`
+3. User logs in via magic link or Google OAuth
+4. `app.js` store's `checkPendingShare()` reads from sessionStorage → triggers verify/join flow
+5. Share code is cleared from sessionStorage after processing
 
 ### Share Management
 
-- **View Members**: See all users with access
-- **Remove Members**: Revoke individual access
-- **Delete Share**: Remove sharing entirely
-- **Leave Shared**: Users can leave shared categories
+- **View Members**: See all users with access in CategoryManager share modal
+- **Remove Members**: Revoke individual access (`sharesApi.removeMember(categoryId, memberId)`)
+- **Delete Share**: Remove sharing entirely (`sharesApi.removeSharing(categoryId)`) with confirmation
+- **Leave Shared**: Users can leave categories shared with them
 
 ### Share Code Features
 
-- **URL Detection**: Auto-extract codes from full URLs
-- **Verification**: Preview category before joining
-- **Login Integration**: Handle share codes during authentication
+- **URL Detection**: `extractShareCode()` regex auto-extracts codes from full URLs
+- **Verification**: Preview category metadata before joining
+- **Error Handling**: Invalid/expired code shows error message
 
 ## Import/Export Features
 
 ### Export Functionality
 
-- **JSON Format**: Complete data export
+- **JSON Format**: Complete data export via `ImportExportModal`
 - **Includes**: Links, categories, tags with relationships
-- **User Data**: Full user dataset export
 - **Filename**: Timestamped export files
 
 ### Import Functionality
@@ -244,23 +351,17 @@ This document provides a comprehensive overview of all features, functionality, 
 - **JSON Upload**: Import from exported data
 - **Validation**: Comprehensive data validation
 - **Duplicate Handling**: Smart duplicate detection
-- **Progress Tracking**: Real-time import progress
-- **Preview Mode**: Review changes before applying
-
-### Bulk Operations
-
-- **Data Validation**: URL validation, required fields
-- **Relationship Mapping**: Maintain category/tag relationships
-- **Error Handling**: Report and skip invalid entries
+- **Progress Tracking**: Real-time import progress overlay (Teleport)
+- **Default Color**: Imported categories without color get `#687061`
 - **Statistics**: Show import results summary
 
 ### Supported Data
 
 ```json
 {
-  "links": [...],      // Link objects with metadata
-  "categories": [...], // Category definitions
-  "tags": [...]        // Tag definitions
+  "links": [...],
+  "categories": [...],
+  "tags": [...]
 }
 ```
 
@@ -269,23 +370,26 @@ This document provides a comprehensive overview of all features, functionality, 
 ### Theme System
 
 - **Light Theme**: Default bright appearance
-- **Dark Theme**: Dark mode with custom color scheme
-- **Auto-detection**: Respect system preferences
-- **Persistence**: Remember user choice in localStorage
+- **Dark Theme**: Dark mode with Tailwind `dark:` variant classes
+- **Auto-detection**: Respects system preferences via `@vueuse/core` `useDark()`
+- **Persistence**: Stored in localStorage under `hiddenshelf_theme` key
+- **Toggle**: `useTheme()` composable provides `isDark` ref and `toggleTheme()` function
+- **Dashboard toggle**: Theme section in Dashboard view with sun/moon icon button and mode label
 
-### Brand Customization
+### Brand Color System
 
-- **Primary Color**: Customizable brand color
-- **Color Generation**: Auto-generate color variants
-- **CSS Variables**: Dynamic color application
+- **Custom brand color**: Stored in user settings via `settingsApi`
+- **Color Generation**: `applyBrandColor(hex)` in app store generates 11 CSS custom properties (`--brand-50` through `--brand-950`)
+- **Algorithm**: Clamp-based shade generation with offsets: +80, +60, +40, +25, +10, 0, -15, -30, -50, -65, -85
 - **Reset Option**: Return to default colors
+- **Live Preview**: Color changes apply immediately via CSS custom properties
 
-### Visual Customization
+### Visual Design
 
-- **Icons**: Material Design Icons throughout
-- **Typography**: Consistent font sizing and weights
-- **Spacing**: Tailwind CSS spacing system
-- **Animations**: Smooth transitions and hover effects
+- **Icons**: MDI (Material Design Icons) throughout — `<i class="mdi mdi-*">`
+- **Typography**: Tailwind default font stack
+- **Animations**: Smooth transitions (category collapse, danger zone expand/collapse via `<transition>`)
+- **Modals**: All use Teleport to body with backdrop overlay
 
 ## Database Schema
 
@@ -293,92 +397,47 @@ This document provides a comprehensive overview of all features, functionality, 
 
 #### Users
 
-- `id` - Primary key
-- `email` - Unique email address
-- `created_at` - Registration timestamp
+- `id`, `email` (unique), `created_at`
 
 #### Links
 
-- `id` - Primary key
-- `user_id` - Owner reference
-- `hash` - Public identifier
-- `url` - Target URL
-- `title` - Display title
-- `description` - Optional description
-- `icon` - Icon identifier
-- `display_order` - Custom ordering
-- `is_public` - Public visibility flag
-- `direct_redirect` - Skip preview flag
-- `category_id` - Category assignment
-- `metadata` - JSON flexible data
-- `created_at` / `updated_at` - Timestamps
+- `id`, `user_id`, `hash` (public identifier), `url`, `title`, `description`, `icon`, `display_order`, `is_public`, `direct_redirect`, `category_id`, `metadata` (JSON), `created_at`, `updated_at`
 
 #### Categories
 
-- `id` - Primary key
-- `user_id` - Owner reference
-- `name` - Category name
-- `icon` - Icon identifier
-- `color` - Color code
-- `direct_redirect_default` - Default redirect setting
-- `created_at` - Creation timestamp
+- `id`, `user_id`, `name`, `icon`, `color`, `direct_redirect_default`, `created_at`
 
 #### Tags
 
-- `id` - Primary key
-- `user_id` - Owner reference
-- `name` - Tag name
-- `created_at` - Creation timestamp
+- `id`, `user_id`, `name`, `created_at`
 
 #### Link_Tags (Many-to-Many)
 
-- `link_id` - Link reference
-- `tag_id` - Tag reference
+- `link_id`, `tag_id`
 
 #### Category_Shares
 
-- `id` - Primary key
-- `category_id` - Shared category
-- `share_code` - Unique share identifier
-- `created_by` - Share creator
-- `expires_at` - Optional expiration
-- `created_at` - Creation timestamp
+- `id`, `category_id`, `share_code`, `created_by`, `expires_at`, `created_at`
 
 #### Category_Share_Members
 
-- `id` - Primary key
-- `category_id` - Shared category
-- `user_id` - Member user
-- `accepted_at` - Join timestamp
+- `id`, `category_id`, `user_id`, `accepted_at`
 
 #### Link_Visits
 
-- `id` - Primary key
-- `link_id` - Visited link
-- `visited_at` - Visit timestamp
-- `ip_masked` - Privacy-masked IP
-- `user_agent` - Browser information
-- `browser` / `os` - Parsed user agent
-- `referer` - Referring URL
+- `id`, `link_id`, `visited_at`, `ip_masked`, `user_agent`, `browser`, `os`, `referer`
 
 #### Magic_Tokens
 
-- `id` - Primary key
-- `email` - Target email
-- `token` - One-time token
-- `expires_at` - Token expiration
-- `used` - Usage flag
-- `created_at` - Creation timestamp
+- `id`, `email`, `token`, `expires_at`, `used`, `created_at`
 
 #### User_Settings
 
-- `id` - Primary key
-- `user_id` - User reference
-- `settings` - JSON settings object
+- `id`, `user_id`, `settings` (JSON)
 
 ### Migration System
 
-- Sequential SQL migration files in [`db/migrations/`](db/migrations/)
+- Sequential SQL files in `db/migrations/` (001 through 005)
 - Automatic execution on first access
 - Version tracking in `_meta` table
 
@@ -386,64 +445,65 @@ This document provides a comprehensive overview of all features, functionality, 
 
 ### Authentication (`/api/auth.php`)
 
-- `POST ?action=login` - Send magic link
-- `GET ?action=verify&token=X` - Verify and login
-- `GET ?action=me` - Current user info
-- `POST ?action=logout` - Logout user
+- `POST ?action=login` — Send magic link
+- `GET ?action=verify&token=X` — Verify and login
+- `GET ?action=me` — Current user info
+- `POST ?action=logout` — Logout
 
 ### Links (`/api/links.php`)
 
-- `GET` - List user's links (with pagination)
-- `POST` - Create new link
-- `GET ?id=X` - Get specific link
-- `PUT ?id=X` - Update link
-- `DELETE ?id=X` - Delete link
-- `GET ?hash=X` - Get public link by hash
-- `GET ?search=X` - Search links
+- `GET` — List links (pagination, search, category filter, `include_shared`)
+- `POST` — Create link
+- `GET ?id=X` — Get specific link
+- `PUT ?id=X` — Update link
+- `DELETE ?id=X` — Delete link
+- `GET ?hash=X` — Get public link by hash
 
 ### Categories (`/api/categories.php`)
 
-- `GET` - List user's categories
-- `POST` - Create category
-- `PUT ?id=X` - Update category
-- `DELETE ?id=X` - Delete category
+- `GET` — List categories
+- `POST` — Create category
+- `PUT ?id=X` — Update category
+- `DELETE ?id=X` — Delete category
 
 ### Tags (`/api/tags.php`)
 
-- `GET` - List user's tags
-- `POST` - Create tag
-- `DELETE ?id=X` - Delete tag
+- `GET` — List tags
+- `POST` — Create tag
+- `DELETE ?id=X` — Delete tag
 
 ### Category Shares (`/api/category_shares.php`)
 
-- `GET ?category_id=X` - Get share info
-- `POST` - Create share or accept invitation
-- `DELETE ?category_id=X` - Remove sharing
-- `DELETE ?category_id=X&member_id=Y` - Remove member
-- `GET ?code=X` - Verify share code
-- `GET` - List shared categories
+- `GET ?category_id=X` — Get share info
+- `POST` — Create share or accept invitation
+- `DELETE ?category_id=X` — Remove sharing
+- `DELETE ?category_id=X&member_id=Y` — Remove member
+- `GET ?code=X` — Verify share code (returns preview)
+- `GET` — List shared categories
 
 ### Link Visits (`/api/link_visits.php`)
 
-- `POST` - Log link visit
-- `GET ?link_id=X` - Get visit statistics
+- `POST` — Log link visit
+- `GET ?link_id=X` — Get visit statistics
 
 ### User Settings (`/api/user_settings.php`)
 
-- `GET` - Get user settings
-- `PUT` - Update user settings
+- `GET` — Get user settings
+- `PUT` — Update user settings
 
 ### Configuration (`/api/config.php`)
 
-- `GET` - Get public app configuration
+- `GET` — Get public app config (version, etc.)
 
 ## Public Link Viewing
 
-### View Interface ([`public/view.html`](public/view.html))
+### View Interface (`public/view.html` — Alpine.js, not yet migrated)
 
 - **Link Preview**: Display link metadata before redirect
-- **Direct Redirect**: Optional immediate redirect
-- **Visit Logging**: Track access for analytics
+- **Direct Redirect**: Optional immediate redirect (800ms delay)
+- **Cancellable Redirect**: Overlay shows "stay on page" link to cancel redirect timer
+- **`?stay` URL Parameter**: Adding `&stay` prevents direct redirect, always shows preview
+- **Visit Logging**: Track access via `api/link_visits.php`
 - **Error Handling**: Invalid/private link messages
 - **Mobile Optimized**: Responsive design
 
@@ -451,117 +511,123 @@ This document provides a comprehensive overview of all features, functionality, 
 
 - **Short URLs**: `/h/{hash}` format via `.htaccess`
 - **Full URLs**: `/public/view.html?hash={hash}`
-- **Stay Parameter**: `/public/view.html?hash={hash}&stay` (prevents direct redirect)
-- **Hash Validation**: Verify hash exists and is public
-
-### Redirect Logic
-
-- **Direct Redirect**: Immediate redirect if enabled (800ms delay for user to react)
-- **Preview Page**: Show metadata with redirect button
-- **Analytics**: Log visit before redirect
-- **Cancellable Redirect**: Redirect overlay shows a discrete "stay on page" link that cancels the timer and shows the full link details page instead
-- **`?stay` URL Parameter**: Adding `&stay` to any public link URL (e.g., `?hash=abc123&stay`) prevents direct redirect entirely, always showing the preview page regardless of the link's `direct_redirect` setting
-- **Redirect Overlay UI**: Shows spinning indicator, "Redirecting..." text, target URL in a monospace badge, and the "stay on page" cancel link
+- **Stay Parameter**: `/public/view.html?hash={hash}&stay`
 
 ## Security Features
 
 ### Data Protection
 
 - **SQL Injection Prevention**: Prepared statements throughout
-- **XSS Protection**: Output escaping and Content Security Policy
+- **XSS Protection**: Output escaping
 - **CSRF Protection**: Token validation on state-changing operations
 - **Session Security**: Secure session configuration
 
 ### Privacy Features
 
 - **IP Masking**: Partial masking for visit logs
-- **Email Security**: Secure token generation
-- **Data Isolation**: User scoped data access
+- **Email Security**: Cryptographically secure token generation
+- **Data Isolation**: User-scoped data access
 - **Private by Default**: Links private unless explicitly made public
 
 ### Authentication Security
 
-- **One-time Tokens**: Magic links expire after single use
-- **Time-limited**: 15-minute token expiration
-- **Secure Generation**: Cryptographically secure token generation
-- **Session Hijacking Protection**: Session validation
+- **One-time Tokens**: Magic links expire after single use (15 minutes)
+- **Secure Generation**: `random_bytes()`-based token generation
+- **Session Timeout**: 30-day session lifetime
 
 ## Configuration
 
-### Environment Settings ([`config.php`](config.php))
+### Environment Settings (`config.php`)
 
-- **Database**: SQLite file path
-- **Site Settings**: URL, name, and branding
-- **Email Configuration**: SMTP settings for magic links
-- **Security Settings**: Session and token configuration
-- **Feature Flags**: Debug mode, signup enabled
-- **Pagination**: Default items per page
+- Database SQLite file path
+- Site URL, name, branding
+- Email/SMTP settings for magic links
+- Session and token configuration
+- Debug mode, signup toggle
+- Default pagination
 
-### User Settings
+### User Settings (stored in DB)
 
 - **Links Per Page**: Configurable pagination (10-100)
-- **Brand Color**: Custom theme color
-- **Stored in Database**: User-specific preferences
+- **Brand Color**: Custom theme color hex
 
-### Development Configuration
+### Docker Configuration
 
-- **Debug Mode**: Detailed error reporting
-- **Docker Support**: Complete containerization
-- **CSS Building**: Tailwind CSS compilation
-- **Hot Reload**: Development file watching
+- **`make dev`**: Start backend + Vue HMR dev server
+- **`make build-frontend`**: Production build
+- **`make test-frontend`**: Run tests in container
+- **HMR**: `CHOKIDAR_USEPOLLING=true` for Docker file watching
+- **Profiles**: dev, build, test in `docker-compose.yml`
+
+### Environment Variables
+
+- `VITE_API_PROXY_TARGET` — API proxy target (default: `http://localhost:8000`)
+- `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` — Google OAuth
+- See `docker-compose.yml` for full list
+
+## Testing
+
+### Framework
+
+- **Vitest 1.6** with `globals: true` (no imports needed for `describe`, `expect`, etc.)
+- **@vue/test-utils** for mounting Vue components
+- **jsdom** environment for DOM simulation
+- **Setup file**: `src/test/setup.js` — `vi.restoreAllMocks()` in `afterEach`
+
+### Test Files & Coverage
+
+| File                                            | Tests | Covers                                                                                                      |
+| ----------------------------------------------- | ----- | ----------------------------------------------------------------------------------------------------------- |
+| `stores/toast.test.js`                          | 7     | Toast push/remove, auto-dismiss timing, unique IDs, duration/createdAt                                      |
+| `stores/auth.test.js`                           | 3     | Auth store login/logout/session                                                                             |
+| `lib/httpClient.test.js`                        | 2     | HTTP client request/error handling                                                                          |
+| `components/feedback/ToastList.test.js`         | 7     | Rendering, CSS classes per type, progress bar animation, click dismiss                                      |
+| `components/links/LinkCardEdit.test.js`         | 9     | Public/private emoji (🔓/🔒), copy URL, delete, tag pills, description fallback                             |
+| `components/categories/CategoryManager.test.js` | 8     | Category list, link counts, create/delete, shared-with-me section, leave buttons                            |
+| `views/DashboardView.test.js`                   | 8     | Welcome message, stats, quick actions, navigation, theme toggle                                             |
+| `views/ViewLinksView.test.js`                   | 9     | X of Y counter, category headers, collapse/expand, empty state, Load More, shared owner badge               |
+| `views/EditLinksView.test.js`                   | 10    | Search (debounced 300ms), category filter (immediate), pagination, empty state, link cards                  |
+| `views/ProfileView.test.js`                     | 12    | Email, app version, share code verify/preview, URL extraction, danger zone, delete modal, shared categories |
+| `views/LoginView.test.js`                       | 5     | Share code sessionStorage persistence, auth redirect, email input                                           |
+
+**Total: 80 tests across 11 files**
+
+### Testing Patterns
+
+- **Store tests**: `createPinia()` + `setActivePinia()` per test
+- **Component tests**: `mount()` with `global: { plugins: [pinia], stubs: { Teleport: true } }`
+- **API mocking**: `vi.mock("@/services/api/xxxApi")` at module level
+- **Child component stubs**: Stub heavy children with simple templates to isolate tests
+- **Timer testing**: `vi.useFakeTimers()` + `vi.advanceTimersByTime()` for debounce/auto-dismiss
+- **Router mocking**: `vi.mock("vue-router")` with controlled `useRoute()`/`useRouter()` returns
 
 ## UI/UX Features
 
 ### Interaction Patterns
 
-- **Long Press**: Mobile context menu for links
-- **Drag and Drop**: Category scrolling and reordering
-- **Keyboard Navigation**: Accessible interaction
-- **Toast Notifications**: Success/error feedback (including copy URL confirmation)
-- **Modal System**: Overlay interfaces for forms, with Teleport to body
-- **Delete Confirmations**: All destructive actions use styled confirmation modals (never `window.confirm`)
-- **Icon Auto-Prefix**: `LinkFormModal` auto-prepends `mdi-` when user omits it (e.g., "wifi" → "mdi-wifi") with preview
+- **Long Press**: Mobile context menu for link cards
+- **Keyboard Navigation**: Accessible interactions
+- **Toast Notifications**: Success/error/info feedback with progress bar and auto-dismiss (3500ms)
+- **Modal System**: Teleported overlays for forms and confirmations
+- **Delete Confirmations**: All destructive actions use styled confirmation modals (never `window.confirm()`)
+- **Icon Auto-Prefix**: `LinkFormModal` auto-prepends `mdi-` when user omits it with live preview
+- **Danger Zone Animation**: Smooth `<transition>` expand/collapse
 
 ### Responsive Design
 
-- **Mobile First**: Touch-friendly interface
-- **Tablet Optimized**: Medium screen layouts
-- **Desktop Enhanced**: Full feature access
-- **Progressive Enhancement**: Works without JavaScript
+- Mobile-first with Tailwind breakpoints
+- Touch-friendly interface (long-press context menus)
+- Full desktop feature access
 
-### Accessibility
+### State Management (Pinia)
 
-- **Screen Reader Support**: Semantic HTML and ARIA labels
-- **Keyboard Navigation**: Full keyboard accessibility
-- **High Contrast**: WCAG compliant color ratios
-- **Focus Indicators**: Clear focus states
+- **`app.js` store**: Links, categories, tags, pagination, search/filter state, `loadLinks()`, `loadMore()`, `bootstrap()`, `checkPendingShare()`, `applyBrandColor()`, `loadAppConfig()`
+- **`auth.js` store**: User session, `isAuthenticated`, login/logout
+- **`toast.js` store**: Toast items array, `push()`, `remove()`, auto-dismiss with `setTimeout(3500ms)`, each item has `{ id, type, message, duration, createdAt }`
 
-### Performance Optimizations
+### API Service Layer
 
-- **Lazy Loading**: Pagination for large datasets
-- **Efficient Queries**: Optimized database operations
-- **Minimal Dependencies**: Lightweight frontend stack
-- **Caching**: Appropriate HTTP caching headers
-
-## Data Flow Patterns
-
-### State Management
-
-- **Alpine.js Reactivity**: Component-based state
-- **Local Storage**: Theme and preference persistence
-- **Session Storage**: Temporary navigation state
-- **Database Sync**: Real-time data updates
-
-### API Communication
-
-- **RESTful Design**: Standard HTTP methods
-- **JSON Communication**: Structured data exchange
-- **Error Handling**: Consistent error responses
-- **Loading States**: User feedback during operations
-
-### File Organization
-
-- **Single Page Apps**: Main interface in [`public/index.html`](public/index.html)
-- **Separated Concerns**: Login, view, and main app
-- **Shared Styles**: Single Tailwind CSS build
-- **Component Logic**: Inline Alpine.js components
+- One file per resource: `authApi.js`, `linksApi.js`, `categoriesApi.js`, `tagsApi.js`, `sharesApi.js`, `settingsApi.js`, `configApi.js`
+- All use shared `httpClient.js` (fetch wrapper with error handling)
+- Export named object with methods (not default export)
+- Return data directly; errors are thrown

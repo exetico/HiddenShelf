@@ -122,7 +122,7 @@ async function validateImport() {
           validated.categories.push({
             name: cat.name,
             icon: cat.icon || "",
-            color: cat.color || "#6d7665",
+            color: cat.color || "#687061",
           });
         }
       }

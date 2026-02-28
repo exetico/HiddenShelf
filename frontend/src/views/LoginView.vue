@@ -16,6 +16,12 @@ const sent = ref(false);
 const rememberedEmail = ref(null);
 
 onMounted(() => {
+  // Check for share code in URL — store before auth check
+  const shareParam = route.query.share;
+  if (shareParam) {
+    sessionStorage.setItem("hiddenshelf_pending_share", shareParam);
+  }
+
   // Check if already authenticated
   if (authStore.isAuthenticated) {
     const returnTo = sessionStorage.getItem("hiddenshelf_return_to") || "/";

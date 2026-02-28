@@ -4,6 +4,7 @@ import { categoriesApi } from "@/services/api/categoriesApi";
 import { tagsApi } from "@/services/api/tagsApi";
 import { sharesApi } from "@/services/api/sharesApi";
 import { settingsApi } from "@/services/api/settingsApi";
+import { configApi } from "@/services/api/configApi";
 import { useToastStore } from "@/stores/toast";
 
 export const useAppStore = defineStore("app", {
@@ -16,6 +17,10 @@ export const useAppStore = defineStore("app", {
     settings: {
       links_per_page: 20,
       brand_color: "#687061",
+    },
+    appConfig: {
+      app_version: "",
+      site_name: "Hidden Shelf",
     },
     page: 1,
     total: 0,
@@ -45,8 +50,10 @@ export const useAppStore = defineStore("app", {
         this.loadCategories(),
         this.loadTags(),
         this.loadSharedCategories(),
+        this.loadAppConfig(),
       ]);
       await this.loadLinks({ reset: true });
+      await this.checkPendingShare();
     },
     async withLoading(fn) {
       this.loading = true;
@@ -202,6 +209,24 @@ export const useAppStore = defineStore("app", {
       ]);
       const toastStore = useToastStore();
       toastStore.success("Left shared category");
+    },
+    async loadAppConfig() {
+      try {
+        this.appConfig = await configApi.get();
+      } catch {
+        // Non-critical — keep defaults
+      }
+    },
+    async checkPendingShare() {
+      const pendingCode = sessionStorage.getItem("hiddenshelf_pending_share");
+      if (!pendingCode) return;
+      sessionStorage.removeItem("hiddenshelf_pending_share");
+      try {
+        await this.acceptShare(pendingCode);
+      } catch {
+        const toastStore = useToastStore();
+        toastStore.error("Failed to join shared category");
+      }
     },
   },
 });

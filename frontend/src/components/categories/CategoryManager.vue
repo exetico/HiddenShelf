@@ -3,6 +3,7 @@ import { ref, reactive } from "vue";
 import BaseModal from "@/components/common/BaseModal.vue";
 import { sharesApi } from "@/services/api/sharesApi";
 import { useToastStore } from "@/stores/toast";
+import { useAppStore } from "@/stores/app";
 
 const props = defineProps({
   open: Boolean,
@@ -15,6 +16,7 @@ const props = defineProps({
 const emit = defineEmits(["close", "create", "update", "remove"]);
 
 const toastStore = useToastStore();
+const appStore = useAppStore();
 
 const name = ref("");
 const icon = ref("mdi-folder");
@@ -126,6 +128,32 @@ function getShareUrl() {
 async function copyShareUrl() {
   await navigator.clipboard.writeText(getShareUrl());
   toastStore.success("Share URL copied");
+}
+
+const showRemoveSharingConfirm = ref(false);
+
+async function removeMember(memberId) {
+  if (!shareCategory.value) return;
+  try {
+    await sharesApi.removeMember(shareCategory.value.id, memberId);
+    shareMembers.value = shareMembers.value.filter((m) => m.id !== memberId);
+    toastStore.success("Member removed");
+  } catch (e) {
+    toastStore.error(e.message || "Failed to remove member");
+  }
+}
+
+async function removeSharing() {
+  if (!shareCategory.value) return;
+  try {
+    await sharesApi.removeSharing(shareCategory.value.id);
+    shareData.value = null;
+    shareMembers.value = [];
+    showRemoveSharingConfirm.value = false;
+    toastStore.success("Sharing removed");
+  } catch (e) {
+    toastStore.error(e.message || "Failed to remove sharing");
+  }
 }
 </script>
 
@@ -279,6 +307,43 @@ async function copyShareUrl() {
         </li>
       </ul>
     </div>
+
+    <!-- Shared with me -->
+    <div
+      v-if="appStore.sharedCategories.length"
+      class="pt-4 border-t border-gray-200 dark:border-brand-800"
+    >
+      <h3 class="text-sm font-semibold text-gray-700 dark:text-brand-300 mb-2">
+        Shared with me
+      </h3>
+      <ul class="space-y-2">
+        <li
+          v-for="category in appStore.sharedCategories"
+          :key="category.id"
+          class="border border-gray-200 dark:border-brand-800 rounded-md p-3 flex items-center justify-between"
+        >
+          <div class="flex items-center gap-2 min-w-0">
+            <i
+              :class="category.icon || 'mdi-folder'"
+              class="mdi text-lg"
+              :style="`color: ${category.color || '#6B7280'}`"
+            ></i>
+            <div class="min-w-0">
+              <p class="font-medium truncate">{{ category.name }}</p>
+              <p class="text-xs text-gray-500 dark:text-brand-400">
+                Shared by {{ category.owner_email }}
+              </p>
+            </div>
+          </div>
+          <button
+            class="text-red-600 dark:text-red-400 text-sm hover:text-red-800"
+            @click="appStore.leaveSharedCategory(category.id)"
+          >
+            Leave
+          </button>
+        </li>
+      </ul>
+    </div>
   </BaseModal>
 
   <!-- Share Modal -->
@@ -330,12 +395,50 @@ async function copyShareUrl() {
               <li
                 v-for="member in shareMembers"
                 :key="member.id"
-                class="text-sm text-gray-600 dark:text-brand-400 flex items-center gap-2"
+                class="text-sm text-gray-600 dark:text-brand-400 flex items-center justify-between"
               >
-                <i class="mdi mdi-account text-brand-500"></i>
-                {{ member.email }}
+                <span class="flex items-center gap-2">
+                  <i class="mdi mdi-account text-brand-500"></i>
+                  {{ member.email }}
+                </span>
+                <button
+                  class="text-red-500 hover:text-red-700 text-xs"
+                  title="Remove member"
+                  @click="removeMember(member.id)"
+                >
+                  <i class="mdi mdi-close"></i>
+                </button>
               </li>
             </ul>
+          </div>
+
+          <!-- Remove sharing -->
+          <div v-if="!showRemoveSharingConfirm" class="mb-2">
+            <button
+              class="w-full px-4 py-2 rounded-md border border-red-400 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950 text-sm"
+              @click="showRemoveSharingConfirm = true"
+            >
+              Remove Sharing
+            </button>
+          </div>
+          <div v-else class="mb-2 space-y-2">
+            <p class="text-sm text-red-600 dark:text-red-400">
+              This will revoke access for all members. Are you sure?
+            </p>
+            <div class="flex gap-2">
+              <button
+                class="px-4 py-2 rounded-md bg-red-600 text-white hover:bg-red-700 text-sm"
+                @click="removeSharing"
+              >
+                Yes, remove sharing
+              </button>
+              <button
+                class="px-4 py-2 rounded-md border border-gray-300 dark:border-brand-700 text-sm"
+                @click="showRemoveSharingConfirm = false"
+              >
+                Cancel
+              </button>
+            </div>
           </div>
         </div>
 
