@@ -24,22 +24,25 @@ This document provides a comprehensive overview of all features, functionality, 
 
 ### Tech Stack
 
-- **Backend**: PHP 8.x with PDO for database operations
+- **Backend**: Node.js + Hono 4.x with better-sqlite3
 - **Database**: SQLite with migration system
 - **Frontend**: Vue 3 (Composition API + `<script setup>`), Vite 5, Pinia, Vue Router (hash-based)
 - **Styling**: Tailwind CSS 3.4
 - **Icons**: MDI (Material Design Icons) via `@mdi/font` CDN — `<i class="mdi mdi-*">` syntax
 - **Authentication**: Magic link email authentication (passwordless) + Google OAuth
-- **Session Management**: PHP sessions with configurable lifetime
-- **Testing**: Vitest 1.6 + @vue/test-utils + jsdom
+- **Session Management**: Cookie-based sessions with in-memory store
+- **Testing**: Vitest 1.6 + @vue/test-utils + jsdom (frontend), Vitest (backend)
 
 ### File Structure
 
 ```
-├── api/                        # Backend API endpoints
+├── backend/                    # Hono.js backend
+│   ├── src/routes/             # API route modules
+│   ├── src/lib/                # Database, helpers, mailer
+│   ├── src/middleware/          # Session, auth guards
+│   └── tests/                  # Backend tests
 ├── db/migrations/              # SQLite migration SQL files
-├── lib/                        # Core PHP utilities (Auth, Database, Mailer)
-├── public/                     # Legacy Alpine.js files + view.html (public link viewer)
+├── public/                     # Static files + view.html (public link viewer)
 ├── frontend/                   # Vue 3 application
 │   ├── src/
 │   │   ├── components/         # Vue components by feature
@@ -58,8 +61,7 @@ This document provides a comprehensive overview of all features, functionality, 
 │   │   └── views/              # Route views (Login, Dashboard, View, Edit, Profile)
 │   ├── vite.config.js
 │   └── vitest.config.js
-├── config.php                  # PHP configuration
-├── tailwind.config.js          # Tailwind configuration
+├── tailwind.config.js          # Tailwind configuration (for view.html)
 └── docker-compose.yml          # Docker dev/build/test profiles
 ```
 
@@ -67,9 +69,9 @@ This document provides a comprehensive overview of all features, functionality, 
 
 - **Backend Abstraction Layer** — All API calls go through `frontend/src/services/api/` modules. No hardcoded endpoints in components.
 - **Component-Based Architecture** — Components organized by feature domain with reusable common components.
-- **Hash-Based Routing** — Uses `#/` routes (e.g. `#/dashboard`, `#/edit`) to avoid conflicts with PHP server routing.
+- **Hash-Based Routing** — Uses `#/` routes (e.g. `#/dashboard`, `#/edit`) to avoid conflicts with server routing.
 - **Teleport Pattern for Modals** — All modals/overlays use `<Teleport to="body">` to escape parent layout styles.
-- **Docker-First Development** — `make dev` for HMR, `make build-frontend` for production, `make test-frontend` for tests.
+- **Docker-First Development** — `make dev` for HMR, `make build-frontend` for production, `make test` for all tests.
 
 ## Authentication System
 
@@ -78,7 +80,7 @@ This document provides a comprehensive overview of all features, functionality, 
 - **Email-based login**: No passwords required
 - **One-time tokens**: 15-minute expiry for security
 - **Session persistence**: 30-day session lifetime
-- **Google OAuth integration**: Alternative login method via `api/auth/google.php` + `api/auth/google-callback.php`
+- **Google OAuth integration**: Alternative login method via `backend/src/routes/auth.js` (Google OAuth endpoints)
 - **Return URL support**: Redirect users after login
 
 ### Login Flow Features
@@ -93,8 +95,8 @@ This document provides a comprehensive overview of all features, functionality, 
 
 - **View**: `LoginView.vue` — extracts `share` query param, stores to sessionStorage, shows email/magic-link form + Google OAuth button
 - **Store**: `auth.js` — manages `user`, `isAuthenticated`, calls `authApi.login()` / `authApi.me()`
-- **API**: `authApi.js` → `api/auth.php`
-- **Backend**: `lib/Auth.php` — token generation, session management
+- **API**: `authApi.js` → `/api/auth/*`
+- **Backend**: `backend/src/routes/auth.js` — token generation, session management
 
 ## User Interface Components
 
@@ -241,7 +243,7 @@ This document provides a comprehensive overview of all features, functionality, 
 - **Unique Hash Generation**: Each link gets a unique identifier
 - **Preview Page**: Default landing page with metadata (`public/view.html`)
 - **Direct Redirect**: Optional immediate redirect with "stay on page" cancel
-- **Visit Tracking**: Analytics via `api/link_visits.php`
+- **Visit Tracking**: Analytics via `/api/link_visits`
 - **Share URL Format**: `/h/{hash}` short URLs, `/public/view.html?hash={hash}` full URLs
 
 ## Category System
@@ -437,20 +439,22 @@ This document provides a comprehensive overview of all features, functionality, 
 
 ### Migration System
 
-- Sequential SQL files in `db/migrations/` (001 through 005)
+- Sequential SQL files in `db/migrations/` (001 through 006)
 - Automatic execution on first access
 - Version tracking in `_meta` table
 
 ## API Endpoints
 
-### Authentication (`/api/auth.php`)
+### Authentication (`/api/auth/*`)
 
-- `POST ?action=login` — Send magic link
-- `GET ?action=verify&token=X` — Verify and login
-- `GET ?action=me` — Current user info
-- `POST ?action=logout` — Logout
+- `POST /api/auth/login` — Send magic link
+- `GET /api/auth/verify?token=X` — Verify and login
+- `GET /api/auth/me` — Current user info
+- `POST /api/auth/logout` — Logout
+- `GET /api/auth/google` — Initiate Google OAuth
+- `GET /api/auth/google/callback` — Google OAuth callback
 
-### Links (`/api/links.php`)
+### Links (`/api/links`)
 
 - `GET` — List links (pagination, search, category filter, `include_shared`)
 - `POST` — Create link
@@ -459,20 +463,20 @@ This document provides a comprehensive overview of all features, functionality, 
 - `DELETE ?id=X` — Delete link
 - `GET ?hash=X` — Get public link by hash
 
-### Categories (`/api/categories.php`)
+### Categories (`/api/categories`)
 
-- `GET` — List categories
+- `GET` — List categories (with link_count, is_shared, member_count)
 - `POST` — Create category
 - `PUT ?id=X` — Update category
 - `DELETE ?id=X` — Delete category
 
-### Tags (`/api/tags.php`)
+### Tags (`/api/tags`)
 
-- `GET` — List tags
+- `GET` — List tags (with usage_count)
 - `POST` — Create tag
 - `DELETE ?id=X` — Delete tag
 
-### Category Shares (`/api/category_shares.php`)
+### Category Shares (`/api/category_shares`)
 
 - `GET ?category_id=X` — Get share info
 - `POST` — Create share or accept invitation
@@ -481,19 +485,20 @@ This document provides a comprehensive overview of all features, functionality, 
 - `GET ?code=X` — Verify share code (returns preview)
 - `GET` — List shared categories
 
-### Link Visits (`/api/link_visits.php`)
+### Link Visits (`/api/link_visits`)
 
-- `POST` — Log link visit
+- `POST` — Log link visit (public, no auth)
 - `GET ?link_id=X` — Get visit statistics
+- `GET` — Get visit summary for all links
 
-### User Settings (`/api/user_settings.php`)
+### User Settings (`/api/user_settings`)
 
 - `GET` — Get user settings
-- `PUT` — Update user settings
+- `PUT` — Update user settings (links_per_page, brand_color)
 
-### Configuration (`/api/config.php`)
+### Configuration (`/api/config`)
 
-- `GET` — Get public app config (version, etc.)
+- `GET` — Get public app config (version, site name, features)
 
 ## Public Link Viewing
 
@@ -503,13 +508,13 @@ This document provides a comprehensive overview of all features, functionality, 
 - **Direct Redirect**: Optional immediate redirect (800ms delay)
 - **Cancellable Redirect**: Overlay shows "stay on page" link to cancel redirect timer
 - **`?stay` URL Parameter**: Adding `&stay` prevents direct redirect, always shows preview
-- **Visit Logging**: Track access via `api/link_visits.php`
+- **Visit Logging**: Track access via `/api/link_visits`
 - **Error Handling**: Invalid/private link messages
 - **Mobile Optimized**: Responsive design
 
 ### URL Routing
 
-- **Short URLs**: `/h/{hash}` format via `.htaccess`
+- **Short URLs**: `/h/{hash}` format via Hono route handler
 - **Full URLs**: `/public/view.html?hash={hash}`
 - **Stay Parameter**: `/public/view.html?hash={hash}&stay`
 
@@ -532,19 +537,20 @@ This document provides a comprehensive overview of all features, functionality, 
 ### Authentication Security
 
 - **One-time Tokens**: Magic links expire after single use (15 minutes)
-- **Secure Generation**: `random_bytes()`-based token generation
+- **Secure Generation**: `crypto.randomBytes()`-based token generation
 - **Session Timeout**: 30-day session lifetime
 
 ## Configuration
 
-### Environment Settings (`config.php`)
+### Environment Variables
 
-- Database SQLite file path
-- Site URL, name, branding
-- Email/SMTP settings for magic links
-- Session and token configuration
-- Debug mode, signup toggle
-- Default pagination
+- All configuration via environment variables (see `backend/src/config.js`)
+- Database SQLite file path (`DB_PATH`)
+- Site URL, name, branding (`SITE_URL`, `SITE_NAME`)
+- Email/SMTP settings for magic links (`SMTP_HOST`, `SMTP_PORT`, etc.)
+- Session secret and lifetime (`SESSION_SECRET`, `SESSION_LIFETIME`)
+- Debug mode, signup toggle (`DEBUG_MODE`, `SIGNUP_ENABLED`)
+- Google OAuth credentials (`GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`)
 
 ### User Settings (stored in DB)
 
@@ -561,7 +567,7 @@ This document provides a comprehensive overview of all features, functionality, 
 
 ### Environment Variables
 
-- `VITE_API_PROXY_TARGET` — API proxy target (default: `http://localhost:8000`)
+- `VITE_API_PROXY_TARGET` — API proxy target (default: `http://localhost:3000`)
 - `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` — Google OAuth
 - See `docker-compose.yml` for full list
 

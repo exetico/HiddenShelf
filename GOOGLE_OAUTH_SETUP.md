@@ -16,8 +16,8 @@
    - Click "Create Credentials" > "OAuth client ID"
    - Choose "Web application"
    - Add authorized redirect URIs:
-     - `http://localhost:8000/api/auth/google-callback.php` (for local development)
-     - `https://yourdomain.com/api/auth/google-callback.php` (for production)
+     - `http://localhost:3000/api/auth/google/callback` (for local development)
+     - `https://yourdomain.com/api/auth/google/callback` (for production)
    - Copy the Client ID and Client Secret
 
 ## 2. Configure Environment Variables
@@ -27,7 +27,7 @@ Create a `.env` file in the project root (copy from `.env.example`):
 ```bash
 GOOGLE_CLIENT_ID=your_client_id_here.apps.googleusercontent.com
 GOOGLE_CLIENT_SECRET=your_client_secret_here
-GOOGLE_REDIRECT_URI=http://localhost:8000/api/auth/google-callback.php
+GOOGLE_REDIRECT_URI=http://localhost:3000/api/auth/google/callback
 ```
 
 ## 3. Install Dependencies
@@ -45,7 +45,7 @@ This will:
 
 ## 4. Test the Integration
 
-1. Visit `http://localhost:8000/login.html`
+1. Visit `http://localhost:3000`
 2. Click "Sign in with Google"
 3. Authorize the application
 4. You should be redirected back and logged in

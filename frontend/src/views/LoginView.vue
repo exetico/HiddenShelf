@@ -101,8 +101,8 @@ async function loginWithGoogle() {
 
     // In dev mode, send redirect_origin so OAuth callback can redirect back to dev server
     const url = import.meta.env.DEV
-      ? `/api/auth/google.php?redirect_origin=${encodeURIComponent(window.location.origin)}`
-      : "/api/auth/google.php";
+      ? `/api/auth/google?redirect_origin=${encodeURIComponent(window.location.origin)}`
+      : "/api/auth/google";
 
     const response = await fetch(url);
     const data = await response.json();

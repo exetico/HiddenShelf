@@ -10,7 +10,7 @@ make dev                    # Backend + Vue dev server (HMR)
 # or
 make up && make build-frontend  # Backend + production build
 
-# Access at http://localhost:8000
+# Access at http://localhost:3000
 # Dev server at http://localhost:5173 (when using make dev)
 ```
 
@@ -27,13 +27,13 @@ make up && make build-frontend  # Backend + production build
 - 📱 Responsive, mobile-first design
 - 💾 SQLite database (zero configuration)
 - 📤 Import/Export your data (JSON)
-- ✅ Tested with Vitest + Testing Library
+- ✅ Tested with Vitest + Testing Library (frontend + backend)
 
 ## Tech Stack
 
-- **Backend:** PHP 8.x + PDO
+- **Backend:** Node.js + Hono + better-sqlite3
 - **Database:** SQLite 3
-- **Frontend:** Vue 3 + Vite + Tailwind CSS (migrated from Alpine.js)
+- **Frontend:** Vue 3 + Vite + Tailwind CSS
 - **State Management:** Pinia
 - **Routing:** Vue Router (hash-based)
 - **Testing:** Vitest + Testing Library
@@ -43,20 +43,29 @@ make up && make build-frontend  # Backend + production build
 
 ```
 Hidden Shelf/
-├── api/                    # API endpoints (PHP)
-│   ├── auth.php           # Authentication (login, verify)
-│   ├── links.php          # CRUD operations for links
-│   ├── categories.php     # Categories management
-│   ├── tags.php           # Tags management
-│   ├── category_shares.php# Sharing functionality
-│   ├── user_settings.php  # User preferences
-│   └── auth/              # OAuth handlers
-│       ├── google.php     # Google OAuth initiation
-│       └── google-callback.php
-├── db/                    # Database
-│   ├── database.sqlite    # SQLite database file
-│   └── migrations/        # Schema migrations
-├── frontend/              # Vue 3 application (NEW)
+├── backend/                # Hono.js backend
+│   ├── src/
+│   │   ├── index.js       # Server entry point
+│   │   ├── config.js      # Configuration (env vars)
+│   │   ├── lib/
+│   │   │   ├── database.js# SQLite wrapper + migrations
+│   │   │   ├── helpers.js # Utility functions
+│   │   │   └── mailer.js  # Email sending (nodemailer)
+│   │   ├── middleware/
+│   │   │   ├── auth.js    # requireAuth / optionalAuth
+│   │   │   └── session.js # Cookie-based sessions
+│   │   └── routes/
+│   │       ├── auth.js    # Login, verify, logout, me, Google OAuth
+│   │       ├── links.js   # CRUD for links
+│   │       ├── categories.js # Categories management
+│   │       ├── tags.js    # Tags management
+│   │       ├── shares.js  # Category sharing
+│   │       ├── settings.js# User preferences
+│   │       ├── linkVisits.js # Visit tracking
+│   │       └── config.js  # Public app config
+│   ├── tests/             # Backend tests (Vitest)
+│   └── package.json
+├── frontend/              # Vue 3 application
 │   ├── src/
 │   │   ├── main.js        # App entry point
 │   │   ├── App.vue        # Root component
@@ -75,33 +84,27 @@ Hidden Shelf/
 │   │   │   ├── common/    # Modals, buttons
 │   │   │   └── feedback/  # Toasts, alerts
 │   │   ├── views/         # Route views
-│   │   │   ├── LoginView.vue
-│   │   │   ├── DashboardView.vue
-│   │   │   ├── ViewLinksView.vue
-│   │   │   ├── EditLinksView.vue
-│   │   │   └── ProfileView.vue
-│   │   ├── composables/   # Reusable logic (e.g., useTheme)
-│   │   └── test/          # Test utilities
+│   │   └── composables/   # Reusable logic (e.g., useTheme)
 │   ├── index.html         # Vite entry point
-│   ├── package.json       # Node dependencies
-│   ├── vite.config.js     # Vite configuration
+│   ├── package.json
+│   ├── vite.config.js     # Vite + dev proxy config
 │   └── vitest.config.js   # Test configuration
-├── public/                # Static files (served by PHP)
+├── db/                    # Database
+│   ├── database.sqlite    # SQLite database file
+│   └── migrations/        # Schema migrations (SQL)
+├── public/                # Static files
 │   ├── app/               # Built Vue app (output)
-│   ├── login.html         # Legacy Alpine.js login (deprecated)
-│   ├── index.html         # Legacy Alpine.js app (deprecated)
-│   └── view.html          # Public link viewer (still used)
-├── lib/                   # Core PHP utilities
-│   ├── Database.php       # Database wrapper + migrations
-│   ├── Auth.php           # Authentication logic
-│   ├── Mailer.php         # Email sending
-│   └── helpers.php        # Utility functions
-├── config.php             # Configuration
-├── .htaccess              # URL rewriting + redirects
+│   └── view.html          # Public link viewer
 ├── docker-compose.yml     # Docker services
-├── Dockerfile             # PHP + Node container
+├── Dockerfile             # Node.js container
 └── Makefile               # Convenience commands
 ```
+
+├── docker-compose.yml # Docker services
+├── Dockerfile # PHP + Node container
+└── Makefile # Convenience commands
+
+````
 
 ## Database Schema
 
@@ -152,33 +155,67 @@ Hidden Shelf/
 
 ### Authentication
 
-- `POST /api/auth.php?action=login` - Send magic link
-- `GET /api/auth.php?action=verify&token=xxx` - Verify token and login
-- `POST /api/auth.php?action=logout` - Logout
+- `POST /api/auth/login` - Send magic link
+- `GET /api/auth/verify?token=xxx` - Verify token and login
+- `POST /api/auth/logout` - Logout
+- `GET /api/auth/me` - Get current user
+- `GET /api/auth/google` - Initiate Google OAuth
+- `GET /api/auth/google/callback` - Google OAuth callback
 
 ### Links
 
-- `GET /api/links.php` - List user's links
-- `POST /api/links.php` - Create new link
-- `GET /api/links.php?id=123` - Get single link
-- `PUT /api/links.php?id=123` - Update link
-- `DELETE /api/links.php?id=123` - Delete link
-- `GET /api/links.php?hash=abc123` - Get public link by hash
+- `GET /api/links` - List user's links (with search, pagination, category filter)
+- `POST /api/links` - Create new link
+- `GET /api/links?id=123` - Get single link
+- `PUT /api/links?id=123` - Update link
+- `DELETE /api/links?id=123` - Delete link
+- `GET /api/links?hash=abc123` - Get public link by hash (no auth)
+
+### Categories
+
+- `GET /api/categories` - List categories (with link_count, is_shared, member_count)
+- `POST /api/categories` - Create category
+- `PUT /api/categories?id=123` - Update category
+- `DELETE /api/categories?id=123` - Delete category
 
 ### Tags
 
-- `GET /api/tags.php` - List all tags
-- `POST /api/tags.php` - Create tag
+- `GET /api/tags` - List tags (with usage_count)
+- `POST /api/tags` - Create tag
+- `DELETE /api/tags?id=123` - Delete tag
+
+### Category Sharing
+
+- `GET /api/category_shares?code=xxx` - Verify share code (public)
+- `GET /api/category_shares?category_id=123` - Get share info and members
+- `GET /api/category_shares` - List categories shared with me
+- `POST /api/category_shares` - Create share code or accept share
+- `DELETE /api/category_shares?category_id=123` - Remove sharing or leave
+
+### User Settings
+
+- `GET /api/user_settings` - Get user settings
+- `PUT /api/user_settings` - Update settings (links_per_page, brand_color)
+
+### Link Visits
+
+- `POST /api/link_visits` - Log visit (public, no auth)
+- `GET /api/link_visits?link_id=123` - Get link stats
+- `GET /api/link_visits` - Get visit summary for all links
+
+### Config
+
+- `GET /api/config` - Public app config (version, site name, features)
 
 ## Installation
 
 ### Option 1: Docker (Recommended)
 
-1. **Core app (PHP + Apache)**
+1. **Start the app**
 
    ```bash
    docker compose up -d --build web
-   ```
+````
 
 2. **Choose frontend workflow**
    - **Vue dev server (HMR, proxied API):**
@@ -195,21 +232,21 @@ Hidden Shelf/
      docker compose --profile build run --rm frontend-build
      ```
 
-     Then open built app from PHP server: http://localhost:8000/public/app/index.html
+     Then open the built app: http://localhost:3000
 
-   - **Run frontend test suite in Docker:**
+   - **Run tests in Docker:**
 
      ```bash
      docker compose --profile test run --rm frontend-test
+     docker compose --profile test run --rm backend-test
      ```
 
 3. **Access the app**
 
    After starting services, access the app at:
-   - **Root:** http://localhost:8000/ (auto-redirects to Vue app)
-   - **Vue App:** http://localhost:8000/public/app/index.html
+   - **Root:** http://localhost:3000/ (auto-redirects to Vue app)
+   - **Vue App:** http://localhost:3000/public/app/index.html
    - **Vue Dev Server (HMR):** http://localhost:5173 (when using `make dev`)
-   - **Debug Page:** http://localhost:8000/public/debug.php (verify PHP setup)
 
    **Routes in the Vue app:**
    - `#/login` - Login page (magic link or Google OAuth)
@@ -219,12 +256,12 @@ Hidden Shelf/
    - `#/profile` - User settings and preferences
 
    **Important notes:**
-   - Database migrations run automatically on first load
-   - Magic links are logged to Docker logs in dev mode:
+   - Database migrations run automatically on first start
+   - Magic links are logged to console in debug mode:
      ```bash
      docker compose logs -f web
      ```
-   - The app uses hash-based routing (`#/route`) to avoid PHP conflicts
+   - The app uses hash-based routing (`#/route`) to avoid server-side routing conflicts
 
 4. **Useful lifecycle commands**
 
@@ -235,8 +272,6 @@ Hidden Shelf/
    ```
 
 #### Quick Commands (Using Makefile)
-
-For convenience, use these shortcuts instead of full `docker compose` commands:
 
 **Development:**
 
@@ -250,13 +285,15 @@ make dev             # Start backend + Vue dev server (port 5173)
 ```bash
 make up              # Start backend only
 make build-frontend  # Build Vue app → public/app/
-                     # Access at http://localhost:8000
+                     # Access at http://localhost:3000
 ```
 
 **Testing:**
 
 ```bash
-make test-frontend   # Run all Vue tests in Docker
+make test-frontend   # Run frontend tests in Docker
+make test-backend    # Run backend tests in Docker
+make test            # Run all tests
 ```
 
 **Maintenance:**
@@ -265,31 +302,9 @@ make test-frontend   # Run all Vue tests in Docker
 make logs            # Follow backend logs (see magic links here)
 make down            # Stop all services
 make clean           # Stop and remove volumes (fresh start)
-make install         # Install frontend deps locally (for IDE autocomplete)
+make install         # Install all deps locally (for IDE autocomplete)
 make help            # Show all available commands
 ```
-
-**Typical Workflows:**
-
-1. **Daily Development:**
-
-   ```bash
-   make dev           # Start everything, edit Vue files, see changes instantly
-   ```
-
-2. **Build for Production:**
-
-   ```bash
-   make build-frontend
-   make up
-   # Access at http://localhost:8000
-   ```
-
-3. **Test Changes:**
-   ```bash
-   make test-frontend  # Run tests
-   make build-frontend # Build if tests pass
-   ```
 
 ### Option 2: Manual Installation
 
@@ -300,148 +315,98 @@ make help            # Show all available commands
    cd Hidden Shelf
    ```
 
-2. **Configure the app**
-   - Copy `config.example.php` to `config.php`
-   - Update email settings (SMTP)
-   - Set your app URL
-
-3. **Install dependencies and build CSS**
+2. **Install dependencies**
 
    Requires Node.js v20 or higher:
 
    ```bash
-   npm install
-   npm run build:css
+   cd backend && npm install
+   cd ../frontend && npm install && npm run build
    ```
+
+3. **Configure environment**
+
+   Set environment variables (or accept defaults):
+
+   ```bash
+   export SITE_URL=https://yoursite.com
+   export SMTP_HOST=smtp.example.com
+   export SMTP_PORT=587
+   export SMTP_USER=your@email.com
+   export SMTP_PASS=password
+   export SMTP_ENCRYPTION=tls
+   export FROM_EMAIL=noreply@yoursite.com
+   ```
+
+   Or create a `.env` file — see `.env.example` for all options.
 
 4. **Set permissions**
 
    ```bash
    chmod 755 db/
-   chmod 644 db/database.sqlite
    ```
 
-5. **Point your web server to the project root**
-   - Apache: Enable mod_rewrite
-   - The `.htaccess` handles routing
+5. **Start the server**
 
-6. **Access the app**
-   - Navigate to your domain
-   - Database migrations run automatically on first load
+   ```bash
+   node backend/src/index.js
+   ```
+
+   The app runs on port 3000 by default. Database migrations run automatically on first start.
 
 ## Configuration
 
-Edit `config.php`:
+All configuration is via environment variables:
 
-```php
-define('DB_PATH', __DIR__ . '/db/database.sqlite');
-define('SITE_URL', 'https://yoursite.com');
+| Variable               | Default                               | Description                             |
+| ---------------------- | ------------------------------------- | --------------------------------------- |
+| `PORT`                 | `3000`                                | Server port                             |
+| `DB_PATH`              | `./db/database.sqlite`                | SQLite database path                    |
+| `SITE_URL`             | `http://localhost:3000`               | Public URL of the app                   |
+| `BASE_PATH`            | ``                                    | Subpath for deployment (e.g., `/links`) |
+| `SITE_NAME`            | `Hidden Shelf`                        | App display name                        |
+| `SMTP_HOST`            | `mail.smtpbucket.com`                 | SMTP server                             |
+| `SMTP_PORT`            | `8025`                                | SMTP port                               |
+| `SMTP_USER`            | ``                                    | SMTP username                           |
+| `SMTP_PASS`            | ``                                    | SMTP password                           |
+| `SMTP_ENCRYPTION`      | ``                                    | `tls` or `ssl` or empty                 |
+| `FROM_EMAIL`           | `noreply@example.com`                 | Sender email                            |
+| `FROM_NAME`            | `Hidden Shelf`                        | Sender name                             |
+| `DEBUG_MODE`           | `false`                               | Show detailed errors                    |
+| `SIGNUP_ENABLED`       | `true`                                | Allow new user registration             |
+| `SESSION_SECRET`       | `change-me-in-production`             | Session signing key                     |
+| `GOOGLE_CLIENT_ID`     | ``                                    | Google OAuth client ID                  |
+| `GOOGLE_CLIENT_SECRET` | ``                                    | Google OAuth client secret              |
+| `GOOGLE_REDIRECT_URI`  | `{SITE_URL}/api/auth/google/callback` | OAuth redirect                          |
 
-// Email settings
-define('SMTP_HOST', 'smtp.example.com');
-define('SMTP_PORT', 587);
-define('SMTP_USER', 'your@email.com');
-define('SMTP_PASS', 'password');
-define('SMTP_ENCRYPTION', 'tls');
-define('FROM_EMAIL', 'noreply@yoursite.com');
-define('FROM_NAME', 'Hidden Shelf');
-```
+**Testing Email:**
 
-Testing Email: `UeNLqiPscLZ9ivgW@fP2LYAFme95rJ73p.com`
-
-Use a test SMTP server like [this](https://www.smtpbucket.com/emails?recipient=UeNLqiPscLZ9ivgW@fP2LYAFme95rJ73p.com) if you need it. But remember to remove user, pass and encryption.
-
-Like:
-
-```php
-define('SMTP_HOST', 'mail.smtpbucket.com');
-define('SMTP_PORT', 8025); // Normally 587
-// define('SMTP_USER', 'your@email.com');
-// define('SMTP_PASS', 'your-password');
-define('SMTP_ENCRYPTION', '');
-```
+Use a test SMTP server like [smtpbucket.com](https://www.smtpbucket.com/) — the default config points to it. Leave `SMTP_USER`, `SMTP_PASS`, and `SMTP_ENCRYPTION` empty.
 
 ### Deployment Configuration
 
 #### Custom Domain
 
-Update `SITE_URL` in `config.php` to match your production domain:
+Set `SITE_URL` to your production domain:
 
-```php
-define('SITE_URL', 'https://links.example.com');
+```bash
+export SITE_URL=https://links.example.com
 ```
 
 #### Subpath Deployment
 
-If deploying under a subpath (e.g., `example.com/links/`), configure these values:
-
-**1. Backend (`config.php`):**
-
-```php
-define('BASE_PATH', '/links');  // Match your subpath
-```
-
-**2. Frontend (`.htaccess`):**
-
-Uncomment and set the `RewriteBase` directive:
-
-```apache
-RewriteBase /links/
-```
-
-**3. Frontend Build:**
-
-Set environment variable before building:
+If deploying under a subpath (e.g., `example.com/links/`):
 
 ```bash
+export BASE_PATH=/links
+export SITE_URL=https://example.com
 export VITE_BASE_PATH=/links
 make build-frontend
 ```
 
-**Or in Docker (`.env` file):**
-
-```env
-VITE_BASE_PATH=/links
-```
-
-Then rebuild:
-
-```bash
-docker compose --profile build run --rm frontend-build
-```
-
-**4. Update Google OAuth Redirect URI:**
-
-If using Google OAuth, update the redirect URI to include the subpath:
-
-```
-https://example.com/links/api/auth/google-callback.php
-```
-
-**Complete Example for `example.com/myshelves/`:**
-
-```php
-// config.php
-define('SITE_URL', 'https://example.com');
-define('BASE_PATH', '/myshelves');
-```
-
-```apache
-# .htaccess
-RewriteBase /myshelves/
-```
-
-```bash
-# Build command
-VITE_BASE_PATH=/myshelves make build-frontend
-```
-
-**Important Notes:**
-
 - `BASE_PATH` should NOT have a trailing slash
 - `BASE_PATH` should start with `/`
-- Both frontend and backend BASE_PATH must match
-- Keep `BASE_PATH` empty (`''`) for root deployments
+- Keep `BASE_PATH` empty for root deployments
 
 ## How It Works
 
@@ -470,11 +435,36 @@ VITE_BASE_PATH=/myshelves make build-frontend
 
 ## Development
 
+### Backend Development (Hono.js)
+
+The Hono.js backend is in the `backend/` directory.
+
+**Local Development:**
+
+```bash
+cd backend
+npm install
+npm run dev        # Start with --watch (auto-restart on changes)
+npm run test       # Run backend tests
+npm run test:watch # Run tests in watch mode
+```
+
+**Architecture:**
+
+- `src/index.js` — Entry point, mounts routes and middleware
+- `src/config.js` — All configuration from environment variables
+- `src/lib/database.js` — SQLite wrapper (better-sqlite3) with migration runner
+- `src/lib/helpers.js` — Utility functions
+- `src/lib/mailer.js` — Email sending (nodemailer)
+- `src/middleware/session.js` — Cookie-based session management
+- `src/middleware/auth.js` — Authentication guards
+- `src/routes/*.js` — Route modules (one per resource)
+
 ### Frontend Development (Vue 3)
 
-The new Vue 3 frontend is located in the `frontend/` directory.
+The Vue 3 frontend is in the `frontend/` directory.
 
-**Local Development (without Docker):**
+**Local Development:**
 
 ```bash
 cd frontend
@@ -490,30 +480,19 @@ npm run test:ui    # Run tests with UI
 ```bash
 make dev           # Start backend + Vue HMR server
 make build-frontend# Build Vue app for production
-make test-frontend # Run tests in Docker
+make test          # Run all tests
 ```
 
 **Hot Module Replacement (HMR):**
-When running `make dev`, Vite provides instant hot module replacement:
-
-- Vue component changes reload without losing state
-- CSS updates apply immediately
-- Fast feedback loop for development
-
-**File watching in Docker:**
-The Docker setup includes `CHOKIDAR_USEPOLLING=true` to ensure file changes are detected inside containers.
+When running `make dev`, Vite provides instant hot module replacement.
+The Docker setup includes `CHOKIDAR_USEPOLLING=true` for file watching in containers.
 
 ### Architecture Overview
 
 **Backend Abstraction Layer:**
-All API calls go through service modules in `frontend/src/services/api/`:
-
-- Makes it easy to swap PHP backend later
-- Consistent error handling
-- No hardcoded API URLs scattered in components
+All API calls go through service modules in `frontend/src/services/api/` — no hardcoded API URLs in components.
 
 **Component-Based Design:**
-Components are organized by feature:
 
 - `components/links/` - Link cards, forms, display
 - `components/categories/` - Category management
@@ -531,7 +510,7 @@ Hash-based routing (`#/dashboard`, `#/edit`, etc.) to avoid server-side routing 
 
 ### Testing
 
-Tests use Vitest + Vue Testing Library:
+**Frontend tests** (Vitest + Vue Testing Library):
 
 ```bash
 cd frontend
@@ -540,86 +519,40 @@ npm run test:ui           # Interactive test UI
 npm run test:coverage     # Coverage report
 ```
 
-**Test files:**
+**Backend tests** (Vitest):
 
-- `*.test.js` files alongside source code
-- Test stores, components, and utilities
-- Mock API calls and router
+```bash
+cd backend
+npm run test              # Run all tests
+npm run test:watch        # Watch mode
+```
+
+**All tests in Docker:**
+
+```bash
+make test                 # Frontend + backend tests
+```
 
 ### Legacy Code
 
-The old Alpine.js frontend files are deprecated but still present:
-
-- `public/index.html` - Old main app (redirects to Vue app)
-- `public/login.html` - Old login (kept for reference)
-- `public/view.html` - Still used for public link viewing
-
-### Technical Stack
-
-**Backend:**
-
-- Vanilla PHP with no framework dependencies
-- Session-based auth
-- PDO for database
-- Composer for OAuth dependencies
-
-**Frontend:**
-
-- Vue 3 with Composition API
-- Vite for build tooling
-- Pinia for state management
-- Vue Router for navigation
-- Tailwind CSS for styling
-- Vitest + Testing Library for tests
+- `public/view.html` — Public link viewer (Alpine.js, still in use)
 
 ## Security Features
 
-- CSRF protection on all POST/PUT/DELETE requests
 - SQL injection prevention (prepared statements)
 - One-time magic tokens (expire after 15 minutes)
-- Session hijacking protection
-- XSS prevention (output escaping)
+- Session-based authentication with secure cookies
+- XSS prevention (output sanitization)
 - OAuth state verification (CSRF protection for OAuth)
-
-## Migration from Alpine.js to Vue 3
-
-The project was migrated from Alpine.js to Vue 3 for better maintainability and testing capabilities.
-
-**What Changed:**
-
-- Frontend framework: Alpine.js → Vue 3 + Vite
-- State management: Inline Alpine data → Pinia stores
-- Routing: Query params → Hash-based Vue Router
-- Testing: None → Vitest + Testing Library
-- Component structure: Single HTML file → Modular Vue components
-- API calls: Inline fetch → Service layer abstraction
-
-**What Stayed the Same:**
-
-- Backend API endpoints (100% compatible)
-- Database schema (no changes)
-- Authentication flow
-- All features preserved
-
-**Legacy Files:**
-
-- `public/index.html` - Old Alpine.js app (deprecated, redirects to Vue app)
-- `public/login.html` - Old login page (deprecated, kept for reference)
-- `public/view.html` - Public link viewer (still in use, not migrated)
-
-**New File Structure:**
-
-- `frontend/` - Complete Vue 3 application
-- `public/app/` - Built Vue app (served by PHP)
 
 ## Troubleshooting
 
 ### Magic Links Not Working
 
-- Check Docker logs: `make logs`
-- Magic links appear in logs during dev mode
-- Verify SMTP configuration in `config.php`
-- Test SMTP with the provided test server setup
+- Check console/Docker logs: `make logs`
+- Magic links are logged in debug mode
+- Verify SMTP environment variables
+- Test with default smtpbucket.com config (no auth needed)
 
 ### HMR Not Working in Docker
 
@@ -632,30 +565,21 @@ The project was migrated from Alpine.js to Vue 3 for better maintainability and 
 ```bash
 # Clean and rebuild
 make clean
-docker compose down -v
 make dev
 ```
 
 ### Google OAuth Not Working
 
 - Verify `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` in `.env` or `docker-compose.yml`
-- Check redirect URI matches: `http://localhost:8000/api/auth/google-callback.php`
+- Check redirect URI matches: `http://localhost:3000/api/auth/google/callback`
 - See `GOOGLE_OAUTH_SETUP.md` for configuration instructions
 
 ### Tests Failing
 
 ```bash
-cd frontend
-npm run test       # See detailed errors
-npm run test:ui    # Interactive debugging
+cd frontend && npm run test     # Frontend test details
+cd backend && npm run test      # Backend test details
 ```
-
-### Old App Showing Instead of Vue App
-
-- Clear browser cache
-- Check `.htaccess` redirects
-- Rebuild: `make build-frontend`
-- Verify files exist in `public/app/`
 
 ## License
 

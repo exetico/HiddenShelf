@@ -1,51 +1,35 @@
-FROM php:8.2-apache
+FROM node:20-alpine
 
-# Enable Apache modules
-RUN a2enmod rewrite headers
-
-# Install Node.js, SQLite extension and other dependencies
-RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && \
-    apt-get update && apt-get install -y \
-    nodejs \
-    sqlite3 \
-    libsqlite3-dev \
-    git \
-    unzip \
-    && docker-php-ext-install pdo pdo_sqlite \
-    && rm -rf /var/lib/apt/lists/*
-
-# Install Composer
-COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
+# Install build tools needed for better-sqlite3 native module
+RUN apk add --no-cache python3 make g++ sqlite
 
 # Set working directory
-WORKDIR /var/www/html
+WORKDIR /app
 
-# Copy application files
-COPY . /var/www/html/
+# Copy package files first for better layer caching
+COPY backend/package.json backend/package-lock.json* ./backend/
+COPY frontend/package.json frontend/package-lock.json* ./frontend/
 
-# Install Node dependencies and build frontend assets
-RUN npm install && npm run build:css
-RUN cd frontend && npm install && npm run build
+# Install backend dependencies (includes native better-sqlite3)
+RUN cd backend && npm install --production
 
-# Install dependencies via Composer
-RUN composer install --no-dev --optimize-autoloader
+# Install frontend dependencies and build
+RUN cd frontend && npm ci
 
-# Create db directory and set permissions
-RUN mkdir -p /var/www/html/db && \
-    chown -R www-data:www-data /var/www/html/db && \
-    chmod 755 /var/www/html/db
+# Copy all application files
+COPY . .
 
-# Set proper permissions for Apache
-RUN chown -R www-data:www-data /var/www/html && \
-    chmod -R 755 /var/www/html
+# Build frontend
+RUN cd frontend && npm run build
 
-# Configure Apache document root
-ENV APACHE_DOCUMENT_ROOT /var/www/html
-RUN sed -ri -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/sites-available/*.conf
-RUN sed -ri -e 's!/var/www/!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/apache2.conf /etc/apache2/conf-available/*.conf
+# Create db directory with proper permissions
+RUN mkdir -p /app/db && chown -R node:node /app/db
 
-# Expose port 80
-EXPOSE 80
+# Set non-root user
+USER node
 
-# Start Apache
-CMD ["apache2-foreground"]
+# Expose port 3000
+EXPOSE 3000
+
+# Start the Hono server
+CMD ["node", "backend/src/index.js"]

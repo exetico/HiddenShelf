@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-Hidden Shelf is a link-saving and sharing application that has been **migrated from Alpine.js to Vue 3**. The backend remains PHP 8.x with SQLite, but the frontend is now a modern Vue 3 + Vite application.
+Hidden Shelf is a link-saving and sharing application. The backend is **Node.js + Hono** with SQLite (migrated from PHP), and the frontend is a Vue 3 + Vite application.
 
 ### Once you're prompted
 
@@ -10,19 +10,27 @@ You need to read the copilot-instructions, and if you introduce features, you mu
 
 ## Architecture
 
-### Backend (PHP)
+### Backend (Hono.js)
 
-- **Location:** `api/`, `lib/`
-- **Framework:** None (vanilla PHP)
-- **Database:** SQLite with PDO
-- **Authentication:** Session-based with magic links + Google OAuth
+- **Location:** `backend/src/`
+- **Framework:** Hono 4.x with @hono/node-server
+- **Database:** SQLite with better-sqlite3 (synchronous)
+- **Authentication:** Cookie-based sessions with magic links + Google OAuth
 - **Key Files:**
-  - `api/auth.php` - Authentication endpoints
-  - `api/links.php`, `api/categories.php`, `api/tags.php` - CRUD operations
-  - `api/category_shares.php` - Sharing functionality
-  - `api/link_visits.php` - Visit tracking for public links
-  - `api/user_settings.php` - User preferences (brand color, etc.)
-  - `lib/Auth.php`, `lib/Database.php` - Core utilities
+  - `backend/src/index.js` - Server entry point
+  - `backend/src/config.js` - Configuration from env vars
+  - `backend/src/routes/auth.js` - Authentication endpoints
+  - `backend/src/routes/links.js`, `categories.js`, `tags.js` - CRUD operations
+  - `backend/src/routes/shares.js` - Sharing functionality
+  - `backend/src/routes/linkVisits.js` - Visit tracking for public links
+  - `backend/src/routes/settings.js` - User preferences (brand color, etc.)
+  - `backend/src/routes/config.js` - Public app config
+  - `backend/src/lib/database.js` - SQLite wrapper + migration runner
+  - `backend/src/lib/helpers.js` - Utility functions
+  - `backend/src/lib/mailer.js` - Email sending (nodemailer)
+  - `backend/src/middleware/session.js` - Cookie session middleware
+  - `backend/src/middleware/auth.js` - Auth guards (requireAuth, optionalAuth)
+- **Testing:** `backend/tests/*.test.js` (Vitest)
 
 ### Frontend (Vue 3)
 
@@ -48,13 +56,13 @@ You need to read the copilot-instructions, and if you introduce features, you mu
    - View components for each route in `views/`
 
 3. **Hash-Based Routing**
-   - Uses `#/` routes to avoid conflicts with PHP server routing
-   - `.htaccess` redirects root and old URLs to `/public/app/index.html`
+   - Uses `#/` routes to avoid conflicts with server routing
+   - Hono serves the Vue app at `/public/app/index.html`
 
 4. **Docker-First Development**
    - `make dev` - Start backend + Vue HMR dev server
    - `make build-frontend` - Build production Vue app
-   - `make test-frontend` - Run tests in container
+   - `make test` - Run all tests (frontend + backend)
    - HMR works in Docker via `CHOKIDAR_USEPOLLING=true`
 
 5. **Teleport Pattern for Modals**
@@ -102,22 +110,21 @@ You need to read the copilot-instructions, and if you introduce features, you mu
 
 ### Migration Status
 
-- **Completed:** Core app, authentication, link management, categories, tags, profile, sharing, import/export, context menus, category filter bar, brand colors, danger zone, category sharing UI, tag pill input, icon auto-prefix, edit mode search/filter, category collapse/expand, X of Y counter, join share verify/preview flow, pending share code persistence, remove member/sharing, shared-with-me in CategoryManager, app version display, toast progress bar, dashboard theme toggle, public/private emoji on edit cards, Delete Everything styled modal, Danger Zone smooth animation
-- **Legacy Files:** `public/index.html`, `public/login.html` (old Alpine.js app - deprecated)
+- **Completed:** Core app, authentication, link management, categories, tags, profile, sharing, import/export, context menus, category filter bar, brand colors, danger zone, category sharing UI, tag pill input, icon auto-prefix, edit mode search/filter, category collapse/expand, X of Y counter, join share verify/preview flow, pending share code persistence, remove member/sharing, shared-with-me in CategoryManager, app version display, toast progress bar, dashboard theme toggle, public/private emoji on edit cards, Delete Everything styled modal, Danger Zone smooth animation, PHP→Hono backend migration
 - **Still Used:** `public/view.html` (public link viewer - Alpine.js, not migrated)
 
 ### URL Structure
 
 - **Vue App:** `/public/app/index.html` (built output)
 - **Dev Server:** `http://localhost:5173` (Vite HMR)
-- **PHP Server:** `http://localhost:8000` (serves built app + APIs)
+- **Backend Server:** `http://localhost:3000` (Hono, serves built app + APIs)
 - **Routes:** `#/dashboard`, `#/view`, `#/edit`, `#/profile`, `#/login`
 - **Public Links:** `/public/view.html?hash={hash}` or `/h/{hash}` (short URL)
 - **Public Links (no redirect):** Append `&stay` to prevent direct redirect (e.g., `?hash=abc&stay`)
 
 ### Environment Variables
 
-- `VITE_API_PROXY_TARGET` - API proxy target (default: `http://localhost:8000`)
+- `VITE_API_PROXY_TARGET` - API proxy target (default: `http://localhost:3000`)
 - `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` - Google OAuth credentials
 - See `docker-compose.yml` for full list
 
@@ -125,7 +132,7 @@ You need to read the copilot-instructions, and if you introduce features, you mu
 
 ### Adding a New Feature
 
-1. Create API endpoint in `api/` if needed
+1. Create API endpoint in `backend/src/routes/` if needed
 2. Add API service method in `frontend/src/services/api/`
 3. Create/update Pinia store if state is needed
 4. Build UI components in `frontend/src/components/`
@@ -143,12 +150,14 @@ You need to read the copilot-instructions, and if you introduce features, you mu
 
 - Update service module in `frontend/src/services/api/`
 - Update tests that mock those calls
-- Backend changes in `api/*.php`
+- Backend changes in `backend/src/routes/`
 
 ### Testing Changes
 
 - Run locally: `cd frontend && npm run test`
 - Run in Docker: `make test-frontend`
+- Backend tests: `cd backend && npm run test`
+- Run in Docker: `make test-backend`
 - Coverage report: `npm run test:coverage`
 
 ## Things to Remember
@@ -161,7 +170,7 @@ You need to read the copilot-instructions, and if you introduce features, you mu
 6. **Magic links in logs** - Check `docker compose logs -f web` for login links in dev
 7. **Google OAuth** - Callback redirects to `#/login?error=...` on failure
 8. **Document new features** - When introducing new logic or features, update this file, `features.instructions.md`, and `README.md` to keep documentation current
-9. **Dev vs Prod** - Magic link and OAuth redirects use `redirect_origin` in dev mode to handle port differences (5173 vs 8000)
+9. **Dev vs Prod** - Magic link and OAuth redirects use `redirect_origin` in dev mode to handle port differences (5173 vs 3000)
 10. **Modals must use Teleport** - Always wrap modal/overlay markup in `<Teleport to="body">` to avoid inheriting parent layout styles
 11. **MDI icons, not Material Symbols** - The project uses `@mdi/font` CDN, not Google Material Symbols
 12. **Delete confirmations use modals** - Never use `window.confirm()` — all destructive actions use a styled confirmation modal with Teleport
@@ -170,7 +179,7 @@ You need to read the copilot-instructions, and if you introduce features, you mu
 
 ## File Locations Quick Reference
 
-- **API Endpoints:** `api/*.php`
+- **API Endpoints:** `backend/src/routes/*.js`
 - **Vue Components:** `frontend/src/components/`
   - `layout/` — `AppShell.vue`, `TopNav.vue`
   - `links/` — `LinkCardView.vue`, `LinkCardEdit.vue`, `LinkFormModal.vue`
@@ -184,7 +193,8 @@ You need to read the copilot-instructions, and if you introduce features, you mu
 - **HTTP Client:** `frontend/src/lib/httpClient.js`
 - **Composables:** `frontend/src/composables/useTheme.js`
 - **Router:** `frontend/src/router/index.js`
-- **Tests:** `frontend/src/**/*.test.js`
+- **Frontend Tests:** `frontend/src/**/*.test.js`
+- **Backend Tests:** `backend/tests/*.test.js`
 - **Vite Config:** `frontend/vite.config.js`
 - **Vitest Config:** `frontend/vitest.config.js`
 - **Tailwind Config:** `tailwind.config.js` (project root)

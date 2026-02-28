@@ -2,11 +2,10 @@ import { request } from "@/lib/httpClient";
 
 export const authApi = {
   me: async () => {
-    const response = await request("/api/auth.php?action=me");
+    const response = await request("/api/auth/me");
     return response.user;
   },
-  logout: async () =>
-    request("/api/auth.php?action=logout", { method: "POST" }),
+  logout: async () => request("/api/auth/logout", { method: "POST" }),
   sendMagicLink: async (email) => {
     const body = { email };
 
@@ -16,11 +15,11 @@ export const authApi = {
       body.redirect_origin = window.location.origin;
     }
 
-    return request("/api/auth.php?action=login", {
+    return request("/api/auth/login", {
       method: "POST",
       body: JSON.stringify(body),
     });
   },
   verify: async (token) =>
-    request(`/api/auth.php?action=verify&token=${encodeURIComponent(token)}`),
+    request(`/api/auth/verify?token=${encodeURIComponent(token)}`),
 };

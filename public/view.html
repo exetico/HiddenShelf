@@ -191,7 +191,7 @@
           async loadLink(hash) {
             try {
               const response = await fetch(
-                `/api/links.php?hash=${encodeURIComponent(hash)}`,
+                `/api/links?hash=${encodeURIComponent(hash)}`,
               );
               const data = await response.json();
 
@@ -230,7 +230,7 @@
 
           async logVisit(hash) {
             try {
-              await fetch("/api/link_visits.php", {
+              await fetch("/api/link_visits", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ hash }),

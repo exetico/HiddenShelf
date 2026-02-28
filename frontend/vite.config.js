@@ -3,7 +3,7 @@ import vue from "@vitejs/plugin-vue";
 import { fileURLToPath, URL } from "node:url";
 
 const apiProxyTarget =
-  process.env.VITE_API_PROXY_TARGET || "http://localhost:8000";
+  process.env.VITE_API_PROXY_TARGET || "http://localhost:3000";
 const basePath = process.env.VITE_BASE_PATH || "/";
 
 export default defineConfig({
