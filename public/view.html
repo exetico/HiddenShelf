@@ -59,6 +59,14 @@
                 x-text="link?.url"
               ></span>
             </p>
+            <p class="mt-6">
+              <a
+                href="#"
+                @click.prevent="cancelRedirect()"
+                class="text-gray-400 hover:text-gray-600 text-xs transition"
+                >stay on page</a
+              >
+            </p>
           </div>
         </div>
 
@@ -149,11 +157,18 @@
           link: null,
           loading: true,
           redirecting: false,
+          redirectTimer: null,
+          stayOnPage: false,
           error: "",
 
           async init() {
             const params = new URLSearchParams(window.location.search);
             let hash = params.get("hash");
+
+            // A "stay" param prevents direct redirect
+            if (params.has("stay")) {
+              this.stayOnPage = true;
+            }
 
             // Also support /h/:hash URL format (used by short links)
             if (!hash) {
@@ -186,13 +201,17 @@
                 // Log the visit (fire and forget)
                 this.logVisit(hash);
 
-                // Check if direct redirect is enabled
-                if (this.link.direct_redirect === 1 && this.link.url) {
+                // Check if direct redirect is enabled (skip if ?stay param present)
+                if (
+                  this.link.direct_redirect === 1 &&
+                  this.link.url &&
+                  !this.stayOnPage
+                ) {
                   // Show redirecting state
                   this.loading = false;
                   this.redirecting = true;
                   // Delay so user sees the redirect message before navigating
-                  setTimeout(() => {
+                  this.redirectTimer = setTimeout(() => {
                     window.location.href = this.link.url;
                   }, 800);
                   return;
@@ -219,6 +238,15 @@
             } catch (e) {
               // Silently fail - visit logging is optional
             }
+          },
+
+          cancelRedirect() {
+            if (this.redirectTimer) {
+              clearTimeout(this.redirectTimer);
+              this.redirectTimer = null;
+            }
+            this.redirecting = false;
+            this.loading = false;
           },
 
           formatDate(dateString) {

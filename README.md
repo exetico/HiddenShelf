@@ -459,6 +459,9 @@ VITE_BASE_PATH=/myshelves make build-frontend
 - If marked public, anyone with the hash can view
 - Private links only visible to owner
 - Similar to YouTube unlisted videos
+- **Direct Redirect:** Links can be configured to redirect immediately to the target URL
+- **Redirect Overlay:** Shows a "Redirecting..." spinner with the target URL and a discrete "stay on page" link to cancel and view the full link details instead
+- **`?stay` Parameter:** Append `&stay` to any public link URL (e.g., `?hash=abc123&stay`) to prevent direct redirect and always show the link preview page
 
 ### Link Organization
 

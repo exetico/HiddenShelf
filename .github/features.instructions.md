@@ -450,13 +450,17 @@ This document provides a comprehensive overview of all features, functionality, 
 
 - **Short URLs**: `/h/{hash}` format via `.htaccess`
 - **Full URLs**: `/public/view.html?hash={hash}`
+- **Stay Parameter**: `/public/view.html?hash={hash}&stay` (prevents direct redirect)
 - **Hash Validation**: Verify hash exists and is public
 
 ### Redirect Logic
 
-- **Direct Redirect**: Immediate redirect if enabled
+- **Direct Redirect**: Immediate redirect if enabled (800ms delay for user to react)
 - **Preview Page**: Show metadata with redirect button
 - **Analytics**: Log visit before redirect
+- **Cancellable Redirect**: Redirect overlay shows a discrete "stay on page" link that cancels the timer and shows the full link details page instead
+- **`?stay` URL Parameter**: Adding `&stay` to any public link URL (e.g., `?hash=abc123&stay`) prevents direct redirect entirely, always showing the preview page regardless of the link's `direct_redirect` setting
+- **Redirect Overlay UI**: Shows spinning indicator, "Redirecting..." text, target URL in a monospace badge, and the "stay on page" cancel link
 
 ## Security Features
 

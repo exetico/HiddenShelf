@@ -16,6 +16,8 @@ Hidden Shelf is a link-saving and sharing application that has been **migrated f
   - `api/auth.php` - Authentication endpoints
   - `api/links.php`, `api/categories.php`, `api/tags.php` - CRUD operations
   - `api/category_shares.php` - Sharing functionality
+  - `api/link_visits.php` - Visit tracking for public links
+  - `api/user_settings.php` - User preferences (brand color, etc.)
   - `lib/Auth.php`, `lib/Database.php` - Core utilities
 
 ### Frontend (Vue 3)
@@ -26,6 +28,7 @@ Hidden Shelf is a link-saving and sharing application that has been **migrated f
 - **State Management:** Pinia
 - **Routing:** Vue Router (hash-based: `#/dashboard`, `#/edit`, etc.)
 - **Styling:** Tailwind CSS
+- **Icons:** MDI (Material Design Icons) via `@mdi/font` CDN (`<i class="mdi mdi-*">` syntax)
 - **Testing:** Vitest + Vue Testing Library
 
 ### Key Design Decisions
@@ -50,6 +53,16 @@ Hidden Shelf is a link-saving and sharing application that has been **migrated f
    - `make test-frontend` - Run tests in container
    - HMR works in Docker via `CHOKIDAR_USEPOLLING=true`
 
+5. **Teleport Pattern for Modals**
+   - All modals and overlays use `<Teleport to="body">` to escape parent layout styles
+   - Prevents inheriting Tailwind `space-y-*` margins from parent containers
+   - Applies to: `BaseModal`, `ContextMenu`, `ImportExportModal` progress overlay, `ProfileView` delete overlay
+
+6. **Brand Color System**
+   - Custom brand color stored in user settings
+   - `applyBrandColor(hex)` in `app.js` store generates 11 CSS custom properties (--brand-50 through --brand-950)
+   - Uses clamp-based shade algorithm with offsets: +80, +60, +40, +25, +10, 0, -15, -30, -50, -65, -85
+
 ## Code Style & Conventions
 
 ### Vue Components
@@ -62,7 +75,7 @@ Hidden Shelf is a link-saving and sharing application that has been **migrated f
 
 ### API Services
 
-- One file per resource (e.g., `authApi.js`, `linksApi.js`)
+- One file per resource (e.g., `authApi.js`, `linksApi.js`, `settingsApi.js`, `sharesApi.js`)
 - Export object with methods (not default export)
 - Use the shared `httpClient` for all requests
 - Return data directly (errors are thrown)
@@ -85,9 +98,9 @@ Hidden Shelf is a link-saving and sharing application that has been **migrated f
 
 ### Migration Status
 
-- **Completed:** Core app, authentication, link management, categories, tags, profile, sharing
+- **Completed:** Core app, authentication, link management, categories, tags, profile, sharing, import/export, context menus, category filter bar, brand colors, danger zone
 - **Legacy Files:** `public/index.html`, `public/login.html` (old Alpine.js app - deprecated)
-- **Still Used:** `public/view.html` (public link viewer - not migrated yet)
+- **Still Used:** `public/view.html` (public link viewer - Alpine.js, not migrated)
 
 ### URL Structure
 
@@ -95,6 +108,8 @@ Hidden Shelf is a link-saving and sharing application that has been **migrated f
 - **Dev Server:** `http://localhost:5173` (Vite HMR)
 - **PHP Server:** `http://localhost:8000` (serves built app + APIs)
 - **Routes:** `#/dashboard`, `#/view`, `#/edit`, `#/profile`, `#/login`
+- **Public Links:** `/public/view.html?hash={hash}` or `/h/{hash}` (short URL)
+- **Public Links (no redirect):** Append `&stay` to prevent direct redirect (e.g., `?hash=abc&stay`)
 
 ### Environment Variables
 
@@ -118,7 +133,7 @@ Hidden Shelf is a link-saving and sharing application that has been **migrated f
 - Components: `frontend/src/components/`
 - Views: `frontend/src/views/`
 - Styles: Use Tailwind utility classes
-- Icons: Material Symbols Outlined font
+- Icons: MDI font — use `<i class="mdi mdi-icon-name">` (browse at [pictogrammers.com](https://pictogrammers.com/library/mdi/))
 
 ### API Changes
 
@@ -141,22 +156,35 @@ Hidden Shelf is a link-saving and sharing application that has been **migrated f
 5. **Legacy files** - Don't edit `public/index.html` or `public/login.html` (use Vue app)
 6. **Magic links in logs** - Check `docker compose logs -f web` for login links in dev
 7. **Google OAuth** - Callback redirects to `#/login?error=...` on failure
-8. **Document new features** - When introducing new logic or features, update this file and README.md to keep documentation current
+8. **Document new features** - When introducing new logic or features, update this file, `features.instructions.md`, and `README.md` to keep documentation current
 9. **Dev vs Prod** - Magic link and OAuth redirects use `redirect_origin` in dev mode to handle port differences (5173 vs 8000)
+10. **Modals must use Teleport** - Always wrap modal/overlay markup in `<Teleport to="body">` to avoid inheriting parent layout styles
+11. **MDI icons, not Material Symbols** - The project uses `@mdi/font` CDN, not Google Material Symbols
 
 ## File Locations Quick Reference
 
 - **API Endpoints:** `api/*.php`
 - **Vue Components:** `frontend/src/components/`
-- **Vue Views:** `frontend/src/views/`
-- **Pinia Stores:** `frontend/src/stores/`
-- **API Services:** `frontend/src/services/api/`
+  - `layout/` — `AppShell.vue`, `TopNav.vue`
+  - `links/` — `LinkCardView.vue`, `LinkCardEdit.vue`, `LinkFormModal.vue`
+  - `categories/` — `CategoryManager.vue`, `CategoryFilterBar.vue`
+  - `tags/` — `TagManager.vue`
+  - `common/` — `BaseModal.vue`, `ContextMenu.vue`, `ImportExportModal.vue`
+  - `feedback/` — `ToastList.vue`
+- **Vue Views:** `frontend/src/views/` (`LoginView`, `DashboardView`, `ViewLinksView`, `EditLinksView`, `ProfileView`)
+- **Pinia Stores:** `frontend/src/stores/` (`app.js`, `auth.js`, `toast.js`)
+- **API Services:** `frontend/src/services/api/` (`authApi.js`, `linksApi.js`, `categoriesApi.js`, `tagsApi.js`, `sharesApi.js`, `settingsApi.js`)
+- **HTTP Client:** `frontend/src/lib/httpClient.js`
+- **Composables:** `frontend/src/composables/useTheme.js`
 - **Router:** `frontend/src/router/index.js`
 - **Tests:** `frontend/src/**/*.test.js`
-- **Config:** `vite.config.js`, `vitest.config.js`, `tailwind.config.js`
+- **Vite Config:** `frontend/vite.config.js`
+- **Vitest Config:** `frontend/vitest.config.js`
+- **Tailwind Config:** `tailwind.config.js` (project root)
+- **Public Link Viewer:** `public/view.html` (Alpine.js, not yet migrated)
 
 ## Documentation
 
 - Main README: `/README.md` (installation, architecture, Docker usage)
-- Feature docs: `/.github/features.instructions.md` (legacy feature reference)
+- Feature docs: `/.github/features.instructions.md` (comprehensive feature reference)
 - API docs: See README "API Endpoints" section
