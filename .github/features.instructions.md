@@ -632,21 +632,21 @@ This document provides a comprehensive overview of all features, functionality, 
 
 ### Test Files & Coverage
 
-| File                                            | Tests | Covers                                                                                                      |
-| ----------------------------------------------- | ----- | ----------------------------------------------------------------------------------------------------------- |
-| `stores/toast.test.js`                          | 7     | Toast push/remove, auto-dismiss timing, unique IDs, duration/createdAt                                      |
-| `stores/auth.test.js`                           | 3     | Auth store login/logout/session                                                                             |
-| `lib/httpClient.test.js`                        | 2     | HTTP client request/error handling                                                                          |
-| `components/feedback/ToastList.test.js`         | 7     | Rendering, CSS classes per type, progress bar animation, click dismiss                                      |
-| `components/links/LinkCardEdit.test.js`         | 9     | Public/private emoji (🔓/🔒), copy URL, delete, tag pills, description fallback                             |
-| `components/categories/CategoryManager.test.js` | 8     | Category list, link counts, create/delete, shared-with-me section, leave buttons                            |
-| `views/DashboardView.test.js`                   | 8     | Welcome message, stats, quick actions, navigation, theme toggle                                             |
-| `views/ViewLinksView.test.js`                   | 9     | X of Y counter, category headers, collapse/expand, empty state, Load More, shared owner badge               |
-| `views/EditLinksView.test.js`                   | 10    | Search (debounced 300ms), category filter (immediate), pagination, empty state, link cards                  |
-| `views/ProfileView.test.js`                     | 12    | Email, app version, share code verify/preview, URL extraction, danger zone, delete modal, shared categories |
-| `views/LoginView.test.js`                       | 5     | Share code sessionStorage persistence, auth redirect, email input                                           |
+| File                                            | Tests | Covers                                                                                                                      |
+| ----------------------------------------------- | ----- | --------------------------------------------------------------------------------------------------------------------------- |
+| `stores/toast.test.js`                          | 7     | Toast push/remove, auto-dismiss timing, unique IDs, duration/createdAt                                                      |
+| `stores/auth.test.js`                           | 3     | Auth store login/logout/session                                                                                             |
+| `lib/httpClient.test.js`                        | 2     | HTTP client request/error handling                                                                                          |
+| `components/feedback/ToastList.test.js`         | 7     | Rendering, CSS classes per type, progress bar animation, click dismiss                                                      |
+| `components/links/LinkCardEdit.test.js`         | 9     | Public/private emoji (🔓/🔒), copy URL, delete, tag pills, description fallback                                             |
+| `components/categories/CategoryManager.test.js` | 8     | Category list, link counts, create/delete, shared-with-me section, leave buttons                                            |
+| `views/DashboardView.test.js`                   | 8     | Welcome message, stats, quick actions, navigation, theme toggle                                                             |
+| `views/ViewLinksView.test.js`                   | 9     | X of Y counter, category headers, collapse/expand, empty state, Load More, shared owner badge                               |
+| `views/EditLinksView.test.js`                   | 10    | Search (debounced 300ms), category filter (immediate), pagination, empty state, link cards                                  |
+| `views/ProfileView.test.js`                     | 12    | Email, app version, share code verify/preview, URL extraction, danger zone, delete modal, shared categories                 |
+| `views/LoginView.test.js`                       | 8     | Share code sessionStorage persistence, auth redirect, email input, remembered email display, welcome back UX with user icon |
 
-**Frontend Total: 80 tests across 11 files**
+**Frontend Total: 83 tests across 11 files**
 
 ### Backend Test Files & Coverage
 
@@ -666,7 +666,7 @@ This document provides a comprehensive overview of all features, functionality, 
 
 **Backend Total: 127 tests across 11 files**
 
-**Combined Total: 207 tests (80 frontend + 127 backend)**
+**Combined Total: 210 tests (83 frontend + 127 backend)**
 
 ### Testing Patterns
 

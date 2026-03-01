@@ -141,7 +141,20 @@ function clearRememberedEmail() {
         <h2 class="mt-4 text-3xl font-bold text-brand-900 dark:text-white">
           Hidden Shelf
         </h2>
-        <p class="mt-2 text-sm text-brand-600 dark:text-brand-400">
+
+        <!-- Dynamic subtitle based on remembered email -->
+        <div v-if="rememberedEmail" class="mt-4">
+          <p class="text-sm text-brand-600 dark:text-brand-400 mb-2">
+            Welcome back
+          </p>
+          <div
+            class="flex items-center justify-center gap-2 text-brand-700 dark:text-brand-300"
+          >
+            <i class="mdi mdi-account-circle text-xl"></i>
+            <span class="font-medium">{{ rememberedEmail }}</span>
+          </div>
+        </div>
+        <p v-else class="mt-2 text-sm text-brand-600 dark:text-brand-400">
           Sign in with your email
         </p>
       </div>
@@ -170,21 +183,21 @@ function clearRememberedEmail() {
           class="mb-4 p-3 bg-brand-50 dark:bg-brand-900/20 rounded-lg border border-brand-200 dark:border-brand-800"
         >
           <p class="text-sm text-brand-700 dark:text-brand-300 mb-2">
-            Welcome back!
+            Continue as this user?
           </p>
           <div class="flex gap-2">
             <button
               @click="useRememberedEmail"
               class="text-sm font-medium text-brand-600 dark:text-brand-400 hover:underline"
             >
-              Continue as {{ rememberedEmail }}
+              Yes, sign in as {{ rememberedEmail }}
             </button>
             <span class="text-brand-400">·</span>
             <button
               @click="clearRememberedEmail"
               class="text-sm text-brand-500 hover:text-brand-700 dark:hover:text-brand-300"
             >
-              Use different email
+              No, use different email
             </button>
           </div>
         </div>
