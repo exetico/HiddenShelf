@@ -44,5 +44,5 @@ cache/
 /backend/node_modules
 
 # Database
-/db/database.sqlite-wal
-/db/database.sqlite-shm
+db/database.sqlite-shm
+db/database.sqlite-wal
