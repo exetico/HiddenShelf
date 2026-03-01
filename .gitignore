@@ -19,6 +19,7 @@ db/*.sqlite
 db/*.db
 db/database.sqlite-shm
 db/database.sqlite-wal
+# If stuck in repo, use "git rm -r --cached db/database.sqlite-wal"
 
 # Logs
 *.log
