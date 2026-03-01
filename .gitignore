@@ -17,6 +17,8 @@ public/output.css
 # Database
 db/*.sqlite
 db/*.db
+db/database.sqlite-shm
+db/database.sqlite-wal
 
 # Logs
 *.log
@@ -42,7 +44,3 @@ cache/
 
 # Backend
 /backend/node_modules
-
-# Database
-db/database.sqlite-shm
-db/database.sqlite-wal
