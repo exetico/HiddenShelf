@@ -1,5 +1,5 @@
 <script setup>
-import { onMounted, ref, watch } from "vue";
+import { onMounted, onUnmounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useAppStore } from "@/stores/app";
 import { useToastStore } from "@/stores/toast";
@@ -28,6 +28,10 @@ watch(localSearch, (val) => {
   searchTimeout = setTimeout(() => {
     appStore.search = val;
   }, 300);
+});
+
+onUnmounted(() => {
+  clearTimeout(searchTimeout);
 });
 
 watch(localFilterCategory, (val) => {

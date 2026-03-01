@@ -115,7 +115,7 @@ categories.put("/", requireAuth(), async (c) => {
     );
 
   db.prepare(
-    "UPDATE categories SET name = ?, icon = ?, color = ?, direct_redirect_default = ? WHERE id = ?",
+    "UPDATE categories SET name = ?, icon = ?, color = ?, direct_redirect_default = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
   ).run(name, icon, color, directRedirectDefault, id);
 
   const category = db.prepare("SELECT * FROM categories WHERE id = ?").get(id);
@@ -134,6 +134,10 @@ categories.delete("/", requireAuth(), (c) => {
     .get(id, c.userId);
   if (!existing) return errorResponse(c, "Category not found", 404);
 
+  // Nullify category_id on orphaned links before deleting
+  db.prepare("UPDATE links SET category_id = NULL WHERE category_id = ?").run(
+    id,
+  );
   db.prepare("DELETE FROM categories WHERE id = ?").run(id);
   return successResponse(c, {}, "Category deleted successfully");
 });

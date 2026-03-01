@@ -25,6 +25,7 @@ You need to read the copilot-instructions, and if you introduce features, you mu
   - `backend/src/routes/linkVisits.js` - Visit tracking for public links
   - `backend/src/routes/settings.js` - User preferences (brand color, etc.)
   - `backend/src/routes/config.js` - Public app config
+  - `backend/src/routes/account.js` - Bulk account operations (delete all data)
   - `backend/src/lib/database.js` - SQLite wrapper + migration runner
   - `backend/src/lib/helpers.js` - Utility functions
   - `backend/src/lib/mailer.js` - Email sending (nodemailer)
@@ -110,7 +111,7 @@ You need to read the copilot-instructions, and if you introduce features, you mu
 
 ### Migration Status
 
-- **Completed:** Core app, authentication, link management, categories, tags, profile, sharing, import/export, context menus, category filter bar, brand colors, danger zone, category sharing UI, tag pill input, icon auto-prefix, edit mode search/filter, category collapse/expand, X of Y counter, join share verify/preview flow, pending share code persistence, remove member/sharing, shared-with-me in CategoryManager, app version display, toast progress bar, dashboard theme toggle, public/private emoji on edit cards, Delete Everything styled modal, Danger Zone smooth animation, PHP→Hono backend migration, security audit (rate limiting, open redirect prevention, CORS hardening, input validation, URL protocol whitelist, debug mode default, session cookie flags)
+- **Completed:** Core app, authentication, link management, categories, tags, profile, sharing, import/export, context menus, category filter bar, brand colors, danger zone, category sharing UI, tag pill input, icon auto-prefix, edit mode search/filter, category collapse/expand, X of Y counter, join share verify/preview flow, pending share code persistence, remove member/sharing, shared-with-me in CategoryManager, app version display, toast progress bar, dashboard theme toggle, public/private emoji on edit cards, Delete Everything styled modal, Danger Zone smooth animation, PHP→Hono backend migration, security audit (rate limiting, open redirect prevention, CORS hardening, input validation, URL protocol whitelist, debug mode default, session cookie flags), code quality review (N+1 query fixes, category data integrity, ownership validation, bulk delete endpoint, modal accessibility, timer leak fix, short URL validation, migration error handling)
 - **Still Used:** `public/view.html` (public link viewer - Alpine.js, not migrated)
 
 ### URL Structure
@@ -189,7 +190,7 @@ You need to read the copilot-instructions, and if you introduce features, you mu
   - `feedback/` — `ToastList.vue`
 - **Vue Views:** `frontend/src/views/` (`LoginView`, `DashboardView`, `ViewLinksView`, `EditLinksView`, `ProfileView`)
 - **Pinia Stores:** `frontend/src/stores/` (`app.js`, `auth.js`, `toast.js`)
-- **API Services:** `frontend/src/services/api/` (`authApi.js`, `linksApi.js`, `categoriesApi.js`, `tagsApi.js`, `sharesApi.js`, `settingsApi.js`)
+- **API Services:** `frontend/src/services/api/` (`authApi.js`, `linksApi.js`, `categoriesApi.js`, `tagsApi.js`, `sharesApi.js`, `settingsApi.js`, `accountApi.js`)
 - **HTTP Client:** `frontend/src/lib/httpClient.js`
 - **Composables:** `frontend/src/composables/useTheme.js`
 - **Router:** `frontend/src/router/index.js`

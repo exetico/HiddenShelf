@@ -169,8 +169,30 @@ links.get("/", optionalAuth(), (c) => {
     )
     .all(c.userId, ...params, limit, offset);
 
-  for (const link of linksRows) {
-    link.tags = getTagsForLink(db, link.id);
+  // Batch-fetch tags for all links (avoids N+1)
+  if (linksRows.length > 0) {
+    const linkIds = linksRows.map((l) => l.id);
+    const placeholders = linkIds.map(() => "?").join(",");
+    const tagRows = db
+      .prepare(
+        `SELECT lt.link_id, t.* FROM tags t
+         JOIN link_tags lt ON t.id = lt.tag_id
+         WHERE lt.link_id IN (${placeholders})`,
+      )
+      .all(...linkIds);
+
+    const tagsByLink = new Map();
+    for (const row of tagRows) {
+      if (!tagsByLink.has(row.link_id)) tagsByLink.set(row.link_id, []);
+      tagsByLink.get(row.link_id).push(row);
+    }
+    for (const link of linksRows) {
+      link.tags = tagsByLink.get(link.id) || [];
+    }
+  } else {
+    for (const link of linksRows) {
+      link.tags = [];
+    }
   }
 
   return successResponse(c, {
@@ -228,13 +250,20 @@ links.post("/", requireAuth(), async (c) => {
       `Icon must not exceed ${MAX_LENGTHS.icon} characters`,
     );
 
-  // Inherit direct_redirect from category if not explicitly provided
-  if (categoryId && input.direct_redirect === undefined) {
+  // Validate category ownership
+  if (categoryId) {
     const cat = db
-      .prepare("SELECT direct_redirect_default FROM categories WHERE id = ?")
-      .get(categoryId);
-    if (cat && cat.direct_redirect_default)
+      .prepare(
+        "SELECT id, direct_redirect_default FROM categories WHERE id = ? AND user_id = ?",
+      )
+      .get(categoryId, c.userId);
+    if (!cat)
+      return errorResponse(c, "Category not found or access denied", 400);
+
+    // Inherit direct_redirect from category if not explicitly provided
+    if (input.direct_redirect === undefined && cat.direct_redirect_default) {
       directRedirect = cat.direct_redirect_default;
+    }
   }
 
   // Unique hash
@@ -334,6 +363,15 @@ links.put("/", requireAuth(), async (c) => {
       c,
       `Icon must not exceed ${MAX_LENGTHS.icon} characters`,
     );
+
+  // Validate category ownership on update
+  if (categoryId && categoryId !== existing.category_id) {
+    const cat = db
+      .prepare("SELECT id FROM categories WHERE id = ? AND user_id = ?")
+      .get(categoryId, c.userId);
+    if (!cat)
+      return errorResponse(c, "Category not found or access denied", 400);
+  }
 
   db.prepare(
     `UPDATE links

@@ -19,6 +19,7 @@ import sharesRoutes from "../src/routes/shares.js";
 import settingsRoutes from "../src/routes/settings.js";
 import linkVisitsRoutes from "../src/routes/linkVisits.js";
 import configRoutes from "../src/routes/config.js";
+import accountRoutes from "../src/routes/account.js";
 
 /**
  * Create a fresh test app with an in-memory database.
@@ -68,6 +69,7 @@ export function createTestApp() {
   app.route("/api/user_settings", settingsRoutes);
   app.route("/api/link_visits", linkVisitsRoutes);
   app.route("/api/config", configRoutes);
+  app.route("/api/account", accountRoutes);
 
   return app;
 }

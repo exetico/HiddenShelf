@@ -568,6 +568,22 @@ This document provides a comprehensive overview of all features, functionality, 
 - **Secure flag (production)**: Automatically adds `Secure` flag when `config.siteUrl` does not contain `localhost` or `127.0.0.1` — ensures cookies are only sent over HTTPS in production
 - **Location**: `backend/src/middleware/session.js`
 
+### Code Quality Improvements (Senior Review)
+
+- **Migration Failure Handling**: `database.js` now throws on migration failure instead of silently swallowing errors — prevents running against a broken schema
+- **N+1 Query Fixes**:
+  - `links.js` list endpoint: Replaced per-link `getTagsForLink()` loop with batch `SELECT ... WHERE lt.link_id IN (...)` query using a `Map` to group tags by link_id
+  - `shares.js` shared categories: Replaced per-category `SELECT COUNT(*)` loop with single batch query grouped by `category_id`
+- **Category Data Integrity**:
+  - Update endpoint now sets `updated_at = CURRENT_TIMESTAMP` (new migration `007_category_updated_at.sql`)
+  - Delete endpoint nullifies orphaned links (`UPDATE links SET category_id = NULL WHERE category_id = ?`) before deleting
+- **Category Ownership Validation**: `links.js` POST and PUT endpoints validate that `categoryId` belongs to the authenticated user — prevents cross-user category assignment
+- **Bulk Delete Endpoint**: New `DELETE /api/account/data` in `account.js` — wraps all deletions (link_tags, link_visits, links, tags, category shares, categories) in a single SQLite transaction. Replaced sequential HTTP requests in `ProfileView.vue` with single API call via `accountApi.js`
+- **BaseModal Accessibility**: Added `role="dialog"`, `aria-modal="true"`, `aria-label`, Escape key handler, auto-focus on open, and cleanup on unmount
+- **Timer Leak Fix**: `EditLinksView.vue` now clears search debounce timeout on unmount via `onUnmounted`
+- **Short URL Hash Validation**: `/h/:hash` route validates hash with `/^[a-zA-Z0-9]{1,20}$/` before DB lookup — rejects XSS payloads and overlong input
+- **Import Order Fix**: `helpers.js` moved config import to top of file (was a late import at bottom)
+
 ### Debug Mode
 
 - **Default off**: `debugMode` defaults to `false` when `DEBUG_MODE` env var is unset (previously defaulted to `true`)
@@ -634,21 +650,22 @@ This document provides a comprehensive overview of all features, functionality, 
 
 ### Backend Test Files & Coverage
 
-| File                       | Tests | Covers                                                                                                                |
-| -------------------------- | ----- | --------------------------------------------------------------------------------------------------------------------- |
-| `tests/auth.test.js`       | 13    | Magic link login, verify, logout, session, Google OAuth flow                                                          |
-| `tests/links.test.js`      | 21    | Link CRUD, pagination, category filtering, tag filtering                                                              |
-| `tests/categories.test.js` | 10    | Category CRUD, ordering, user isolation                                                                               |
-| `tests/tags.test.js`       | 8     | Tag CRUD, user isolation                                                                                              |
-| `tests/shares.test.js`     | 12    | Share create/join/leave, member management, shared data access                                                        |
-| `tests/linkVisits.test.js` | 8     | Visit tracking, IP masking, public link access                                                                        |
-| `tests/settings.test.js`   | 7     | User settings CRUD, brand color, links per page                                                                       |
-| `tests/config.test.js`     | 1     | Public app config endpoint                                                                                            |
-| `tests/security.test.js`   | 22    | Open redirect prevention, input validation (length + protocol), rate limiting, debug mode, session cookies, CORS, XSS |
+| File                        | Tests | Covers                                                                                                                                                              |
+| --------------------------- | ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `tests/auth.test.js`        | 13    | Magic link login, verify, logout, session, Google OAuth flow                                                                                                        |
+| `tests/links.test.js`       | 21    | Link CRUD, pagination, category filtering, tag filtering                                                                                                            |
+| `tests/categories.test.js`  | 10    | Category CRUD, ordering, user isolation                                                                                                                             |
+| `tests/tags.test.js`        | 8     | Tag CRUD, user isolation                                                                                                                                            |
+| `tests/shares.test.js`      | 12    | Share create/join/leave, member management, shared data access                                                                                                      |
+| `tests/linkVisits.test.js`  | 8     | Visit tracking, IP masking, public link access                                                                                                                      |
+| `tests/settings.test.js`    | 7     | User settings CRUD, brand color, links per page                                                                                                                     |
+| `tests/config.test.js`      | 1     | Public app config endpoint                                                                                                                                          |
+| `tests/security.test.js`    | 22    | Open redirect prevention, input validation (length + protocol), rate limiting, debug mode, session cookies, CORS, XSS                                               |
+| `tests/codeQuality.test.js` | 11    | Category delete orphans, category ownership validation, batch tag fetching, bulk delete (transaction + isolation + auth), short URL validation, category updated_at |
 
-**Backend Total: 102 tests across 9 files**
+**Backend Total: 113 tests across 10 files**
 
-**Combined Total: 182 tests (80 frontend + 102 backend)**
+**Combined Total: 193 tests (80 frontend + 113 backend)**
 
 ### Testing Patterns
 
@@ -685,7 +702,7 @@ This document provides a comprehensive overview of all features, functionality, 
 
 ### API Service Layer
 
-- One file per resource: `authApi.js`, `linksApi.js`, `categoriesApi.js`, `tagsApi.js`, `sharesApi.js`, `settingsApi.js`, `configApi.js`
+- One file per resource: `authApi.js`, `linksApi.js`, `categoriesApi.js`, `tagsApi.js`, `sharesApi.js`, `settingsApi.js`, `configApi.js`, `accountApi.js`
 - All use shared `httpClient.js` (fetch wrapper with error handling)
 - Export named object with methods (not default export)
 - Return data directly; errors are thrown

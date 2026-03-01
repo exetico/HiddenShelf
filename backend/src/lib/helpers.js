@@ -3,6 +3,7 @@
  */
 
 import crypto from "node:crypto";
+import config from "../config.js";
 
 /**
  * Generate a random alphanumeric hash for public links.
@@ -179,6 +180,3 @@ export function baseUrl(pathStr = "") {
   const p = pathStr.startsWith("/") ? pathStr : `/${pathStr}`;
   return base + p;
 }
-
-// Late-import to avoid circular dependency
-import config from "../config.js";

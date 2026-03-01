@@ -3,10 +3,8 @@ import { ref, reactive } from "vue";
 import { useAuthStore } from "@/stores/auth";
 import { useAppStore } from "@/stores/app";
 import { useToastStore } from "@/stores/toast";
-import { linksApi } from "@/services/api/linksApi";
-import { categoriesApi } from "@/services/api/categoriesApi";
-import { tagsApi } from "@/services/api/tagsApi";
 import { sharesApi } from "@/services/api/sharesApi";
+import { accountApi } from "@/services/api/accountApi";
 import ImportExportModal from "@/components/common/ImportExportModal.vue";
 
 const authStore = useAuthStore();
@@ -110,86 +108,14 @@ async function confirmDeleteEverything() {
   showDeleteModal.value = false;
 
   showDeleteProgress.value = true;
-  deleteProgress.value = "Fetching all data...";
-  deleteProgressPercent.value = 5;
-
-  const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+  deleteProgress.value = "Deleting all data...";
+  deleteProgressPercent.value = 30;
 
   try {
-    // Fetch all links
-    let allLinks = [];
-    let page = 1;
-    let hasMore = true;
-    while (hasMore) {
-      const response = await linksApi.list({ page, limit: 500 });
-      if (response.links && response.links.length > 0) {
-        allLinks = allLinks.concat(response.links);
-        if (response.pagination && page < response.pagination.pages) {
-          page++;
-        } else {
-          hasMore = false;
-        }
-      } else {
-        hasMore = false;
-      }
-    }
-
-    deleteProgressPercent.value = 10;
-    const allCategories = appStore.categories;
-    const allTags = appStore.tags;
-    const totalItems = allLinks.length + allCategories.length + allTags.length;
-    let deletedItems = 0;
-    let failedDeletes = 0;
-
-    deleteProgressPercent.value = 15;
-
-    // Delete links
-    for (let i = 0; i < allLinks.length; i++) {
-      deleteProgress.value = `Deleting links (${i + 1}/${allLinks.length})...`;
-      deleteProgressPercent.value =
-        15 + Math.floor(((deletedItems + 1) / totalItems) * 75);
-      try {
-        await linksApi.remove(allLinks[i].id);
-        deletedItems++;
-      } catch {
-        failedDeletes++;
-        deletedItems++;
-      }
-      await delay(100);
-    }
-
-    // Delete tags
-    for (let i = 0; i < allTags.length; i++) {
-      deleteProgress.value = `Deleting tags (${i + 1}/${allTags.length})...`;
-      deleteProgressPercent.value =
-        15 + Math.floor(((deletedItems + 1) / totalItems) * 75);
-      try {
-        await tagsApi.remove(allTags[i].id);
-        deletedItems++;
-      } catch {
-        failedDeletes++;
-        deletedItems++;
-      }
-      await delay(100);
-    }
-
-    // Delete categories
-    for (let i = 0; i < allCategories.length; i++) {
-      deleteProgress.value = `Deleting categories (${i + 1}/${allCategories.length})...`;
-      deleteProgressPercent.value =
-        15 + Math.floor(((deletedItems + 1) / totalItems) * 75);
-      try {
-        await categoriesApi.remove(allCategories[i].id);
-        deletedItems++;
-      } catch {
-        failedDeletes++;
-        deletedItems++;
-      }
-      await delay(100);
-    }
+    const result = await accountApi.deleteAllData();
 
     deleteProgress.value = "Refreshing data...";
-    deleteProgressPercent.value = 95;
+    deleteProgressPercent.value = 80;
 
     await appStore.loadLinks({ reset: true });
     await appStore.loadCategories();
@@ -200,13 +126,10 @@ async function confirmDeleteEverything() {
 
     setTimeout(() => {
       showDeleteProgress.value = false;
-      if (failedDeletes > 0) {
-        toastStore.error(
-          `Deleted ${deletedItems - failedDeletes} items with ${failedDeletes} errors.`,
-        );
-      } else {
-        toastStore.success(`All ${deletedItems} items deleted successfully!`);
-      }
+      const d = result.deleted;
+      toastStore.success(
+        `Deleted ${d.links_deleted} links, ${d.tags_deleted} tags, ${d.categories_deleted} categories`,
+      );
     }, 500);
   } catch (error) {
     showDeleteProgress.value = false;

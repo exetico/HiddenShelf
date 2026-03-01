@@ -97,11 +97,19 @@ shares.get("/", optionalAuth(), (c) => {
     )
     .all(c.userId);
 
-  for (const cat of sharedCategories) {
-    const linkCount = db
-      .prepare("SELECT COUNT(*) as count FROM links WHERE category_id = ?")
-      .get(cat.id);
-    cat.link_count = linkCount.count;
+  if (sharedCategories.length > 0) {
+    const placeholders = sharedCategories.map(() => "?").join(",");
+    const counts = db
+      .prepare(
+        `SELECT category_id, COUNT(*) as count FROM links WHERE category_id IN (${placeholders}) GROUP BY category_id`,
+      )
+      .all(...sharedCategories.map((c) => c.id));
+    const countMap = Object.fromEntries(
+      counts.map((r) => [r.category_id, r.count]),
+    );
+    for (const cat of sharedCategories) {
+      cat.link_count = countMap[cat.id] || 0;
+    }
   }
 
   return successResponse(c, { shared_categories: sharedCategories });
@@ -183,8 +191,7 @@ shares.delete("/", requireAuth(), (c) => {
   const db = getDb();
   const categoryId = c.req.query("category_id");
   const memberId = c.req.query("member_id");
-  const leave =
-    c.req.query("leave") !== null && c.req.query("leave") !== undefined;
+  const leave = c.req.query("leave") !== undefined;
 
   if (!categoryId) return errorResponse(c, "Category ID required");
 

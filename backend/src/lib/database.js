@@ -108,6 +108,7 @@ function runMigrations(database) {
       }
     } catch (err) {
       console.error(`[db] Migration failed (${file}):`, err.message);
+      throw err;
     }
   }
 }

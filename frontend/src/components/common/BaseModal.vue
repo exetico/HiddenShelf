@@ -1,5 +1,7 @@
 <script setup>
-defineProps({
+import { ref, watch, nextTick, onUnmounted } from "vue";
+
+const props = defineProps({
   open: {
     type: Boolean,
     default: false,
@@ -10,18 +12,48 @@ defineProps({
   },
 });
 
-defineEmits(["close"]);
+const emit = defineEmits(["close"]);
+const modalRef = ref(null);
+
+function handleKeydown(e) {
+  if (e.key === "Escape") {
+    emit("close");
+  }
+}
+
+// Focus trap + keyboard handling
+watch(
+  () => props.open,
+  async (isOpen) => {
+    if (isOpen) {
+      document.addEventListener("keydown", handleKeydown);
+      await nextTick();
+      modalRef.value?.focus();
+    } else {
+      document.removeEventListener("keydown", handleKeydown);
+    }
+  },
+);
+
+onUnmounted(() => {
+  document.removeEventListener("keydown", handleKeydown);
+});
 </script>
 
 <template>
   <Teleport to="body">
     <div
       v-if="open"
+      role="dialog"
+      aria-modal="true"
+      :aria-label="title"
       class="fixed inset-0 z-40 bg-black/40 flex items-center justify-center p-4"
       @click.self="$emit('close')"
     >
       <div
-        class="w-full max-w-xl bg-white dark:bg-brand-900 rounded-lg shadow-xl border border-gray-200 dark:border-brand-800"
+        ref="modalRef"
+        tabindex="-1"
+        class="w-full max-w-xl bg-white dark:bg-brand-900 rounded-lg shadow-xl border border-gray-200 dark:border-brand-800 outline-none"
       >
         <header
           class="px-4 py-3 border-b border-gray-200 dark:border-brand-800 flex justify-between items-center"

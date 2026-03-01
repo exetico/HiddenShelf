@@ -31,6 +31,7 @@ import sharesRoutes from "./routes/shares.js";
 import settingsRoutes from "./routes/settings.js";
 import linkVisitsRoutes from "./routes/linkVisits.js";
 import configRoutes from "./routes/config.js";
+import accountRoutes from "./routes/account.js";
 
 // ─── Initialise database ────────────────────────────────────────
 
@@ -88,11 +89,15 @@ app.route("/api/category_shares", sharesRoutes);
 app.route("/api/user_settings", settingsRoutes);
 app.route("/api/link_visits", linkVisitsRoutes);
 app.route("/api/config", configRoutes);
+app.route("/api/account", accountRoutes);
 
 // ─── Short URL redirect: /h/:hash ───────────────────────────────
 
 app.get("/h/:hash", (c) => {
   const hash = c.req.param("hash");
+  if (!/^[a-zA-Z0-9]{1,20}$/.test(hash)) {
+    return c.text("Invalid link", 404);
+  }
   const db = getDb();
   const link = db
     .prepare(
