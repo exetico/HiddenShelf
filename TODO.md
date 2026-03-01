@@ -6,6 +6,7 @@
 2. Visit stats exist but need better visibility in the UI
 3. Dashboard stat cards (Links, Categories, Tags) are not clickable - should navigate to related pages
 4. Categories count on dashboard shows "1" but doesn't include shared categories (should show 2+)
+5. Check all console outputs once running the solution, if anything should be fixed.
 
 ## High Priority
 
