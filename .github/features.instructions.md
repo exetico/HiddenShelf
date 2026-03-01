@@ -662,10 +662,11 @@ This document provides a comprehensive overview of all features, functionality, 
 | `tests/config.test.js`      | 1     | Public app config endpoint                                                                                                                                          |
 | `tests/security.test.js`    | 22    | Open redirect prevention, input validation (length + protocol), rate limiting, debug mode, session cookies, CORS, XSS                                               |
 | `tests/codeQuality.test.js` | 11    | Category delete orphans, category ownership validation, batch tag fetching, bulk delete (transaction + isolation + auth), short URL validation, category updated_at |
+| `tests/migrations.test.js`  | 14    | All 7 migrations run successfully, idempotency, per-migration schema checks, foreign key constraints, cascade behavior                                              |
 
-**Backend Total: 113 tests across 10 files**
+**Backend Total: 127 tests across 11 files**
 
-**Combined Total: 193 tests (80 frontend + 113 backend)**
+**Combined Total: 207 tests (80 frontend + 127 backend)**
 
 ### Testing Patterns
 
@@ -675,6 +676,20 @@ This document provides a comprehensive overview of all features, functionality, 
 - **Child component stubs**: Stub heavy children with simple templates to isolate tests
 - **Timer testing**: `vi.useFakeTimers()` + `vi.advanceTimersByTime()` for debounce/auto-dismiss
 - **Router mocking**: `vi.mock("vue-router")` with controlled `useRoute()`/`useRouter()` returns
+
+### Migration Testing
+
+**All database migrations are tested before spinning up the app.** This catches schema errors early and ensures production deployments are safe.
+
+- **Location**: `backend/tests/migrations.test.js` (14 tests)
+- **Coverage**:
+  - All 7 migrations run successfully on a fresh database
+  - Idempotency (migrations can be re-run safely)
+  - Per-migration schema verification (tables, columns, indexes)
+  - Foreign key constraints enforced
+  - Cascade delete behavior verified
+- **Run tests**: `cd backend && npm test tests/migrations.test.js`
+- **Why this matters**: Prevents migration failures like "Cannot add a column with non-constant default" or "duplicate column name" in production
 
 ## UI/UX Features
 

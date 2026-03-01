@@ -111,7 +111,7 @@ You need to read the copilot-instructions, and if you introduce features, you mu
 
 ### Migration Status
 
-- **Completed:** Core app, authentication, link management, categories, tags, profile, sharing, import/export, context menus, category filter bar, brand colors, danger zone, category sharing UI, tag pill input, icon auto-prefix, edit mode search/filter, category collapse/expand, X of Y counter, join share verify/preview flow, pending share code persistence, remove member/sharing, shared-with-me in CategoryManager, app version display, toast progress bar, dashboard theme toggle, public/private emoji on edit cards, Delete Everything styled modal, Danger Zone smooth animation, PHP→Hono backend migration, security audit (rate limiting, open redirect prevention, CORS hardening, input validation, URL protocol whitelist, debug mode default, session cookie flags), code quality review (N+1 query fixes, category data integrity, ownership validation, bulk delete endpoint, modal accessibility, timer leak fix, short URL validation, migration error handling)
+- **Completed:** Core app, authentication, link management, categories, tags, profile, sharing, import/export, context menus, category filter bar, brand colors, danger zone, category sharing UI, tag pill input, icon auto-prefix, edit mode search/filter, category collapse/expand, X of Y counter, join share verify/preview flow, pending share code persistence, remove member/sharing, shared-with-me in CategoryManager, app version display, toast progress bar, dashboard theme toggle, public/private emoji on edit cards, Delete Everything styled modal, Danger Zone smooth animation, PHP→Hono backend migration, security audit (rate limiting, open redirect prevention, CORS hardening, input validation, URL protocol whitelist, debug mode default, session cookie flags), code quality review (N+1 query fixes, category data integrity, ownership validation, bulk delete endpoint, modal accessibility, timer leak fix, short URL validation, migration error handling), **migration testing (14 tests for all 7 migrations)**
 - **Still Used:** `public/view.html` (public link viewer - Alpine.js, not migrated)
 
 ### URL Structure
@@ -177,6 +177,7 @@ You need to read the copilot-instructions, and if you introduce features, you mu
 12. **Delete confirmations use modals** - Never use `window.confirm()` — all destructive actions use a styled confirmation modal with Teleport
 13. **Icon auto-prefix** - The `LinkFormModal` auto-prepends `mdi-` if the user omits it (e.g., typing "wifi" becomes "mdi-wifi")
 14. **Favicon** - `favicon.png` lives in both `public/` (PHP) and `frontend/public/` (Vite dev). HTML references `/favicon.png`
+15. **Test migrations before deploying** - Run `cd backend && npm test tests/migrations.test.js` to verify all database migrations work. Catches SQLite errors like "Cannot add a column with non-constant default" before production deployment
 
 ## File Locations Quick Reference
 
