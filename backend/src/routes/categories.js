@@ -74,7 +74,7 @@ categories.post("/", requireAuth(), async (c) => {
 
   const info = db
     .prepare(
-      "INSERT INTO categories (user_id, name, icon, color, direct_redirect_default) VALUES (?, ?, ?, ?, ?)",
+      "INSERT INTO categories (user_id, name, icon, color, direct_redirect_default, updated_at) VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)",
     )
     .run(c.userId, name, icon, color, directRedirectDefault);
 
