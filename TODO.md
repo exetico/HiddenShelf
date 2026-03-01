@@ -35,6 +35,7 @@
 - Validate that "Shared category" and "Direct redirect" are included in export/import
 - Export should exclude "Shared links through categories" - notify user about this
 - Bulk create for imports (performance improvement)
+- Does the system work, in a fresh newly created docker container?
 
 ### Authentication & Security
 
