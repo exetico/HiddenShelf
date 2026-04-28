@@ -5,6 +5,7 @@ import { tagsApi } from "@/services/api/tagsApi";
 import { sharesApi } from "@/services/api/sharesApi";
 import { settingsApi } from "@/services/api/settingsApi";
 import { configApi } from "@/services/api/configApi";
+import { linkVisitsApi } from "@/services/api/linkVisitsApi";
 import { useToastStore } from "@/stores/toast";
 
 export const useAppStore = defineStore("app", {
@@ -21,6 +22,11 @@ export const useAppStore = defineStore("app", {
     appConfig: {
       app_version: "",
       site_name: "Hidden Shelf",
+    },
+    visitStats: {
+      total_visits: 0,
+      days: 30,
+      summary: [],
     },
     page: 1,
     total: 0,
@@ -40,7 +46,8 @@ export const useAppStore = defineStore("app", {
 
       return grouped;
     },
-    totalCategories: (state) => state.categories.length,
+    totalCategories: (state) =>
+      state.categories.length + state.sharedCategories.length,
     totalTags: (state) => state.tags.length,
   },
   actions: {
@@ -221,6 +228,18 @@ export const useAppStore = defineStore("app", {
     async loadAppConfig() {
       try {
         this.appConfig = await configApi.get();
+      } catch {
+        // Non-critical — keep defaults
+      }
+    },
+    async loadVisitStats(days = 30) {
+      try {
+        const data = await linkVisitsApi.getSummary({ days });
+        this.visitStats = {
+          total_visits: data.total_visits || 0,
+          days: data.days || days,
+          summary: data.summary || [],
+        };
       } catch {
         // Non-critical — keep defaults
       }

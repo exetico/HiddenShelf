@@ -39,6 +39,13 @@ vi.mock("@/services/api/configApi", () => ({
   },
 }));
 
+vi.mock("@/services/api/accountApi", () => ({
+  accountApi: { deleteAllData: vi.fn() },
+}));
+vi.mock("@/services/api/linkVisitsApi", () => ({
+  linkVisitsApi: { getSummary: vi.fn().mockResolvedValue({ total_visits: 0, days: 30, summary: [] }) },
+}));
+
 import { sharesApi } from "@/services/api/sharesApi";
 
 describe("ProfileView", () => {
@@ -69,6 +76,12 @@ describe("ProfileView", () => {
       },
     });
   }
+
+  it("shows beta notice", () => {
+    const wrapper = mountProfile();
+    expect(wrapper.text()).toContain("Beta notice");
+    expect(wrapper.text()).toContain("export your data");
+  });
 
   it("displays user email", () => {
     const wrapper = mountProfile();

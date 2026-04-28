@@ -149,6 +149,24 @@ async function confirmDeleteEverything() {
       </p>
     </article>
 
+    <!-- Beta / Data Retention Notice -->
+    <article
+      class="bg-amber-50 dark:bg-amber-950/40 rounded-lg border border-amber-200 dark:border-amber-800 p-4"
+    >
+      <p class="text-sm text-amber-800 dark:text-amber-300">
+        <i class="mdi mdi-information-outline mr-1"></i>
+        <strong>Beta notice:</strong> Hidden Shelf is currently in beta. Data
+        may be reset or deleted without prior notice. Please
+        <button
+          class="underline hover:no-underline font-medium"
+          @click="showImportExport = true"
+        >
+          export your data
+        </button>
+        regularly as a backup.
+      </p>
+    </article>
+
     <article
       class="bg-white dark:bg-brand-900 rounded-lg border border-gray-200 dark:border-brand-800 p-5 space-y-3"
     >

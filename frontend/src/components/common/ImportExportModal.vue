@@ -36,8 +36,12 @@ const progressText = ref("");
 const progressPercent = ref(0);
 
 function exportData() {
+  // Separate own links from shared-category links
+  const ownLinks = appStore.links.filter((l) => !l.is_from_shared_category);
+  const sharedCount = appStore.links.length - ownLinks.length;
+
   const exportPayload = {
-    links: appStore.links.map((link) => ({
+    links: ownLinks.map((link) => ({
       url: link.url,
       title: link.title,
       description: link.description || "",
@@ -45,6 +49,7 @@ function exportData() {
       category: link.category_name || "",
       tags: (link.tags || []).map((t) => t.name),
       is_public: link.is_public ? true : false,
+      direct_redirect: link.direct_redirect ? true : false,
       display_order: link.display_order || null,
     })),
     categories: appStore.categories.map((cat) => ({
@@ -67,7 +72,14 @@ function exportData() {
   a.click();
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
-  toastStore.success("Data exported successfully!");
+
+  if (sharedCount > 0) {
+    toastStore.success(
+      `Exported ${ownLinks.length} ${ownLinks.length === 1 ? "link" : "links"}. ${sharedCount} shared-category ${sharedCount === 1 ? "link was" : "links were"} excluded (they belong to other users).`,
+    );
+  } else {
+    toastStore.success("Data exported successfully!");
+  }
 }
 
 async function validateImport() {
@@ -166,6 +178,7 @@ async function validateImport() {
             category: link.category || "",
             tags: Array.isArray(link.tags) ? link.tags : [],
             is_public: link.is_public ? true : false,
+            direct_redirect: link.direct_redirect ? true : false,
             display_order: link.display_order || null,
           });
         }
@@ -185,7 +198,10 @@ async function validateImport() {
   }
 }
 
-async function executeImport() {
+// Import confirmation modal state
+const showImportConfirmModal = ref(false);
+
+async function requestImportConfirm() {
   if (!validatedImportData || !importPreview.value) {
     toastStore.error("Please validate the import first");
     return;
@@ -198,7 +214,21 @@ async function executeImport() {
     return;
   }
 
-  if (!window.confirm(`Import ${totalNew} new items? This cannot be undone.`)) {
+  showImportConfirmModal.value = true;
+}
+
+async function executeImport() {
+  showImportConfirmModal.value = false;
+
+  if (!validatedImportData || !importPreview.value) {
+    toastStore.error("Please validate the import first");
+    return;
+  }
+
+  const totalNew =
+    importStats.newLinks + importStats.newCategories + importStats.newTags;
+  if (totalNew === 0) {
+    toastStore.error("No new items to import");
     return;
   }
 
@@ -253,6 +283,7 @@ async function executeImport() {
         category_id,
         tags: link.tags || [],
         is_public: link.is_public,
+        direct_redirect: link.direct_redirect,
         display_order: link.display_order,
       });
       processed++;
@@ -340,7 +371,7 @@ function resetImport() {
                 importStats.newTags ===
               0
             "
-            @click="executeImport"
+            @click="requestImportConfirm"
           >
             Import
           </button>
@@ -386,6 +417,46 @@ function resetImport() {
           </p>
         </div>
       </div>
+
+      <!-- Import Confirmation Modal -->
+      <Teleport to="body">
+        <div
+          v-if="showImportConfirmModal"
+          class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[80] p-4"
+          @click.self="showImportConfirmModal = false"
+        >
+          <div
+            class="bg-white dark:bg-brand-900 rounded-lg shadow-xl max-w-sm w-full p-6"
+          >
+            <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+              Confirm Import
+            </h3>
+            <p class="text-sm text-gray-600 dark:text-brand-300 mb-4">
+              Import
+              <strong class="text-gray-900 dark:text-white">{{
+                importStats.newLinks +
+                importStats.newCategories +
+                importStats.newTags
+              }}</strong>
+              new items? This cannot be undone.
+            </p>
+            <div class="flex justify-end gap-2">
+              <button
+                class="px-4 py-2 rounded-md border border-gray-300 dark:border-brand-700"
+                @click="showImportConfirmModal = false"
+              >
+                Cancel
+              </button>
+              <button
+                class="px-4 py-2 rounded-md bg-green-600 text-white hover:bg-green-700"
+                @click="executeImport"
+              >
+                Import
+              </button>
+            </div>
+          </div>
+        </div>
+      </Teleport>
 
       <!-- Progress Modal -->
       <Teleport to="body">

@@ -21,6 +21,17 @@ vi.mock("vue-router", () => ({
   useRouter: () => ({ push: mockPush }),
 }));
 
+// Mock linkVisitsApi (used inside the store action on mount)
+vi.mock("@/services/api/linkVisitsApi", () => ({
+  linkVisitsApi: {
+    getSummary: vi.fn().mockResolvedValue({
+      total_visits: 0,
+      days: 30,
+      summary: [],
+    }),
+  },
+}));
+
 describe("DashboardView", () => {
   let pinia;
 
@@ -30,8 +41,10 @@ describe("DashboardView", () => {
     const appStore = useAppStore();
     appStore.total = 42;
     appStore.categories = [{ id: 1 }, { id: 2 }];
+    appStore.sharedCategories = [];
     appStore.tags = [{ id: 1 }, { id: 2 }, { id: 3 }];
     appStore.links = [];
+    appStore.visitStats = { total_visits: 0, days: 30, summary: [] };
     mockPush.mockClear();
     mockIsDark.value = false;
     mockToggleTheme.mockClear();
@@ -53,6 +66,24 @@ describe("DashboardView", () => {
     expect(wrapper.text()).toContain("42"); // links
     expect(wrapper.text()).toContain("2"); // categories
     expect(wrapper.text()).toContain("3"); // tags
+  });
+
+  it("stat cards are clickable buttons that navigate to edit", async () => {
+    const wrapper = mountDashboard();
+    const linksCard = wrapper
+      .findAll("button")
+      .find((b) => b.text().includes("Links"));
+    expect(linksCard).toBeDefined();
+    await linksCard.trigger("click");
+    expect(mockPush).toHaveBeenCalledWith({ name: "edit" });
+  });
+
+  it("totalCategories includes shared categories", () => {
+    const appStore = useAppStore();
+    appStore.sharedCategories = [{ id: 99 }];
+    const wrapper = mountDashboard();
+    // 2 own + 1 shared = 3
+    expect(wrapper.text()).toContain("3"); // totalCategories = 3
   });
 
   it("renders 4 quick action buttons", () => {
@@ -88,6 +119,23 @@ describe("DashboardView", () => {
       .find((b) => b.text().includes("Import Data"));
     await importBtn.trigger("click");
     expect(mockPush).toHaveBeenCalledWith({ name: "profile" });
+  });
+
+  it("shows visit stats section when total_visits > 0", async () => {
+    const appStore = useAppStore();
+    appStore.visitStats = {
+      total_visits: 15,
+      days: 30,
+      summary: [{ id: 1, title: "Popular Link", visit_count: 15 }],
+    };
+    const wrapper = mountDashboard();
+    expect(wrapper.text()).toContain("15");
+    expect(wrapper.text()).toContain("Popular Link");
+  });
+
+  it("hides visit stats section when no visits", () => {
+    const wrapper = mountDashboard();
+    expect(wrapper.text()).not.toContain("total visits");
   });
 
   it("shows theme toggle section", () => {

@@ -19,6 +19,8 @@ describe("LinkCardEdit", () => {
           url: "https://example.com",
           description: "desc",
           is_public: 1,
+          direct_redirect: 0,
+          total_visits: 0,
           hash: "abc",
           tags: [],
           ...linkOverrides,
@@ -92,5 +94,26 @@ describe("LinkCardEdit", () => {
 
     const wrapper2 = mountCard({ description: "My link" });
     expect(wrapper2.text()).toContain("My link");
+  });
+
+  it("shows direct redirect indicator when direct_redirect is set", () => {
+    const wrapper = mountCard({ direct_redirect: 1 });
+    expect(wrapper.text()).toContain("redirect");
+  });
+
+  it("hides direct redirect indicator when not set", () => {
+    const wrapper = mountCard({ direct_redirect: 0 });
+    expect(wrapper.text()).not.toContain("redirect");
+  });
+
+  it("shows visit count for public links with visits", () => {
+    const wrapper = mountCard({ is_public: 1, total_visits: 42 });
+    expect(wrapper.text()).toContain("42");
+  });
+
+  it("hides visit count when zero visits", () => {
+    const wrapper = mountCard({ is_public: 1, total_visits: 0 });
+    // visit count badge should not show the count "0 visits" badge
+    expect(wrapper.find('[title="Total visits"]').exists()).toBe(false);
   });
 });
