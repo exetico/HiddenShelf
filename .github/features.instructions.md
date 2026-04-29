@@ -509,6 +509,10 @@ This document provides a comprehensive overview of all features, functionality, 
 
 - `GET` — Get public app config (version, site name, features)
 
+### Account (`/api/account`)
+
+- `DELETE /data` — Delete all user data (links, tags, categories, shares) in a single SQLite transaction
+
 ## Public Link Viewing
 
 ### View Interface (`public/view.html` — Alpine.js, not yet migrated)

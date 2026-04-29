@@ -100,12 +100,6 @@ Hidden Shelf/
 └── Makefile               # Convenience commands
 ```
 
-├── docker-compose.yml # Docker services
-├── Dockerfile # Node.js container
-└── Makefile # Convenience commands
-
-````
-
 ## Database Schema
 
 ### Users
@@ -113,43 +107,93 @@ Hidden Shelf/
 - `id` - Primary key
 - `email` - Unique email
 - `created_at` - Timestamp
+- `oauth_provider` - OAuth provider (e.g., `google`) — nullable
+- `oauth_id` - OAuth provider user ID — nullable
+- `oauth_email` - Email returned by OAuth provider — nullable
+
+### User_Settings
+
+- `user_id` - Primary key (FK → users, cascades on delete)
+- `settings` - JSON string (`{ links_per_page, brand_color }`)
+- `created_at` - Timestamp
+- `updated_at` - Timestamp
 
 ### Links
 
 - `id` - Primary key
-- `user_id` - Foreign key to users
-- `hash` - Unique public identifier (e.g., "abc123xyz")
-- `url` - The actual link
+- `user_id` - Foreign key to users (cascades on delete)
+- `hash` - Unique public identifier (e.g., `abc123xyz`)
+- `url` - The actual link URL
 - `title` - Link title
 - `description` - Optional description
+- `icon` - MDI icon name (e.g., `mdi-github`) — nullable
+- `display_order` - Manual sort position — nullable
 - `is_public` - Boolean (0 = private, 1 = public)
+- `metadata` - JSON for flexible extra data
+- `direct_redirect` - Boolean (0 = show preview, 1 = redirect immediately)
+- `category_id` - Foreign key to categories (set to NULL on category delete) — nullable
 - `created_at` - Timestamp
 - `updated_at` - Timestamp
 
 ### Tags
 
 - `id` - Primary key
-- `name` - Tag name (unique)
+- `name` - Tag name (unique per user)
+- `user_id` - Foreign key to users (cascades on delete)
+- `created_at` - Timestamp
 
 ### Link_Tags (Many-to-many)
 
-- `link_id` - Foreign key
-- `tag_id` - Foreign key
+- `link_id` - Foreign key to links (cascades on delete)
+- `tag_id` - Foreign key to tags (cascades on delete)
 
 ### Categories
 
 - `id` - Primary key
-- `user_id` - Foreign key
+- `user_id` - Foreign key to users (cascades on delete)
 - `name` - Category name
+- `icon` - MDI icon name — nullable
+- `color` - Hex color string — nullable
+- `direct_redirect_default` - Default `direct_redirect` value for new links in this category (0/1)
 - `created_at` - Timestamp
+- `updated_at` - Timestamp
 
 ### Magic_Tokens
 
 - `id` - Primary key
 - `email` - Email address
-- `token` - One-time token
+- `token` - One-time token (unique)
 - `expires_at` - Expiration timestamp
 - `used` - Boolean
+- `redirect_origin` - Allowed origin for post-verify redirect (supports dev vs prod port differences) — nullable
+- `created_at` - Timestamp
+
+### Category_Shares
+
+- `id` - Primary key
+- `category_id` - Foreign key to categories (cascades on delete)
+- `share_code` - Unique invite code
+- `created_by` - Foreign key to users (cascades on delete)
+- `created_at` - Timestamp
+- `expires_at` - Expiration timestamp — nullable
+
+### Category_Share_Members
+
+- `id` - Primary key
+- `category_id` - Foreign key to categories (cascades on delete)
+- `user_id` - Foreign key to users (cascades on delete)
+- `accepted_at` - Timestamp
+
+### Link_Visits
+
+- `id` - Primary key
+- `link_id` - Foreign key to links (cascades on delete)
+- `visited_at` - Timestamp
+- `ip_masked` - Partially masked IP address
+- `user_agent` - Raw browser user-agent string
+- `browser` - Parsed browser name
+- `os` - Parsed OS name
+- `referer` - Referring URL
 
 ## API Endpoints
 
@@ -206,6 +250,10 @@ Hidden Shelf/
 ### Config
 
 - `GET /api/config` - Public app config (version, site name, features)
+
+### Account
+
+- `DELETE /api/account/data` - Delete all user data (links, tags, categories, shares) in a single transaction
 
 ## Installation
 
