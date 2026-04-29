@@ -101,7 +101,7 @@ Hidden Shelf/
 ```
 
 ├── docker-compose.yml # Docker services
-├── Dockerfile # PHP + Node container
+├── Dockerfile # Node.js container
 └── Makefile # Convenience commands
 
 ````

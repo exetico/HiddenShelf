@@ -22,8 +22,6 @@
 ### Authentication & Security
 
 - Allow no-OAuth option / local user+password login
-- Review `debug.php` security (if still exists)
-- Verify SQL injection protection (likely covered in security audit)
 
 ### SEO & Public Links
 
@@ -34,10 +32,6 @@
 - Migrate link and category metadata/options to settings-like JSON solution
 - Consider moving db migrations to different path (not filesystem `db/`)
 - Consider consolidating backend to same port with `/api` subpath (maintain proxy support)
-
-### Legacy PHP Cleanup
-
-- Determine if PHP deployment guide is still needed (post-Hono migration)
 
 ## Future Enhancements and Ideas
 
