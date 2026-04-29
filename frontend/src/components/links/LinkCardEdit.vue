@@ -69,7 +69,23 @@ const iconColor = computed(() => {
           >{{ tag.name }}</span
         >
       </div>
-      <div class="flex items-center gap-2">
+      <div class="flex items-center gap-2 flex-wrap justify-end">
+        <!-- Direct redirect indicator -->
+        <span
+          v-if="link.direct_redirect"
+          class="text-xs px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400"
+          title="Direct redirect enabled"
+        >
+          <i class="mdi mdi-lightning-bolt"></i> redirect
+        </span>
+        <!-- Visit count for public links -->
+        <span
+          v-if="link.is_public && link.total_visits > 0"
+          class="text-xs text-gray-400 dark:text-brand-500"
+          title="Total visits"
+        >
+          <i class="mdi mdi-eye-outline"></i> {{ link.total_visits }}
+        </span>
         <span
           class="text-xs text-gray-400 dark:text-brand-500"
           :title="link.is_public ? 'Public link' : 'Private link'"

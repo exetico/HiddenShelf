@@ -166,6 +166,41 @@ describe("Links API", () => {
       expect(data.links[0].title).toBe("Categorized");
     });
 
+    it("includes total_visits count for each link", async () => {
+      const db = getDb();
+      const created = await createLink({
+        title: "Visited Link",
+        url: "https://visited.com",
+        is_public: 1,
+      });
+      const linkId = created.link.id;
+
+      // Insert some visit records
+      db.prepare(
+        "INSERT INTO link_visits (link_id, ip_masked) VALUES (?, ?)",
+      ).run(linkId, "1.2.3.0");
+      db.prepare(
+        "INSERT INTO link_visits (link_id, ip_masked) VALUES (?, ?)",
+      ).run(linkId, "1.2.4.0");
+
+      const res = await app.request("/api/links", {
+        headers: { Cookie: cookie },
+      });
+      const data = await json(res);
+      const visitedLink = data.links.find((l) => l.id === linkId);
+      expect(visitedLink).toBeDefined();
+      expect(visitedLink.total_visits).toBe(2);
+    });
+
+    it("returns total_visits of 0 for links with no visits", async () => {
+      await createLink({ title: "No Visits" });
+      const res = await app.request("/api/links", {
+        headers: { Cookie: cookie },
+      });
+      const data = await json(res);
+      expect(data.links[0].total_visits).toBe(0);
+    });
+
     it("supports pagination", async () => {
       for (let i = 1; i <= 25; i++) {
         await createLink({

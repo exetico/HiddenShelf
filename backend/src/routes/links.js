@@ -169,10 +169,11 @@ links.get("/", optionalAuth(), (c) => {
     )
     .all(c.userId, ...params, limit, offset);
 
-  // Batch-fetch tags for all links (avoids N+1)
+  // Batch-fetch tags and visit counts for all links (avoids N+1)
   if (linksRows.length > 0) {
     const linkIds = linksRows.map((l) => l.id);
     const placeholders = linkIds.map(() => "?").join(",");
+
     const tagRows = db
       .prepare(
         `SELECT lt.link_id, t.* FROM tags t
@@ -186,12 +187,24 @@ links.get("/", optionalAuth(), (c) => {
       if (!tagsByLink.has(row.link_id)) tagsByLink.set(row.link_id, []);
       tagsByLink.get(row.link_id).push(row);
     }
+
+    const visitRows = db
+      .prepare(
+        `SELECT link_id, COUNT(*) as visit_count FROM link_visits
+         WHERE link_id IN (${placeholders}) GROUP BY link_id`,
+      )
+      .all(...linkIds);
+
+    const visitsByLink = new Map(visitRows.map((r) => [r.link_id, r.visit_count]));
+
     for (const link of linksRows) {
       link.tags = tagsByLink.get(link.id) || [];
+      link.total_visits = visitsByLink.get(link.id) || 0;
     }
   } else {
     for (const link of linksRows) {
       link.tags = [];
+      link.total_visits = 0;
     }
   }
 

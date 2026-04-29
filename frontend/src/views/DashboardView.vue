@@ -1,5 +1,5 @@
 <script setup>
-import { computed } from "vue";
+import { computed, onMounted } from "vue";
 import { useRouter } from "vue-router";
 import { useAppStore } from "@/stores/app";
 import { useTheme } from "@/composables/useTheme";
@@ -9,6 +9,14 @@ const router = useRouter();
 const { isDark, toggleTheme } = useTheme();
 
 const totalLinks = computed(() => appStore.total || appStore.links.length);
+
+onMounted(() => {
+  appStore.loadVisitStats();
+});
+
+const topVisitedLinks = computed(() =>
+  appStore.visitStats.summary.slice(0, 5),
+);
 </script>
 
 <template>
@@ -21,25 +29,50 @@ const totalLinks = computed(() => appStore.total || appStore.links.length);
     </header>
 
     <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-      <article
-        class="bg-white dark:bg-brand-900 rounded-lg border border-gray-200 dark:border-brand-800 p-5"
+      <button
+        class="bg-white dark:bg-brand-900 rounded-lg border border-gray-200 dark:border-brand-800 p-5 text-left hover:border-brand-500 transition-colors"
+        @click="router.push({ name: 'edit' })"
       >
         <p class="text-sm text-gray-600 dark:text-brand-300">Links</p>
         <p class="text-3xl font-bold">{{ totalLinks }}</p>
-      </article>
-      <article
-        class="bg-white dark:bg-brand-900 rounded-lg border border-gray-200 dark:border-brand-800 p-5"
+      </button>
+      <button
+        class="bg-white dark:bg-brand-900 rounded-lg border border-gray-200 dark:border-brand-800 p-5 text-left hover:border-brand-500 transition-colors"
+        @click="router.push({ name: 'edit' })"
       >
         <p class="text-sm text-gray-600 dark:text-brand-300">Categories</p>
         <p class="text-3xl font-bold">{{ appStore.totalCategories }}</p>
-      </article>
-      <article
-        class="bg-white dark:bg-brand-900 rounded-lg border border-gray-200 dark:border-brand-800 p-5"
+      </button>
+      <button
+        class="bg-white dark:bg-brand-900 rounded-lg border border-gray-200 dark:border-brand-800 p-5 text-left hover:border-brand-500 transition-colors"
+        @click="router.push({ name: 'edit' })"
       >
         <p class="text-sm text-gray-600 dark:text-brand-300">Tags</p>
         <p class="text-3xl font-bold">{{ appStore.totalTags }}</p>
-      </article>
+      </button>
     </div>
+
+    <!-- Visit Stats -->
+    <article
+      v-if="appStore.visitStats.total_visits > 0 || appStore.visitStats.summary.length > 0"
+      class="bg-white dark:bg-brand-900 rounded-lg border border-gray-200 dark:border-brand-800 p-5"
+    >
+      <h2 class="font-semibold text-gray-900 dark:text-white mb-3">
+        <i class="mdi mdi-chart-bar mr-1"></i>Link visits
+        <span class="text-sm font-normal text-gray-500 dark:text-brand-400 ml-1">(last {{ appStore.visitStats.days }} days)</span>
+      </h2>
+      <p class="text-2xl font-bold mb-3">{{ appStore.visitStats.total_visits }} <span class="text-sm font-normal text-gray-500 dark:text-brand-400">total visits</span></p>
+      <ul v-if="topVisitedLinks.length" class="space-y-1">
+        <li
+          v-for="item in topVisitedLinks"
+          :key="item.id"
+          class="flex items-center justify-between text-sm"
+        >
+          <span class="truncate text-gray-700 dark:text-brand-200 mr-2">{{ item.title }}</span>
+          <span class="flex-shrink-0 text-brand-600 dark:text-brand-400 font-medium">{{ item.visit_count }} visits</span>
+        </li>
+      </ul>
+    </article>
 
     <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
       <button

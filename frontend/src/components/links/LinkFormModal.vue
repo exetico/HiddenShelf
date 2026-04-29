@@ -1,6 +1,7 @@
 <script setup>
-import { reactive, watch, computed } from "vue";
+import { reactive, watch, computed, ref } from "vue";
 import BaseModal from "@/components/common/BaseModal.vue";
+import { linkVisitsApi } from "@/services/api/linkVisitsApi";
 
 const props = defineProps({
   open: Boolean,
@@ -28,6 +29,9 @@ const form = reactive({
   direct_redirect: false,
 });
 
+const visitCount = ref(null);
+const loadingVisits = ref(false);
+
 // Normalize icon: auto-prepend mdi- if needed
 const normalizedIcon = computed(() => {
   const raw = form.icon?.trim();
@@ -43,7 +47,7 @@ const iconWasNormalized = computed(() => {
 
 watch(
   () => props.model,
-  (model) => {
+  async (model) => {
     form.title = model?.title || "";
     form.url = model?.url || "";
     form.description = model?.description || "";
@@ -53,6 +57,20 @@ watch(
     form.newTagInput = "";
     form.is_public = Boolean(model?.is_public);
     form.direct_redirect = Boolean(model?.direct_redirect);
+
+    // Load visit stats for existing links
+    visitCount.value = null;
+    if (model?.id) {
+      loadingVisits.value = true;
+      try {
+        const data = await linkVisitsApi.getSummary({ linkId: model.id });
+        visitCount.value = data?.stats?.total_visits ?? model.total_visits ?? 0;
+      } catch {
+        visitCount.value = model.total_visits ?? 0;
+      } finally {
+        loadingVisits.value = false;
+      }
+    }
   },
   { immediate: true },
 );
@@ -208,6 +226,16 @@ function submit() {
         <input v-model="form.direct_redirect" type="checkbox" />
         Direct redirect
       </label>
+
+      <!-- Visit stats (edit mode only) -->
+      <p
+        v-if="model?.id"
+        class="text-xs text-gray-500 dark:text-brand-400"
+      >
+        <i class="mdi mdi-eye-outline mr-1"></i>
+        <template v-if="loadingVisits">Loading visits...</template>
+        <template v-else>{{ visitCount ?? 0 }} total visits</template>
+      </p>
 
       <div class="flex justify-end gap-2 pt-2">
         <button

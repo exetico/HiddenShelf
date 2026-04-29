@@ -4,6 +4,14 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>View Link - Hidden Shelf</title>
+    <meta name="description" content="View a shared link on Hidden Shelf." />
+    <!-- Open Graph / Twitter meta — updated dynamically once the link loads -->
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Hidden Shelf — Shared Link" id="og-title" />
+    <meta property="og:description" content="View a shared link on Hidden Shelf." id="og-description" />
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="Hidden Shelf — Shared Link" id="twitter-title" />
+    <meta name="twitter:description" content="View a shared link on Hidden Shelf." id="twitter-description" />
     <!-- Apple-specific meta tags -->
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta
@@ -197,6 +205,18 @@
 
               if (data.success) {
                 this.link = data.link;
+
+                // Update page title and Open Graph meta dynamically
+                document.title = `${data.link.title} — Hidden Shelf`;
+                const desc = data.link.description || `View "${data.link.title}" shared via Hidden Shelf`;
+                const setMeta = (id, val) => {
+                  const el = document.getElementById(id);
+                  if (el) el.setAttribute("content", val);
+                };
+                setMeta("og-title", `${data.link.title} — Hidden Shelf`);
+                setMeta("og-description", desc);
+                setMeta("twitter-title", `${data.link.title} — Hidden Shelf`);
+                setMeta("twitter-description", desc);
 
                 // Log the visit (fire and forget)
                 this.logVisit(hash);

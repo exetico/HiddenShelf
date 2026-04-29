@@ -5,6 +5,7 @@ import EditLinksView from "@/views/EditLinksView.vue";
 import ProfileView from "@/views/ProfileView.vue";
 import LoginView from "@/views/LoginView.vue";
 import { useAuthStore } from "@/stores/auth";
+import { useToastStore } from "@/stores/toast";
 
 const routes = [
   {
@@ -18,6 +19,8 @@ const routes = [
   { path: "/view", name: "view", component: ViewLinksView },
   { path: "/edit", name: "edit", component: EditLinksView },
   { path: "/profile", name: "profile", component: ProfileView },
+  // Catch-all: redirect unknown routes to dashboard with a toast notification
+  { path: "/:pathMatch(.*)*", name: "not-found", redirect: "/dashboard" },
 ];
 
 const router = createRouter({
@@ -25,12 +28,18 @@ const router = createRouter({
   routes,
 });
 
-router.beforeEach(async (to) => {
+router.beforeEach(async (to, from) => {
   const authStore = useAuthStore();
 
   // Always bootstrap auth so we know the real auth state
   if (!authStore.ready) {
     await authStore.bootstrap();
+  }
+
+  // Show a toast when landing on the catch-all not-found route
+  if (to.name === "not-found") {
+    const toastStore = useToastStore();
+    toastStore.error("Page not found — redirecting to dashboard");
   }
 
   // Allow access to public routes

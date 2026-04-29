@@ -69,7 +69,7 @@ This document provides a comprehensive overview of all features, functionality, 
 
 - **Backend Abstraction Layer** — All API calls go through `frontend/src/services/api/` modules. No hardcoded endpoints in components.
 - **Component-Based Architecture** — Components organized by feature domain with reusable common components.
-- **Hash-Based Routing** — Uses `#/` routes (e.g. `#/dashboard`, `#/edit`) to avoid conflicts with server routing.
+- **Hash-Based Routing** — Uses `#/` routes (e.g. `#/dashboard`, `#/edit`) to avoid conflicts with server routing. A catch-all route (`/:pathMatch(.*)*`) redirects unknown URLs to `#/dashboard` and shows a toast notification.
 - **Teleport Pattern for Modals** — All modals/overlays use `<Teleport to="body">` to escape parent layout styles.
 - **Docker-First Development** — `make dev` for HMR, `make build-frontend` for production, `make test` for all tests.
 
@@ -117,7 +117,9 @@ This document provides a comprehensive overview of all features, functionality, 
 #### Dashboard (`DashboardView.vue`)
 
 - Welcome message with user greeting
-- Statistics grid showing total links, categories, and tags counts
+- **Clickable statistics grid**: Cards for total links, categories, and tags — click any card to navigate to `#/edit`
+- **`totalCategories` includes shared categories**: The getter sums own categories + shared categories from `sharedCategories` state
+- **Visit stats section**: Shows total visits and top 5 most-visited links for the last 30 days (loaded via `appStore.loadVisitStats()` on mount); section is hidden when no visits have occurred
 - **4 quick action buttons**: View links → `#/view`, Edit links → `#/edit`, Profile → `#/profile`, Import Data → `#/profile`
 - **Theme toggle section**: Shows current mode label ("Light mode" / "Dark mode") with sun/moon icon toggle button
 
@@ -147,6 +149,7 @@ This document provides a comprehensive overview of all features, functionality, 
 #### Profile (`ProfileView.vue`)
 
 - Email display with user info
+- **Beta notice / Data retention disclaimer**: Amber notice box informing users the service is in beta and data may be reset; includes "export your data" button link to open ImportExportModal
 - **App version display**: Shows version from `appConfig.version` (fetched via `configApi.get()`)
 - **Join Shared Category section**:
   - Input field with placeholder "Paste share URL or code..."
@@ -219,6 +222,8 @@ This document provides a comprehensive overview of all features, functionality, 
 - **Public/Private emoji**: 🔓 (public, title="Public") / 🔒 (private, title="Private") displayed next to title
 - Title, description (URL fallback if empty), icon
 - **Tag pills**: Up to 3 tags shown as styled pills with "+N more" overflow
+- **Direct redirect badge**: Amber "⚡ redirect" badge shown when `direct_redirect` is set on the link
+- **Visit count**: Shows total visit count (eye icon + number) for public links that have at least one visit; `total_visits` field is batch-fetched from the backend alongside tags in the links list API
 - **Copy public URL**: Visible only for public links — emits `copyPublic` with link hash
 - Edit button: Opens `LinkFormModal` with link data
 - Delete button: Emits `delete` with link ID (confirmation handled by parent)
@@ -228,6 +233,7 @@ This document provides a comprehensive overview of all features, functionality, 
 - Full CRUD form in modal (Teleport)
 - URL, title, description, icon (with auto-prefix + live preview), category dropdown, tag pill input
 - **Icon auto-prefix**: Typing "wifi" auto-becomes "mdi-wifi" with live icon preview
+- **Visit count display (edit mode)**: When editing an existing link, fetches visit stats via `linkVisitsApi.getSummary({ linkId })` and displays total visits below the public/redirect toggles
 - Create / Update mode
 
 ### Link Operations
@@ -345,7 +351,8 @@ This document provides a comprehensive overview of all features, functionality, 
 ### Export Functionality
 
 - **JSON Format**: Complete data export via `ImportExportModal`
-- **Includes**: Links, categories, tags with relationships
+- **Includes**: Links (with `direct_redirect`), categories, tags with relationships
+- **Shared-category exclusion**: Links belonging to other users via shared categories are excluded from export; a toast notification reports the excluded count
 - **Filename**: Timestamped export files
 
 ### Import Functionality
@@ -356,6 +363,8 @@ This document provides a comprehensive overview of all features, functionality, 
 - **Progress Tracking**: Real-time import progress overlay (Teleport)
 - **Default Color**: Imported categories without color get `#687061`
 - **Statistics**: Show import results summary
+- **Confirmation Modal**: Styled modal replaces `window.confirm()` before executing import
+- **`direct_redirect`**: Exported and imported for each link
 
 ### Supported Data
 
@@ -456,7 +465,7 @@ This document provides a comprehensive overview of all features, functionality, 
 
 ### Links (`/api/links`)
 
-- `GET` — List links (pagination, search, category filter, `include_shared`)
+- `GET` — List links (pagination, search, category filter, `include_shared`) — each link includes `total_visits` (batch-fetched, no N+1)
 - `POST` — Create link
 - `GET ?id=X` — Get specific link
 - `PUT ?id=X` — Update link
@@ -499,6 +508,10 @@ This document provides a comprehensive overview of all features, functionality, 
 ### Configuration (`/api/config`)
 
 - `GET` — Get public app config (version, site name, features)
+
+### Account (`/api/account`)
+
+- `DELETE /data` — Delete all user data (links, tags, categories, shares) in a single SQLite transaction
 
 ## Public Link Viewing
 
@@ -638,22 +651,22 @@ This document provides a comprehensive overview of all features, functionality, 
 | `stores/auth.test.js`                           | 3     | Auth store login/logout/session                                                                                             |
 | `lib/httpClient.test.js`                        | 2     | HTTP client request/error handling                                                                                          |
 | `components/feedback/ToastList.test.js`         | 7     | Rendering, CSS classes per type, progress bar animation, click dismiss                                                      |
-| `components/links/LinkCardEdit.test.js`         | 9     | Public/private emoji (🔓/🔒), copy URL, delete, tag pills, description fallback                                             |
+| `components/links/LinkCardEdit.test.js`         | 13    | Public/private emoji (🔓/🔒), copy URL, delete, tag pills, description fallback, direct_redirect badge, visit count display |
 | `components/categories/CategoryManager.test.js` | 8     | Category list, link counts, create/delete, shared-with-me section, leave buttons                                            |
-| `views/DashboardView.test.js`                   | 8     | Welcome message, stats, quick actions, navigation, theme toggle                                                             |
+| `views/DashboardView.test.js`                   | 12    | Welcome message, clickable stat cards, totalCategories with shared, visit stats, quick actions, navigation, theme toggle    |
 | `views/ViewLinksView.test.js`                   | 9     | X of Y counter, category headers, collapse/expand, empty state, Load More, shared owner badge                               |
 | `views/EditLinksView.test.js`                   | 10    | Search (debounced 300ms), category filter (immediate), pagination, empty state, link cards                                  |
-| `views/ProfileView.test.js`                     | 12    | Email, app version, share code verify/preview, URL extraction, danger zone, delete modal, shared categories                 |
+| `views/ProfileView.test.js`                     | 13    | Beta notice, email, app version, share code verify/preview, URL extraction, danger zone, delete modal, shared categories    |
 | `views/LoginView.test.js`                       | 8     | Share code sessionStorage persistence, auth redirect, email input, remembered email display, welcome back UX with user icon |
 
-**Frontend Total: 83 tests across 11 files**
+**Frontend Total: 92 tests across 11 files**
 
 ### Backend Test Files & Coverage
 
 | File                        | Tests | Covers                                                                                                                                                              |
 | --------------------------- | ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `tests/auth.test.js`        | 13    | Magic link login, verify, logout, session, Google OAuth flow                                                                                                        |
-| `tests/links.test.js`       | 21    | Link CRUD, pagination, category filtering, tag filtering                                                                                                            |
+| `tests/links.test.js`       | 23    | Link CRUD, pagination, category filtering, tag filtering, total_visits batch fetch                                                                                  |
 | `tests/categories.test.js`  | 10    | Category CRUD, ordering, user isolation                                                                                                                             |
 | `tests/tags.test.js`        | 8     | Tag CRUD, user isolation                                                                                                                                            |
 | `tests/shares.test.js`      | 12    | Share create/join/leave, member management, shared data access                                                                                                      |
@@ -664,9 +677,9 @@ This document provides a comprehensive overview of all features, functionality, 
 | `tests/codeQuality.test.js` | 11    | Category delete orphans, category ownership validation, batch tag fetching, bulk delete (transaction + isolation + auth), short URL validation, category updated_at |
 | `tests/migrations.test.js`  | 14    | All 7 migrations run successfully, idempotency, per-migration schema checks, foreign key constraints, cascade behavior                                              |
 
-**Backend Total: 127 tests across 11 files**
+**Backend Total: 129 tests across 11 files**
 
-**Combined Total: 210 tests (83 frontend + 127 backend)**
+**Combined Total: 221 tests (92 frontend + 129 backend)**
 
 ### Testing Patterns
 
