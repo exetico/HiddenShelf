@@ -1,40 +1,21 @@
 # To do
 
-## Bugs
-
-1. Public links redirect instantly - users need to see it's a redirect (visibility issue)
-2. Visit stats exist but need better visibility in the UI
-3. Dashboard stat cards (Links, Categories, Tags) are not clickable - should navigate to related pages
-4. Categories count on dashboard shows "1" but doesn't include shared categories (should show 2+)
-5. Check all console outputs once running the solution, if anything should be fixed.
-
 ## High Priority
 
-1. Add license file and mention in README.md
-2. Update data retention disclaimer for beta service
-3. Add restore function (database backup restoration)
-4. Add backup to cloud functionality
-5. Config for "site url" and "subpath" for users running behind proxy
-6. Invalid URI handling - redirect to front-page with toast notification
-7. Make guide on how to deploy without Docker (preparing → deploy → validate)
+1. Add restore function (database backup restoration)
+2. Add backup to cloud functionality
+3. Config for "site url" and "subpath" for users running behind proxy
+4. Make guide on how to deploy without Docker (preparing → deploy → validate)
 
 ## Features & Enhancements
-
-### Statistics & Monitoring
-
-- Add basic visits count dashboard (period + total count)
-- Show visit count in edit link popup (avoid overloading with stats)
 
 ### Link Management
 
 - Bulk create functionality (avoid looping through individual creations)
 - Bulk "Direct redirect" toggle for all links
-- Show "Direct redirect" option in edit overview for each link
 
 ### Import/Export
 
-- Validate that "Shared category" and "Direct redirect" are included in export/import
-- Export should exclude "Shared links through categories" - notify user about this
 - Bulk create for imports (performance improvement)
 - Does the system work, in a fresh newly created docker container?
 
@@ -46,8 +27,6 @@
 
 ### SEO & Public Links
 
-- Add SEO meta data for overall page
-- Add SEO-friendly meta data for public links
 - Add "report public link" function
 
 ### Architecture & Technical Debt
