@@ -107,6 +107,14 @@ const projectRoot = path.resolve(__dirname, "..", "..");
 // Serve built Vue app from public/app/
 app.use("/public/app/*", serveStatic({ root: projectRoot }));
 
+// The Vue build references its bundles as /assets/... (Vite base "/", which
+// httpClient also uses as the API prefix), while index.html is served from
+// /public/app/. Serve those bundles where the page asks for them.
+app.use(
+  "/assets/*",
+  serveStatic({ root: path.join(projectRoot, "public", "app") }),
+);
+
 // Serve public assets (view.html, output.css, favicon.png)
 app.use("/public/*", serveStatic({ root: projectRoot }));
 
