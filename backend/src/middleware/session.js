@@ -1,16 +1,47 @@
 /**
  * Simple cookie-based session middleware for Hono.
  *
- * Uses a signed, httpOnly cookie to store the session ID.
- * Session data lives in an in-memory Map (fine for single-process SQLite apps).
- * For multi-process deployments, swap for a DB-backed store.
+ * Uses an httpOnly cookie holding a random session ID.
+ * Session data is stored in the SQLite `sessions` table, so logins survive
+ * restarts and redeploys.
  */
 
 import crypto from "node:crypto";
 import config from "../config.js";
+import { getDb, hasDb } from "../lib/database.js";
 
-/** In-memory session store: sessionId → { data, expiresAt } */
-const sessions = new Map();
+/**
+ * SQLite-backed session store with a small Map-like API:
+ * sessionId → { data, expiresAt }
+ */
+const sessions = {
+  get(id) {
+    const row = getDb()
+      .prepare("SELECT data, expires_at FROM sessions WHERE id = ?")
+      .get(id);
+    if (!row) return undefined;
+    return { data: JSON.parse(row.data), expiresAt: row.expires_at };
+  },
+  set(id, session) {
+    getDb()
+      .prepare(
+        "INSERT OR REPLACE INTO sessions (id, data, expires_at) VALUES (?, ?, ?)",
+      )
+      .run(id, JSON.stringify(session.data), session.expiresAt);
+    return this;
+  },
+  delete(id) {
+    getDb().prepare("DELETE FROM sessions WHERE id = ?").run(id);
+  },
+  clear() {
+    if (hasDb()) getDb().prepare("DELETE FROM sessions").run();
+  },
+  deleteExpired(now = Date.now()) {
+    if (hasDb()) {
+      getDb().prepare("DELETE FROM sessions WHERE expires_at < ?").run(now);
+    }
+  },
+};
 
 const COOKIE_NAME = config.sessionName;
 const LIFETIME_MS = config.sessionLifetime * 1000;
@@ -18,12 +49,7 @@ const LIFETIME_MS = config.sessionLifetime * 1000;
 /**
  * Clean expired sessions periodically.
  */
-setInterval(() => {
-  const now = Date.now();
-  for (const [id, session] of sessions) {
-    if (session.expiresAt < now) sessions.delete(id);
-  }
-}, 60_000);
+setInterval(() => sessions.deleteExpired(), 60_000).unref();
 
 /**
  * Hono middleware that attaches `c.session` helpers.
@@ -34,6 +60,7 @@ export function sessionMiddleware() {
     const cookieHeader = c.req.header("cookie") || "";
     let sessionId = parseCookie(cookieHeader, COOKIE_NAME);
     let session = sessionId ? sessions.get(sessionId) : null;
+    let dirty = false;
 
     // Validate session exists and is not expired
     if (!session || session.expiresAt < Date.now()) {
@@ -50,12 +77,15 @@ export function sessionMiddleware() {
         if (!session) {
           sessionId = crypto.randomBytes(32).toString("hex");
           session = { data: {}, expiresAt: Date.now() + LIFETIME_MS };
-          sessions.set(sessionId, session);
         }
         session.data[key] = value;
+        dirty = true;
       },
       delete(key) {
-        if (session) delete session.data[key];
+        if (session && key in session.data) {
+          delete session.data[key];
+          dirty = true;
+        }
       },
       destroy() {
         if (sessionId) sessions.delete(sessionId);
@@ -67,11 +97,16 @@ export function sessionMiddleware() {
         if (sessionId) sessions.delete(sessionId);
         sessionId = crypto.randomBytes(32).toString("hex");
         session = { data: { ...oldData }, expiresAt: Date.now() + LIFETIME_MS };
-        sessions.set(sessionId, session);
+        dirty = true;
       },
     };
 
     await next();
+
+    // Persist changes made during the request
+    if (dirty && sessionId && session) {
+      sessions.set(sessionId, session);
+    }
 
     // Determine if we should set the Secure flag
     // In production (non-localhost SITE_URL), always set Secure

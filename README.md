@@ -63,6 +63,7 @@ Hidden Shelf/
 │   │       ├── settings.js# User preferences
 │   │       ├── linkVisits.js # Visit tracking
 │   │       └── config.js  # Public app config
+│   ├── migrations/        # Schema migrations (SQL), applied on start
 │   ├── tests/             # Backend tests (Vitest)
 │   └── package.json
 ├── frontend/              # Vue 3 application
@@ -89,9 +90,8 @@ Hidden Shelf/
 │   ├── package.json
 │   ├── vite.config.js     # Vite + dev proxy config
 │   └── vitest.config.js   # Test configuration
-├── db/                    # Database
-│   ├── database.sqlite    # SQLite database file
-│   └── migrations/        # Schema migrations (SQL)
+├── db/                    # Database data only (mount as a volume)
+│   └── database.sqlite    # SQLite database file
 ├── public/                # Static files
 │   ├── app/               # Built Vue app (output)
 │   └── view.html          # Public link viewer
@@ -365,7 +365,7 @@ make help            # Show all available commands
 
 2. **Install dependencies**
 
-   Requires Node.js v20 or higher:
+   Requires Node.js v22 or higher:
 
    ```bash
    cd backend && npm install
@@ -386,7 +386,7 @@ make help            # Show all available commands
    export FROM_EMAIL=noreply@yoursite.com
    ```
 
-   Or create a `.env` file — see `.env.example` for all options.
+   Or create a `.env` file (see `.env.example` for all options) and start with `node --env-file=.env backend/src/index.js`. Node doesn't read `.env` on its own.
 
 4. **Set permissions**
 
@@ -420,9 +420,9 @@ All configuration is via environment variables:
 | `SMTP_ENCRYPTION`      | ``                                    | `tls` or `ssl` or empty                 |
 | `FROM_EMAIL`           | `noreply@example.com`                 | Sender email                            |
 | `FROM_NAME`            | `Hidden Shelf`                        | Sender name                             |
-| `DEBUG_MODE`           | `false`                               | Show detailed errors                    |
+| `DEBUG_MODE`           | `false`                               | Log magic links instead of emailing them, show detailed errors. Dev only |
 | `SIGNUP_ENABLED`       | `true`                                | Allow new user registration             |
-| `SESSION_SECRET`       | `change-me-in-production`             | Session signing key                     |
+| `TRUST_PROXY`          | (auto)                                | `true`/`false`: trust `X-Forwarded-For` for client IPs. Auto trusts it only from private addresses |
 | `GOOGLE_CLIENT_ID`     | ``                                    | Google OAuth client ID                  |
 | `GOOGLE_CLIENT_SECRET` | ``                                    | Google OAuth client secret              |
 | `GOOGLE_REDIRECT_URI`  | `{SITE_URL}/api/auth/google/callback` | OAuth redirect                          |
@@ -455,6 +455,16 @@ make build-frontend
 - `BASE_PATH` should NOT have a trailing slash
 - `BASE_PATH` should start with `/`
 - Keep `BASE_PATH` empty for root deployments
+
+## Production Checklist
+
+1. Set `SITE_URL` to your public `https://` address, and `DEBUG_MODE=false` (the default). In debug mode magic links only go to the log.
+2. Fill in real SMTP settings (`SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_ENCRYPTION`, `FROM_EMAIL`).
+3. Put HTTPS in front (Caddy, nginx, Traefik or a hosting provider). The session cookie is `Secure` whenever `SITE_URL` isn't localhost, so logins won't stick over plain HTTP.
+4. If the proxy runs on another machine or is a CDN, set `TRUST_PROXY=true` so rate limits see real client IPs. A proxy on the same host or Docker network is detected automatically.
+5. Keep `db/` on persistent storage. It holds only data; migrations ship with the code in `backend/migrations/` and run on start.
+6. Back up the database, e.g. daily: `sqlite3 db/database.sqlite ".backup /backups/hiddenshelf-$(date +%F).sqlite"`.
+7. Set `SIGNUP_ENABLED=false` if only existing users should be able to log in.
 
 ## How It Works
 

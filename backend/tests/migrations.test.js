@@ -27,16 +27,10 @@ describe("Database Migrations", () => {
   });
 
   /**
-   * Helper: Run migrations from db/migrations/
+   * Helper: Run migrations from backend/migrations/
    */
   function runMigrations(database, upToVersion = null) {
-    const migrationsDir = path.resolve(
-      __dirname,
-      "..",
-      "..",
-      "db",
-      "migrations",
-    );
+    const migrationsDir = path.resolve(__dirname, "..", "migrations");
     const files = fs
       .readdirSync(migrationsDir)
       .filter((f) => f.endsWith(".sql"))
@@ -104,7 +98,7 @@ describe("Database Migrations", () => {
 
     // Check final schema version
     const version = getSchemaVersion(db);
-    expect(version).toBe(7); // Update this when adding new migrations
+    expect(version).toBe(9); // Update this when adding new migrations
 
     // Verify all tables exist
     expect(tableExists(db, "_meta")).toBe(true);
@@ -129,7 +123,45 @@ describe("Database Migrations", () => {
     const version2 = getSchemaVersion(db);
 
     expect(version1).toBe(version2);
-    expect(version2).toBe(7);
+    expect(version2).toBe(9);
+  });
+
+  describe("Migration 008: Tags unique per user", () => {
+    it("lets two users have the same tag and keeps existing tag links", () => {
+      runMigrations(db, 7);
+      db.prepare("INSERT INTO users (email) VALUES ('a@example.com')").run();
+      db.prepare("INSERT INTO users (email) VALUES ('b@example.com')").run();
+      db.prepare(
+        "INSERT INTO links (user_id, hash, url, title) VALUES (1, 'h1', 'https://a.com', 'A')",
+      ).run();
+      db.prepare("INSERT INTO tags (name, user_id) VALUES ('work', 1)").run();
+      db.prepare("INSERT INTO link_tags (link_id, tag_id) VALUES (1, 1)").run();
+
+      // Before 008 the name is unique across all users
+      expect(() =>
+        db.prepare("INSERT INTO tags (name, user_id) VALUES ('work', 2)").run(),
+      ).toThrow(/UNIQUE/);
+
+      runMigrations(db);
+
+      expect(getSchemaVersion(db)).toBe(9);
+      expect(db.prepare("SELECT * FROM link_tags").all()).toEqual([
+        { link_id: 1, tag_id: 1 },
+      ]);
+      db.prepare("INSERT INTO tags (name, user_id) VALUES ('work', 2)").run();
+      expect(() =>
+        db.prepare("INSERT INTO tags (name, user_id) VALUES ('work', 2)").run(),
+      ).toThrow(/UNIQUE/);
+      expect(db.pragma("foreign_key_check")).toEqual([]);
+      expect(db.pragma("foreign_keys", { simple: true })).toBe(1);
+    });
+  });
+
+  describe("Migration 009: Sessions", () => {
+    it("creates the sessions table", () => {
+      runMigrations(db);
+      expect(tableExists(db, "sessions")).toBe(true);
+    });
   });
 
   describe("Migration 001: Initial Schema", () => {

@@ -19,9 +19,10 @@ services:
       - SMTP_ENCRYPTION=${SMTP_ENCRYPTION:-}
       - FROM_EMAIL=${FROM_EMAIL:-noreply@example.com}
       - FROM_NAME=${FROM_NAME:-Hidden Shelf}
-      - DEBUG_MODE=${DEBUG_MODE:-true}
+      # Debug mode logs magic links instead of emailing them; dev only
+      - DEBUG_MODE=${DEBUG_MODE:-false}
       - SIGNUP_ENABLED=${SIGNUP_ENABLED:-true}
-      - SESSION_SECRET=${SESSION_SECRET:-change-me-in-production}
+      - TRUST_PROXY=${TRUST_PROXY:-}
       - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-}
       - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET:-}
       - GOOGLE_REDIRECT_URI=${GOOGLE_REDIRECT_URI:-http://localhost:3000/api/auth/google/callback}
@@ -30,7 +31,7 @@ services:
       - hiddenshelf-network
 
   frontend:
-    image: node:20-alpine
+    image: node:22-alpine
     container_name: hiddenshelf-frontend
     working_dir: /app/frontend
     command: sh -c "npm ci && npm run dev -- --host 0.0.0.0 --port 5173"
@@ -51,7 +52,7 @@ services:
       - dev
 
   frontend-build:
-    image: node:20-alpine
+    image: node:22-alpine
     container_name: hiddenshelf-frontend-build
     working_dir: /app/frontend
     command: sh -c "npm ci && npm run build"
@@ -67,7 +68,7 @@ services:
       - build
 
   frontend-test:
-    image: node:20-alpine
+    image: node:22-alpine
     container_name: hiddenshelf-frontend-test
     working_dir: /app/frontend
     command: sh -c "npm ci && npm run test -- --run"
@@ -82,7 +83,7 @@ services:
       - test
 
   backend-test:
-    image: node:20-alpine
+    image: node:22-alpine
     container_name: hiddenshelf-backend-test
     working_dir: /app/backend
     command: sh -c "apk add --no-cache python3 make g++ && npm ci && npm run test"

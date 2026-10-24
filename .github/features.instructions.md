@@ -41,7 +41,7 @@ This document provides a comprehensive overview of all features, functionality, 
 │   ├── src/lib/                # Database, helpers, mailer
 │   ├── src/middleware/          # Session, auth guards
 │   └── tests/                  # Backend tests
-├── db/migrations/              # SQLite migration SQL files
+├── backend/migrations/         # SQLite migration SQL files
 ├── public/                     # Static files + view.html (public link viewer)
 ├── frontend/                   # Vue 3 application
 │   ├── src/
@@ -448,7 +448,7 @@ This document provides a comprehensive overview of all features, functionality, 
 
 ### Migration System
 
-- Sequential SQL files in `db/migrations/` (001 through 006)
+- Sequential SQL files in `backend/migrations/`
 - Automatic execution on first access
 - Version tracking in `_meta` table
 
@@ -611,7 +611,7 @@ This document provides a comprehensive overview of all features, functionality, 
 - Database SQLite file path (`DB_PATH`)
 - Site URL, name, branding (`SITE_URL`, `SITE_NAME`)
 - Email/SMTP settings for magic links (`SMTP_HOST`, `SMTP_PORT`, etc.)
-- Session secret and lifetime (`SESSION_SECRET`, `SESSION_LIFETIME`)
+- Session lifetime (`SESSION_LIFETIME`); sessions are stored in the SQLite `sessions` table
 - Debug mode, signup toggle (`DEBUG_MODE`, `SIGNUP_ENABLED`)
 - Google OAuth credentials (`GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`)
 

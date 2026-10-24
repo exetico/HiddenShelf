@@ -37,10 +37,14 @@ const config = {
     process.env.SESSION_LIFETIME || String(30 * 24 * 60 * 60),
     10,
   ), // seconds
-  sessionSecret: process.env.SESSION_SECRET || "change-me-in-production-please",
 
   // Pagination
   linksPerPage: parseInt(process.env.LINKS_PER_PAGE || "20", 10),
+
+  // Reverse proxy: "true" always trusts X-Forwarded-For and friends, "false"
+  // never does. Unset: trusted only when the request comes from a loopback
+  // or private address, i.e. a proxy on the same host or Docker network.
+  trustProxy: process.env.TRUST_PROXY || "auto",
 
   // Development
   debugMode: (process.env.DEBUG_MODE || "false") === "true",

@@ -1,4 +1,5 @@
-FROM node:20-alpine
+# Node 20 reached end of life in April 2026
+FROM node:22-alpine
 
 # Install build tools needed for better-sqlite3 native module
 RUN apk add --no-cache python3 make g++ sqlite
@@ -11,7 +12,7 @@ COPY backend/package.json backend/package-lock.json* ./backend/
 COPY frontend/package.json frontend/package-lock.json* ./frontend/
 
 # Install backend dependencies (includes native better-sqlite3)
-RUN cd backend && npm install --production
+RUN cd backend && npm ci --omit=dev
 
 # Install frontend dependencies and build
 RUN cd frontend && npm ci

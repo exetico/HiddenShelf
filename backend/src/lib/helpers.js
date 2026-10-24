@@ -3,6 +3,7 @@
  */
 
 import crypto from "node:crypto";
+import { getConnInfo } from "@hono/node-server/conninfo";
 import config from "../config.js";
 
 /**
@@ -75,15 +76,55 @@ export function isAllowedRedirectOrigin(origin) {
     // Allow same hostname (production)
     if (parsed.hostname === siteUrlParsed.hostname) return true;
 
-    // Allow localhost origins (dev servers on different ports)
-    if (parsed.hostname === "localhost" || parsed.hostname === "127.0.0.1") {
-      return true;
-    }
-
-    return false;
+    // Allow localhost origins (dev servers on different ports), but only in
+    // development: in production a login link must never leave the site
+    return isLocalHostname(parsed.hostname) && isDevSetup();
   } catch {
     return false;
   }
+}
+
+function isLocalHostname(hostname) {
+  return hostname === "localhost" || hostname === "127.0.0.1";
+}
+
+/**
+ * True when running locally (SITE_URL on localhost) or in debug mode.
+ */
+export function isDevSetup() {
+  try {
+    return config.debugMode || isLocalHostname(new URL(config.siteUrl).hostname);
+  } catch {
+    return config.debugMode;
+  }
+}
+
+/**
+ * Check whether a cross-origin request's Origin may use the API with cookies.
+ * Returns the origin to echo back, or null to refuse.
+ */
+export function allowedCorsOrigin(origin) {
+  if (!origin) return config.siteUrl;
+  return isAllowedRedirectOrigin(origin) ? origin : null;
+}
+
+/**
+ * Turn a stored return_to value into a same-site destination after login.
+ * Accepts an app hash route ("#/edit") or a path on this site ("/h/abc").
+ * Anything else ("@evil.com", "//evil.com", "https://...") falls back to
+ * the dashboard, so the login link can't be used as an open redirect.
+ */
+export function safeReturnTo(returnTo) {
+  if (typeof returnTo !== "string" || returnTo === "") return "#/dashboard";
+  if (returnTo.startsWith("#")) return returnTo;
+  if (
+    returnTo.startsWith("/") &&
+    !returnTo.startsWith("//") &&
+    !/[\\\x00-\x1f]/.test(returnTo)
+  ) {
+    return returnTo;
+  }
+  return "#/dashboard";
 }
 
 /** Maximum input field lengths to prevent storage abuse */
@@ -160,16 +201,47 @@ export function parseUserAgent(ua) {
   return { browser, os };
 }
 
+function isPrivateAddress(ip) {
+  const v4 = ip.replace(/^::ffff:/, "");
+  return (
+    v4 === "::1" ||
+    /^127\./.test(v4) ||
+    /^10\./.test(v4) ||
+    /^192\.168\./.test(v4) ||
+    /^172\.(1[6-9]|2\d|3[01])\./.test(v4) ||
+    /^f[cd][0-9a-f]{2}:/i.test(v4)
+  );
+}
+
+function getSocketAddress(c) {
+  try {
+    return getConnInfo(c).remote.address || null;
+  } catch {
+    return null; // not running under @hono/node-server (e.g. tests)
+  }
+}
+
 /**
- * Get real client IP from common headers.
+ * Get the client IP. Forwarding headers are only believed when they come
+ * from a trusted proxy (see TRUST_PROXY), otherwise anyone could set
+ * X-Forwarded-For to dodge the login rate limit or fake visit stats.
  */
 export function getClientIp(c) {
-  return (
-    c.req.header("cf-connecting-ip") ||
-    c.req.header("x-forwarded-for")?.split(",")[0]?.trim() ||
-    c.req.header("x-real-ip") ||
-    "127.0.0.1"
-  );
+  const socketIp = getSocketAddress(c);
+  const trustHeaders =
+    config.trustProxy === "true" ||
+    (config.trustProxy !== "false" &&
+      (socketIp === null || isPrivateAddress(socketIp)));
+
+  if (trustHeaders) {
+    const forwarded =
+      c.req.header("cf-connecting-ip") ||
+      c.req.header("x-forwarded-for")?.split(",")[0]?.trim() ||
+      c.req.header("x-real-ip");
+    if (forwarded) return forwarded;
+  }
+
+  return socketIp || "127.0.0.1";
 }
 
 /**
