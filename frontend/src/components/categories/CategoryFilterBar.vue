@@ -49,7 +49,7 @@ function stopDrag() {
 
 <template>
   <div
-    class="bg-white dark:bg-brand-900 rounded-lg shadow-sm p-3 transition-colors"
+    class="bg-white dark:bg-brand-900 rounded-lg shadow-xs p-3 transition-colors"
   >
     <div
       ref="scrollContainer"
@@ -66,7 +66,7 @@ function stopDrag() {
             ? 'bg-brand-600 text-white'
             : 'bg-gray-100 dark:bg-brand-800 text-gray-700 dark:text-brand-300 hover:bg-gray-200 dark:hover:bg-brand-700'
         "
-        class="flex items-center gap-2 px-4 py-2 rounded-lg transition-colors whitespace-nowrap flex-shrink-0"
+        class="flex items-center gap-2 px-4 py-2 rounded-lg transition-colors whitespace-nowrap shrink-0"
         @click="selectCategory('')"
       >
         <i class="mdi mdi-view-grid text-lg"></i>
@@ -82,7 +82,7 @@ function stopDrag() {
             ? 'bg-brand-600 text-white'
             : 'bg-gray-100 dark:bg-brand-800 text-gray-700 dark:text-brand-300 hover:bg-gray-200 dark:hover:bg-brand-700'
         "
-        class="flex items-center gap-2 px-4 py-2 rounded-lg transition-colors whitespace-nowrap flex-shrink-0"
+        class="flex items-center gap-2 px-4 py-2 rounded-lg transition-colors whitespace-nowrap shrink-0"
         @click="selectCategory('uncategorized')"
       >
         <i class="mdi mdi-folder-outline text-lg text-brand-400"></i>
@@ -99,7 +99,7 @@ function stopDrag() {
             ? 'bg-brand-600 text-white'
             : 'bg-gray-100 dark:bg-brand-800 text-gray-700 dark:text-brand-300 hover:bg-gray-200 dark:hover:bg-brand-700'
         "
-        class="flex items-center gap-2 px-4 py-2 rounded-lg transition-colors whitespace-nowrap flex-shrink-0"
+        class="flex items-center gap-2 px-4 py-2 rounded-lg transition-colors whitespace-nowrap shrink-0"
         @click="selectCategory(String(category.id))"
       >
         <i
@@ -124,7 +124,7 @@ function stopDrag() {
             ? 'bg-brand-600 text-white'
             : 'bg-brand-50 dark:bg-brand-900/30 text-brand-700 dark:text-brand-300 hover:bg-brand-100 dark:hover:bg-brand-900/50'
         "
-        class="flex items-center gap-2 px-4 py-2 rounded-lg transition-colors whitespace-nowrap flex-shrink-0"
+        class="flex items-center gap-2 px-4 py-2 rounded-lg transition-colors whitespace-nowrap shrink-0"
         :title="`Shared by ${category.owner_email}`"
         @click="selectCategory(String(category.id))"
       >

@@ -34,7 +34,7 @@ function onContextMenu(event) {
   >
     <i
       :class="link.icon || 'mdi-link-variant'"
-      class="mdi text-lg flex-shrink-0"
+      class="mdi text-lg shrink-0"
       :style="`color: ${iconColor}`"
     ></i>
     <div class="flex-1 min-w-0 sm:min-w-[200px]">
@@ -65,7 +65,7 @@ function onContextMenu(event) {
       </div>
       <button
         v-if="link.is_public"
-        class="text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 text-sm flex-shrink-0"
+        class="text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 text-sm shrink-0"
         title="Copy public link"
         @click.stop.prevent="$emit('copyPublic', link.hash)"
       >

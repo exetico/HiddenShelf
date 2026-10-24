@@ -34,7 +34,7 @@
         <!-- Redirecting State (Fixed Overlay) -->
         <div
           x-show="redirecting"
-          class="fixed inset-0 bg-white bg-opacity-95 z-50 flex items-center justify-center"
+          class="fixed inset-0 bg-white/95 z-50 flex items-center justify-center"
         >
           <div class="text-center">
             <div class="inline-block mb-4">
@@ -63,7 +63,7 @@
             <p class="text-gray-500 text-sm max-w-md px-4">
               Taking you to
               <span
-                class="font-mono text-xs bg-gray-100 px-2 py-1 rounded break-all"
+                class="font-mono text-xs bg-gray-100 px-2 py-1 rounded-sm break-all"
                 x-text="link?.url"
               ></span>
             </p>

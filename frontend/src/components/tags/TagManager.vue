@@ -72,7 +72,7 @@ function confirmDelete() {
   <Teleport to="body">
     <div
       v-if="showDeleteModal && deleteTarget"
-      class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[70] p-4"
+      class="fixed inset-0 bg-black/50 flex items-center justify-center z-70 p-4"
       @click.self="showDeleteModal = false"
     >
       <div

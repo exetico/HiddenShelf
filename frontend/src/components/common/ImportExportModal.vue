@@ -422,7 +422,7 @@ function resetImport() {
       <Teleport to="body">
         <div
           v-if="showImportConfirmModal"
-          class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[80] p-4"
+          class="fixed inset-0 bg-black/50 flex items-center justify-center z-80 p-4"
           @click.self="showImportConfirmModal = false"
         >
           <div
@@ -462,7 +462,7 @@ function resetImport() {
       <Teleport to="body">
         <div
           v-if="showProgress"
-          class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[70] p-4"
+          class="fixed inset-0 bg-black/50 flex items-center justify-center z-70 p-4"
         >
           <div
             class="bg-white dark:bg-brand-900 rounded-lg shadow-xl max-w-sm w-full p-6"

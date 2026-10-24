@@ -165,7 +165,7 @@ function submit() {
           class="text-xs text-brand-500 dark:text-brand-400 mt-1"
         >
           Will use
-          <code class="bg-gray-100 dark:bg-brand-800 px-1 rounded">{{
+          <code class="bg-gray-100 dark:bg-brand-800 px-1 rounded-sm">{{
             normalizedIcon
           }}</code>
         </p>
@@ -208,7 +208,7 @@ function submit() {
             ref="tagInput"
             v-model="form.newTagInput"
             placeholder="Add tags..."
-            class="flex-1 min-w-[80px] bg-transparent border-none outline-none text-sm p-0"
+            class="flex-1 min-w-[80px] bg-transparent border-none outline-hidden text-sm p-0"
             @keydown="handleTagKeydown"
             @blur="addTag"
           />
