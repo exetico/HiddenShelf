@@ -129,7 +129,7 @@ watch(
   <Teleport to="body">
     <div
       v-if="open && link"
-      class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60] p-4"
+      class="fixed inset-0 bg-black/50 flex items-center justify-center z-60 p-4"
       @click.self="close"
     >
       <div
@@ -216,7 +216,7 @@ watch(
   <Teleport to="body">
     <div
       v-if="showPositionModal"
-      class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[70] p-4"
+      class="fixed inset-0 bg-black/50 flex items-center justify-center z-70 p-4"
       @click.self="showPositionModal = false"
     >
       <div
@@ -255,7 +255,7 @@ watch(
   <Teleport to="body">
     <div
       v-if="showDeleteModal && deleteLinkData"
-      class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[70] p-4"
+      class="fixed inset-0 bg-black/50 flex items-center justify-center z-70 p-4"
       @click.self="showDeleteModal = false"
     >
       <div

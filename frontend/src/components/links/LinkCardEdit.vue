@@ -28,7 +28,7 @@ const iconColor = computed(() => {
       <div class="flex items-start gap-2 min-w-0">
         <i
           :class="link.icon || 'mdi-link-variant'"
-          class="mdi text-lg mt-0.5 flex-shrink-0"
+          class="mdi text-lg mt-0.5 shrink-0"
           :style="`color: ${iconColor}`"
         ></i>
         <div class="min-w-0">
@@ -73,7 +73,7 @@ const iconColor = computed(() => {
         <!-- Direct redirect indicator -->
         <span
           v-if="link.direct_redirect"
-          class="text-xs px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400"
+          class="text-xs px-1.5 py-0.5 rounded-sm bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400"
           title="Direct redirect enabled"
         >
           <i class="mdi mdi-lightning-bolt"></i> redirect

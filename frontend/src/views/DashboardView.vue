@@ -69,7 +69,7 @@ const topVisitedLinks = computed(() =>
           class="flex items-center justify-between text-sm"
         >
           <span class="truncate text-gray-700 dark:text-brand-200 mr-2">{{ item.title }}</span>
-          <span class="flex-shrink-0 text-brand-600 dark:text-brand-400 font-medium">{{ item.visit_count }} visits</span>
+          <span class="shrink-0 text-brand-600 dark:text-brand-400 font-medium">{{ item.visit_count }} visits</span>
         </li>
       </ul>
     </article>

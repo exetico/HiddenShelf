@@ -334,7 +334,7 @@ async function confirmDeleteEverything() {
     <Teleport to="body">
       <div
         v-if="showDeleteProgress"
-        class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60] p-4"
+        class="fixed inset-0 bg-black/50 flex items-center justify-center z-60 p-4"
       >
         <div
           class="bg-white dark:bg-brand-900 rounded-lg shadow-xl max-w-sm w-full p-6"
@@ -362,7 +362,7 @@ async function confirmDeleteEverything() {
     <Teleport to="body">
       <div
         v-if="showJoinModal && joinPreview"
-        class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60] p-4"
+        class="fixed inset-0 bg-black/50 flex items-center justify-center z-60 p-4"
         @click.self="cancelJoinShare"
       >
         <div
@@ -413,7 +413,7 @@ async function confirmDeleteEverything() {
     <Teleport to="body">
       <div
         v-if="showDeleteModal"
-        class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60] p-4"
+        class="fixed inset-0 bg-black/50 flex items-center justify-center z-60 p-4"
         @click.self="showDeleteModal = false"
       >
         <div

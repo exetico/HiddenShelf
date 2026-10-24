@@ -11,7 +11,7 @@ composer.lock
 
 # Node.js
 /node_modules/
-/package-lock.json
+# (root package-lock.json is committed so the view.html CSS build is reproducible)
 public/output.css
 
 # Database

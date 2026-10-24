@@ -53,7 +53,7 @@ onUnmounted(() => {
       <div
         ref="modalRef"
         tabindex="-1"
-        class="w-full max-w-xl bg-white dark:bg-brand-900 rounded-lg shadow-xl border border-gray-200 dark:border-brand-800 outline-none"
+        class="w-full max-w-xl bg-white dark:bg-brand-900 rounded-lg shadow-xl border border-gray-200 dark:border-brand-800 outline-hidden"
       >
         <header
           class="px-4 py-3 border-b border-gray-200 dark:border-brand-800 flex justify-between items-center"

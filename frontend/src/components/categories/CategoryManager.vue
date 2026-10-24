@@ -378,7 +378,7 @@ async function removeSharing() {
   <Teleport to="body">
     <div
       v-if="showShareModal"
-      class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[70] p-4"
+      class="fixed inset-0 bg-black/50 flex items-center justify-center z-70 p-4"
       @click.self="showShareModal = false"
     >
       <div
@@ -402,11 +402,11 @@ async function removeSharing() {
             <input
               :value="getShareUrl()"
               readonly
-              class="flex-1 bg-transparent text-xs font-mono truncate border-none outline-none"
+              class="flex-1 bg-transparent text-xs font-mono truncate border-none outline-hidden"
               @focus="$event.target.select()"
             />
             <button
-              class="px-3 py-1.5 rounded-md bg-brand-600 text-white text-sm hover:bg-brand-700 flex-shrink-0"
+              class="px-3 py-1.5 rounded-md bg-brand-600 text-white text-sm hover:bg-brand-700 shrink-0"
               @click="copyShareUrl"
             >
               Copy
@@ -423,7 +423,7 @@ async function removeSharing() {
               shareData.share_code
             }}</code>
             <button
-              class="px-3 py-1.5 rounded-md bg-brand-600 text-white text-sm hover:bg-brand-700 flex-shrink-0"
+              class="px-3 py-1.5 rounded-md bg-brand-600 text-white text-sm hover:bg-brand-700 shrink-0"
               @click="copyShareCode"
             >
               Copy
@@ -516,7 +516,7 @@ async function removeSharing() {
   <Teleport to="body">
     <div
       v-if="showDeleteModal && deleteTarget"
-      class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[70] p-4"
+      class="fixed inset-0 bg-black/50 flex items-center justify-center z-70 p-4"
       @click.self="showDeleteModal = false"
     >
       <div
