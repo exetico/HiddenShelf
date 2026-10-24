@@ -79,8 +79,13 @@ export const useAppStore = defineStore("app", {
       this.applyBrandColor(this.settings.brand_color);
     },
     async updateSettings(payload) {
+      const previousPerPage = this.settings.links_per_page;
       this.settings = await settingsApi.update(payload);
       if (payload.brand_color) this.applyBrandColor(payload.brand_color);
+      // Pages are counted in the old size; start over so "Load more" lines up
+      if (this.settings.links_per_page !== previousPerPage) {
+        await this.loadLinks({ reset: true });
+      }
     },
     applyBrandColor(hex) {
       const r = parseInt(hex.slice(1, 3), 16);
@@ -120,10 +125,15 @@ export const useAppStore = defineStore("app", {
           search: this.search,
         });
 
-        this.total = response.pagination.total;
         this.links = reset
           ? response.links
           : [...this.links, ...response.links];
+        // A short page means the server has nothing more, even if the count
+        // changed in between (e.g. a link deleted elsewhere)
+        const lastPage =
+          response.links.length < response.pagination.limit ||
+          response.pagination.page >= response.pagination.pages;
+        this.total = lastPage ? this.links.length : response.pagination.total;
       } finally {
         this._loadingLinks = false;
       }
