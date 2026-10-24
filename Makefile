@@ -20,9 +20,9 @@ help:
 up:
 	docker compose up -d --build web
 
-# Start dev mode with Vue HMR
+# Start dev mode with Vue HMR (magic links are logged, not emailed)
 dev:
-	docker compose --profile dev up --build web frontend
+	DEBUG_MODE=$${DEBUG_MODE:-true} docker compose --profile dev up --build web frontend
 
 # Build Vue frontend for production
 build-frontend:

@@ -305,7 +305,7 @@ Hidden Shelf/
 
    **Important notes:**
    - Database migrations run automatically on first start
-   - Magic links are logged to console in debug mode:
+   - Magic links are logged to console in debug mode (`make dev` turns it on; plain `docker compose up` doesn't):
      ```bash
      docker compose logs -f web
      ```

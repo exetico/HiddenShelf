@@ -55,7 +55,9 @@ const config = {
   // Google OAuth
   googleClientId: process.env.GOOGLE_CLIENT_ID || "",
   googleClientSecret: process.env.GOOGLE_CLIENT_SECRET || "",
-  googleRedirectUri: process.env.GOOGLE_REDIRECT_URI || "",
+  googleRedirectUri:
+    process.env.GOOGLE_REDIRECT_URI ||
+    `${process.env.SITE_URL || "http://localhost:3000"}/api/auth/google/callback`,
 
   // App version
   appVersion: process.env.APP_VERSION || "2.0.0",
