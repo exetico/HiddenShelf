@@ -11,15 +11,12 @@
         <?php
         require_once __DIR__ . '/../config.php';
         
-        // SECURITY: Only allow access if DEBUG_MODE is enabled OR from localhost
-        $allowedIPs = ['127.0.0.1', '::1', 'localhost'];
-        $clientIP = $_SERVER['REMOTE_ADDR'] ?? '';
-        $isLocalhost = in_array($clientIP, $allowedIPs) || strpos($clientIP, '172.') === 0; // Docker networks
-        
-        if (!DEBUG_MODE && !$isLocalhost) {
+        // SECURITY: Only available in debug mode. No IP-based exception: behind
+        // Docker or a reverse proxy every visitor looks like 172.x or 127.0.0.1
+        if (!DEBUG_MODE) {
             echo '<div class="bg-red-100 border-2 border-red-500 rounded-lg p-8">';
             echo '<h1 class="text-2xl font-bold text-red-800 mb-2">⚠ Access Denied</h1>';
-            echo '<p class="text-red-700">This test page is only accessible in debug mode or from localhost.</p>';
+            echo '<p class="text-red-700">This test page is only accessible in debug mode.</p>';
             echo '<p class="text-sm text-red-600 mt-4">To enable access, set <code class="bg-red-200 px-2 py-1 rounded">DEBUG_MODE = true</code> in config.php</p>';
             echo '</div>';
             exit;

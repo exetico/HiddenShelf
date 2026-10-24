@@ -27,12 +27,12 @@ Hidden Shelf/
 │   ├── links.php          # CRUD operations for links
 │   ├── categories.php     # Categories management
 │   └── tags.php           # Tags management
-├── db/                    # Database
-│   ├── database.sqlite    # SQLite database file
-│   └── migrations/        # Schema migrations
-│       ├── 001_initial.sql
-│       ├── 002_categories.sql
-│       └── 003_tags.sql
+├── db/                    # Database (data only, mount this as a volume)
+│   └── database.sqlite    # SQLite database file
+├── migrations/            # Schema migrations, applied automatically
+│   ├── 001_initial.sql
+│   ├── ...
+│   └── 006_tags_unique_per_user.sql
 ├── public/                # Frontend files
 │   ├── index.html         # Main app
 │   ├── login.html         # Login page
@@ -270,11 +270,21 @@ The app uses vanilla PHP with no framework dependencies:
 
 ## Security Features
 
-- CSRF protection on all POST/PUT/DELETE requests
+- Only `public/` and `api/` are reachable over HTTP; `.htaccess` blocks the database, config, code and dotfiles
+- State-changing API calls must send a JSON body, and the API sends no CORS headers, so other sites can't make them on a user's behalf (plus SameSite=Lax session cookies)
 - SQL injection prevention (prepared statements)
 - One-time magic tokens (expire after 15 minutes)
-- Session hijacking protection
-- XSS prevention (output escaping)
+- Session ID regenerated on login
+- XSS prevention (output escaping, and saved links must be `http`/`https`)
+
+## Production Checklist
+
+1. In `config.php` set `DEBUG_MODE` to `false`. In debug mode magic links are only written to the log, not emailed, and `public/debug.php` is reachable.
+2. Set `SITE_URL` to your public `https://` address and fill in the SMTP settings.
+3. Serve over HTTPS. The session cookie is marked `Secure`, so logins don't stick over plain HTTP. If Apache terminates TLS itself, uncomment the HTTPS redirect in `.htaccess`.
+4. Make sure Apache has `mod_rewrite` enabled and `AllowOverride All` for the app directory, then check that `https://your-site/db/database.sqlite` returns 403.
+5. Keep `db/` on persistent storage and back it up, e.g. a daily `sqlite3 db/database.sqlite ".backup /backups/hiddenshelf-$(date +%F).sqlite"`.
+6. Set `SIGNUP_ENABLED` to `false` if only invited people should be able to create accounts.
 
 ## License
 

@@ -41,10 +41,10 @@
     </style>
     <link rel="stylesheet" href="output.css" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@mdi/font@7.4.47/css/materialdesignicons.min.css" />
-    <script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/collapse@3.x.x/dist/cdn.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/collapse@3.17.4/dist/cdn.min.js"></script>
     <script
       defer
-      src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"
+      src="https://cdn.jsdelivr.net/npm/alpinejs@3.17.4/dist/cdn.min.js"
     ></script>
   </head>
   <body class="bg-gray-50 dark:bg-brand-950 min-h-screen transition-colors">
@@ -2903,9 +2903,34 @@
           },
 
           // Bulk Editor Functions
-          exportData() {
+          async fetchAllOwnLinks() {
+            // this.links only holds the pages loaded on screen (and may include
+            // links from categories shared with us), so page through the API
+            const all = [];
+            let page = 1;
+            let pages = 1;
+            do {
+              const response = await fetch(`/api/links.php?page=${page}&limit=500&include_shared=0`);
+              const data = await response.json();
+              if (!data.success) throw new Error(data.error || 'Failed to load links');
+              all.push(...data.links);
+              pages = data.pagination?.pages || 1;
+              page++;
+            } while (page <= pages);
+            return all;
+          },
+
+          async exportData() {
+            let links;
+            try {
+              links = await this.fetchAllOwnLinks();
+            } catch (error) {
+              this.showToast('Export failed: ' + error.message, 'error');
+              return;
+            }
+
             const exportData = {
-              links: this.links.map(link => ({
+              links: links.map(link => ({
                 url: link.url,
                 title: link.title,
                 description: link.description || "",
@@ -2913,12 +2938,14 @@
                 category: link.category_name || "",
                 tags: link.tags.map(t => t.name),
                 is_public: link.is_public ? true : false,
+                direct_redirect: link.direct_redirect ? true : false,
                 display_order: link.display_order || null,
               })),
               categories: this.categories.map(cat => ({
                 name: cat.name,
                 icon: cat.icon || "",
                 color: cat.color || "",
+                direct_redirect_default: cat.direct_redirect_default ? true : false,
               })),
               tags: this.tags.map(tag => ({
                 name: tag.name,
@@ -2935,7 +2962,7 @@
             a.click();
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
-            this.showToast('Data exported successfully!', 'success');
+            this.showToast('Data exported successfully! Links from categories shared with you are not included.', 'success');
           },
 
           async validateBulkImport() {
@@ -3004,6 +3031,7 @@
                       name: cat.name,
                       icon: cat.icon || "",
                       color: cat.color || "#6d7665",
+                      direct_redirect_default: cat.direct_redirect_default ? 1 : 0,
                     });
                   }
                 });
@@ -3053,6 +3081,8 @@
                       category: link.category || "",
                       tags: Array.isArray(link.tags) ? link.tags : [],
                       is_public: link.is_public ? true : false,
+                      // Left undefined for older exports so the category default applies
+                      direct_redirect: link.direct_redirect,
                       display_order: link.display_order || null,
                     });
                   }
@@ -3165,6 +3195,7 @@
                     category_id: category_id,
                     tags: link.tags || [],
                     is_public: link.is_public,
+                    ...(link.direct_redirect !== undefined && { direct_redirect: link.direct_redirect ? 1 : 0 }),
                     display_order: link.display_order,
                   }),
                 });

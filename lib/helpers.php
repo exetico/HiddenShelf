@@ -90,7 +90,31 @@ function isValidEmail($email) {
  * Validate URL
  */
 function isValidUrl($url) {
-    return filter_var($url, FILTER_VALIDATE_URL) !== false;
+    if (filter_var($url, FILTER_VALIDATE_URL) === false) {
+        return false;
+    }
+    // Only web links: FILTER_VALIDATE_URL also accepts javascript:, data: etc.,
+    // which would run script on our origin when opened from the view page
+    $scheme = strtolower(parse_url($url, PHP_URL_SCHEME) ?? '');
+    return in_array($scheme, ['http', 'https'], true);
+}
+
+/**
+ * Return a same-site path to redirect to after login, or the default.
+ * Rejects absolute URLs and anything that could be read as another host
+ * (e.g. "//evil.com" or "@evil.com" appended to SITE_URL).
+ */
+function safeReturnPath($returnTo, $default = '/public/index.html') {
+    if (!is_string($returnTo) || $returnTo === '') {
+        return $default;
+    }
+    if ($returnTo[0] === '#') {
+        return $default . $returnTo;
+    }
+    if ($returnTo[0] !== '/' || preg_match('#^/[/\\\\]#', $returnTo) || preg_match('/[\\x00-\\x1f\\\\]/', $returnTo)) {
+        return $default;
+    }
+    return $returnTo;
 }
 
 /**
@@ -121,6 +145,13 @@ function getRequestMethod() {
  * Get JSON input
  */
 function getJsonInput() {
+    // Requiring a JSON content type means a cross-site form can't post here
+    // without a CORS preflight, which the API doesn't allow
+    $contentType = $_SERVER['CONTENT_TYPE'] ?? '';
+    if (stripos($contentType, 'application/json') !== 0) {
+        errorResponse('Content-Type must be application/json', 415);
+    }
+
     $input = file_get_contents('php://input');
     return json_decode($input, true) ?? [];
 }

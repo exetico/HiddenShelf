@@ -11,8 +11,13 @@
     # Redirect root to login or app
     RewriteRule ^$ /public/login.html [L]
     
-    # Prevent direct access to config and lib
-    RewriteRule ^(config\.php|lib/.*) - [F,L]
+    # Only public/ and api/ are meant to be reachable. Everything else in the
+    # project root (db/ with the SQLite file, config.php, lib/, vendor/, .env,
+    # .git, migrations, docs) is blocked.
+    RewriteRule !^(public|api)/ - [F,L]
+    
+    # No dotfiles anywhere
+    RewriteRule (^|/)\. - [F,L]
 </IfModule>
 
 # Security headers
@@ -32,3 +37,8 @@ Options -Indexes
     php_value session.cookie_secure 1
     php_value session.cookie_samesite Lax
 </IfModule>
+
+# Backstop in case mod_rewrite is missing: never serve data, docs or dotfiles
+<FilesMatch "(\.(sqlite|db|sql|md|lock|log)|^\..*|^(composer|package)(-lock)?\.json)$">
+    Require all denied
+</FilesMatch>

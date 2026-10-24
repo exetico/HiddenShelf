@@ -10,14 +10,6 @@ require_once __DIR__ . '/../lib/Database.php';
 session_name(SESSION_NAME);
 session_start();
 
-header('Access-Control-Allow-Origin: *');
-header('Access-Control-Allow-Methods: GET, POST, PUT, OPTIONS');
-header('Access-Control-Allow-Headers: Content-Type');
-
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    exit(0);
-}
-
 $db = Database::getInstance();
 $method = getRequestMethod();
 

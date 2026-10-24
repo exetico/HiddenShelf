@@ -11,17 +11,19 @@ require_once __DIR__ . '/../lib/Database.php';
 session_name(SESSION_NAME);
 session_start();
 
-// CORS headers
-header('Access-Control-Allow-Origin: *');
-header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
-header('Access-Control-Allow-Headers: Content-Type');
-
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    exit(0);
-}
-
 $db = Database::getInstance();
 $method = getRequestMethod();
+
+/**
+ * Check the category belongs to the current user, so links can't be
+ * pushed into someone else's (shared) category
+ */
+function ownsCategory($db, $categoryId) {
+    return (bool)$db->fetchOne(
+        "SELECT id FROM categories WHERE id = ? AND user_id = ?",
+        [$categoryId, getCurrentUserId()]
+    );
+}
 
 try {
     // GET - List links or get single link
@@ -31,9 +33,10 @@ try {
         
         // Get by hash (public access)
         if ($hash) {
-            $sql = "SELECT l.*, u.email as owner_email 
+            // Public: only the fields the view page needs, never the owner's email
+            $sql = "SELECT l.id, l.hash, l.url, l.title, l.description, l.icon,
+                           l.direct_redirect, l.created_at, l.updated_at
                     FROM links l 
-                    JOIN users u ON l.user_id = u.id 
                     WHERE l.hash = ? AND l.is_public = 1";
             $link = $db->fetchOne($sql, [$hash]);
             
@@ -203,6 +206,10 @@ try {
             errorResponse('Title is required');
         }
         
+        if ($categoryId && !ownsCategory($db, $categoryId)) {
+            errorResponse('Category not found', 404);
+        }
+        
         // If category is set and direct_redirect not explicitly provided, inherit from category
         if ($categoryId && !isset($input['direct_redirect'])) {
             $category = $db->fetchOne("SELECT direct_redirect_default FROM categories WHERE id = ?", [$categoryId]);
@@ -291,6 +298,10 @@ try {
         
         if (empty($title)) {
             errorResponse('Title is required');
+        }
+        
+        if ($categoryId && $categoryId != $existing['category_id'] && !ownsCategory($db, $categoryId)) {
+            errorResponse('Category not found', 404);
         }
         
         // Update link

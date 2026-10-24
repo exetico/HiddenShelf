@@ -26,3 +26,6 @@ Thumbs.db
 # Documentation
 README.md
 LICENSE
+
+# Secrets
+.env

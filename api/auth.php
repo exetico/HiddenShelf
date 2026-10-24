@@ -13,15 +13,6 @@ require_once __DIR__ . '/../lib/Mailer.php';
 session_name(SESSION_NAME);
 session_start();
 
-// CORS headers (adjust for production)
-header('Access-Control-Allow-Origin: *');
-header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
-header('Access-Control-Allow-Headers: Content-Type');
-
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    exit(0);
-}
-
 $auth = new Auth();
 $action = $_GET['action'] ?? '';
 
@@ -66,14 +57,9 @@ try {
                     session_start();
                 }
                 
-                // Check if there's a return URL stored
-                $returnTo = $_SESSION['return_to'] ?? '/public/index.html';
+                // Use the stored return URL, but only same-site paths, so the login link can't bounce to another host
+                $returnTo = safeReturnPath($_SESSION['return_to'] ?? null);
                 unset($_SESSION['return_to']); // Clear it after using
-                
-                // If return URL is just a hash (e.g., #/view), prepend the base path
-                if (strpos($returnTo, '#') === 0) {
-                    $returnTo = '/public/index.html' . $returnTo;
-                }
                 
                 // Redirect to intended page or default to app
                 header('Location: ' . SITE_URL . $returnTo);

@@ -60,6 +60,8 @@ class Database {
         try {
             $stmt = $this->pdo->query("SELECT value FROM _meta WHERE key = 'schema_version'");
             $result = $stmt->fetch();
+            // An open statement keeps a read lock, which makes DROP TABLE fail
+            $stmt->closeCursor();
             if ($result) {
                 $currentVersion = (int)$result['value'];
             }
@@ -68,7 +70,7 @@ class Database {
         }
         
         // Get migration files
-        $migrationsDir = __DIR__ . '/../db/migrations';
+        $migrationsDir = __DIR__ . '/../migrations';
         if (!is_dir($migrationsDir)) {
             return;
         }
@@ -104,7 +106,9 @@ class Database {
                     }
                 } catch (PDOException $e) {
                     error_log("Migration failed ($filename): " . $e->getMessage());
-                    // Don't throw - just log and continue
+                    // Stop here so later migrations don't bump the version past
+                    // this one; it is retried on the next request
+                    break;
                 }
             }
         }

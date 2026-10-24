@@ -1,5 +1,5 @@
 # Hidden Shelf - Environment files
-config.php
+/config.php
 .env
 .env.dev
 .env.test

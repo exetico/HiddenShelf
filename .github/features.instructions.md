@@ -377,7 +377,7 @@ This document provides a comprehensive overview of all features, functionality, 
 
 ### Migration System
 
-- Sequential SQL migration files in [`db/migrations/`](db/migrations/)
+- Sequential SQL migration files in [`migrations/`](migrations/)
 - Automatic execution on first access
 - Version tracking in `_meta` table
 

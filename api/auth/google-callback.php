@@ -98,9 +98,11 @@ try {
     $stmt = $pdo->prepare('INSERT INTO magic_tokens (email, token, expires_at) VALUES (?, ?, ?)');
     $stmt->execute([$email, hash('sha256', $magicToken), $expiresAt]);
 
-    // Set session and cookie
+    // Set session and cookie (new session ID to prevent session fixation)
+    session_regenerate_id(true);
     $_SESSION['user_id'] = $userId;
     $_SESSION['email'] = $email;
+    $_SESSION['user_email'] = $email;
     
     setcookie('auth_token', $magicToken, [
         'expires' => strtotime('+30 days'),
