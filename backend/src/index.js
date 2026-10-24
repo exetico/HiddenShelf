@@ -20,7 +20,8 @@ import { fileURLToPath } from "node:url";
 import config from "./config.js";
 import { initDb, getDb } from "./lib/database.js";
 import { sessionMiddleware } from "./middleware/session.js";
-import { baseUrl } from "./lib/helpers.js";
+import { requireJsonBody } from "./middleware/requireJson.js";
+import { baseUrl, allowedCorsOrigin } from "./lib/helpers.js";
 
 // Routes
 import authRoutes from "./routes/auth.js";
@@ -46,31 +47,8 @@ const app = new Hono();
 app.use(
   "*",
   cors({
-    origin: (origin) => {
-      // Allow same-origin requests (no Origin header)
-      if (!origin) return config.siteUrl;
-
-      // Allow the configured site URL
-      try {
-        const parsed = new URL(origin);
-        const siteUrlParsed = new URL(config.siteUrl);
-
-        // Same hostname
-        if (parsed.hostname === siteUrlParsed.hostname) return origin;
-
-        // Allow localhost (dev servers on different ports)
-        if (
-          parsed.hostname === "localhost" ||
-          parsed.hostname === "127.0.0.1"
-        ) {
-          return origin;
-        }
-      } catch {
-        // invalid origin, reject
-      }
-
-      return null; // disallow
-    },
+    // Same hostname as SITE_URL; localhost dev servers only in development
+    origin: allowedCorsOrigin,
     allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowHeaders: ["Content-Type"],
     credentials: true,
@@ -78,6 +56,7 @@ app.use(
 );
 
 app.use("*", sessionMiddleware());
+app.use("/api/*", requireJsonBody());
 
 // ─── API routes ──────────────────────────────────────────────────
 
@@ -127,6 +106,14 @@ const projectRoot = path.resolve(__dirname, "..", "..");
 
 // Serve built Vue app from public/app/
 app.use("/public/app/*", serveStatic({ root: projectRoot }));
+
+// The Vue build references its bundles as /assets/... (Vite base "/", which
+// httpClient also uses as the API prefix), while index.html is served from
+// /public/app/. Serve those bundles where the page asks for them.
+app.use(
+  "/assets/*",
+  serveStatic({ root: path.join(projectRoot, "public", "app") }),
+);
 
 // Serve public assets (view.html, output.css, favicon.png)
 app.use("/public/*", serveStatic({ root: projectRoot }));

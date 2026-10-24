@@ -17,7 +17,6 @@
 ### Import/Export
 
 - Bulk create for imports (performance improvement)
-- Does the system work, in a fresh newly created docker container?
 
 ### Authentication & Security
 
@@ -30,7 +29,6 @@
 ### Architecture & Technical Debt
 
 - Migrate link and category metadata/options to settings-like JSON solution
-- Consider moving db migrations to different path (not filesystem `db/`)
 - Consider consolidating backend to same port with `/api` subpath (maintain proxy support)
 
 ## Future Enhancements and Ideas

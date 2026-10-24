@@ -71,9 +71,10 @@ links.get("/", optionalAuth(), (c) => {
   if (hash) {
     const link = db
       .prepare(
-        `SELECT l.*, u.email as owner_email
+        // Public: only what the view page needs, never the owner's email
+        `SELECT l.id, l.hash, l.url, l.title, l.description, l.icon,
+              l.direct_redirect, l.created_at, l.updated_at
        FROM links l
-       JOIN users u ON l.user_id = u.id
        WHERE l.hash = ? AND l.is_public = 1`,
       )
       .get(hash);

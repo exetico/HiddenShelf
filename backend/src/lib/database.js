@@ -47,6 +47,13 @@ export function initDb(dbPath) {
 }
 
 /**
+ * Whether a connection is currently open (lets callers avoid opening one).
+ */
+export function hasDb() {
+  return db !== null;
+}
+
+/**
  * Close the current connection (used in tests for cleanup).
  */
 export function closeDb() {
@@ -57,7 +64,9 @@ export function closeDb() {
 }
 
 /**
- * Run numbered SQL migration files from db/migrations/.
+ * Run numbered SQL migration files from backend/migrations/.
+ * They live next to the code (not in db/) so a volume mounted over db/
+ * can't hide them.
  * Keeps exact same `_meta` schema_version tracking as the PHP Database class.
  */
 function runMigrations(database) {
@@ -73,15 +82,11 @@ function runMigrations(database) {
   }
 
   // Locate migration files
-  const migrationsDir = path.resolve(
-    import.meta.dirname,
-    "..",
-    "..",
-    "..",
-    "db",
-    "migrations",
-  );
-  if (!fs.existsSync(migrationsDir)) return;
+  const migrationsDir = path.resolve(import.meta.dirname, "..", "..", "migrations");
+  if (!fs.existsSync(migrationsDir)) {
+    // Fail loudly: starting without a schema only breaks later, per request
+    throw new Error(`Migrations directory not found: ${migrationsDir}`);
+  }
 
   const files = fs
     .readdirSync(migrationsDir)

@@ -8,7 +8,8 @@ import { Hono } from "hono";
 import { initDb, getDb, closeDb } from "../src/lib/database.js";
 import { sessionMiddleware, sessions } from "../src/middleware/session.js";
 import { cors } from "hono/cors";
-import config from "../src/config.js";
+import { requireJsonBody } from "../src/middleware/requireJson.js";
+import { allowedCorsOrigin } from "../src/lib/helpers.js";
 
 // Routes
 import authRoutes, { loginAttempts } from "../src/routes/auth.js";
@@ -38,28 +39,14 @@ export function createTestApp() {
   app.use(
     "*",
     cors({
-      origin: (origin) => {
-        if (!origin) return config.siteUrl;
-        try {
-          const parsed = new URL(origin);
-          const siteUrlParsed = new URL(config.siteUrl);
-          if (parsed.hostname === siteUrlParsed.hostname) return origin;
-          if (
-            parsed.hostname === "localhost" ||
-            parsed.hostname === "127.0.0.1"
-          )
-            return origin;
-        } catch {
-          /* reject */
-        }
-        return null;
-      },
+      origin: allowedCorsOrigin,
       allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
       allowHeaders: ["Content-Type"],
       credentials: true,
     }),
   );
   app.use("*", sessionMiddleware());
+  app.use("/api/*", requireJsonBody());
 
   app.route("/api/auth", authRoutes);
   app.route("/api/links", linksRoutes);

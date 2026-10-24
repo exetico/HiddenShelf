@@ -22,6 +22,7 @@ import {
   baseUrl,
   isAllowedRedirectOrigin,
   getClientIp,
+  safeReturnTo,
 } from "../lib/helpers.js";
 import { requireAuth } from "../middleware/auth.js";
 import config from "../config.js";
@@ -30,16 +31,16 @@ const auth = new Hono();
 
 // ─── Rate limiter for login endpoint ─────────────────────────────
 
-const loginAttempts = new Map(); // ip → { count, resetAt }
+const loginAttempts = new Map(); // ip or "email:<address>" → { count, resetAt }
 const RATE_LIMIT_WINDOW = 15 * 60 * 1000; // 15 minutes
 const RATE_LIMIT_MAX = 10; // max attempts per window
 
-function checkRateLimit(ip) {
+function checkRateLimit(key) {
   const now = Date.now();
-  const entry = loginAttempts.get(ip);
+  const entry = loginAttempts.get(key);
 
   if (!entry || entry.resetAt < now) {
-    loginAttempts.set(ip, { count: 1, resetAt: now + RATE_LIMIT_WINDOW });
+    loginAttempts.set(key, { count: 1, resetAt: now + RATE_LIMIT_WINDOW });
     return true; // allowed
   }
 
@@ -80,6 +81,14 @@ auth.post("/login", async (c) => {
 
   if (!isValidEmail(email)) {
     return errorResponse(c, "Invalid email address");
+  }
+
+  // Also limit per address, so one inbox can't be flooded from many IPs
+  if (!checkRateLimit(`email:${email.toLowerCase()}`)) {
+    return c.json(
+      { error: "Too many login attempts. Please try again later." },
+      429,
+    );
   }
 
   // Validate redirect_origin to prevent open redirect
@@ -157,7 +166,8 @@ auth.get("/verify", async (c) => {
   c.session.regenerate();
 
   // Determine redirect
-  const returnTo = c.session.get("return_to") || "#/dashboard";
+  // Only same-site destinations, so the login link can't be an open redirect
+  const returnTo = safeReturnTo(c.session.get("return_to"));
   c.session.delete("return_to");
 
   const redirectOrigin = tokenData.redirect_origin;
