@@ -456,13 +456,29 @@ make build-frontend
 - `BASE_PATH` should start with `/`
 - Keep `BASE_PATH` empty for root deployments
 
+## Your Data
+
+Everything Hidden Shelf stores is one SQLite database. With Docker Compose it lives **outside the container**, in the `db/` folder next to `docker-compose.yml`:
+
+```yaml
+volumes:
+  - ./db:/app/db # host folder : container folder
+```
+
+- **Where:** `./db/database.sqlite` on the host. You'll also see `database.sqlite-wal` and `-shm` while the app runs; they are part of the database.
+- **Somewhere else:** change the left side, e.g. `- /srv/hiddenshelf:/app/db`. Rebuilding or removing the container never touches this folder (`make clean` doesn't either).
+- **Permissions:** the container runs as user `node` (uid 1000), so the folder must be writable by uid 1000. If the app fails with `unable to open database file`, run `sudo chown -R 1000:1000 db`.
+- **Backup** while it runs: `sqlite3 db/database.sqlite ".backup backup-$(date +%F).sqlite"`. Copying the `.sqlite` file alone while the app is running can miss recent writes.
+- **Restore:** stop the app, replace `db/database.sqlite` with the backup, delete any `-wal`/`-shm` files, start again. Older backups are migrated automatically.
+- **Look inside:** `sqlite3 db/database.sqlite` on the host, or any SQLite browser.
+
 ## Production Checklist
 
 1. Set `SITE_URL` to your public `https://` address, and `DEBUG_MODE=false` (the default). In debug mode magic links only go to the log.
 2. Fill in real SMTP settings (`SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_ENCRYPTION`, `FROM_EMAIL`).
 3. Put HTTPS in front (Caddy, nginx, Traefik or a hosting provider). The session cookie is `Secure` whenever `SITE_URL` isn't localhost, so logins won't stick over plain HTTP.
 4. If the proxy runs on another machine or is a CDN, set `TRUST_PROXY=true` so rate limits see real client IPs. A proxy on the same host or Docker network is detected automatically.
-5. Keep `db/` on persistent storage. It holds only data; migrations ship with the code in `backend/migrations/` and run on start.
+5. Keep `db/` on persistent storage and writable by uid 1000 (see [Your Data](#your-data)). It holds only data; migrations ship with the code in `backend/migrations/` and run on start.
 6. Back up the database, e.g. daily: `sqlite3 db/database.sqlite ".backup /backups/hiddenshelf-$(date +%F).sqlite"`.
 7. Set `SIGNUP_ENABLED=false` if only existing users should be able to log in.
 
