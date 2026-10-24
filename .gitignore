@@ -11,12 +11,15 @@ composer.lock
 
 # Node.js
 /node_modules/
-package-lock.json
+/package-lock.json
 public/output.css
 
 # Database
 db/*.sqlite
 db/*.db
+db/database.sqlite-shm
+db/database.sqlite-wal
+# If stuck in repo, use "git rm -r --cached db/database.sqlite-wal"
 
 # Logs
 *.log
@@ -36,3 +39,9 @@ Thumbs.db
 tmp/
 temp/
 cache/
+
+# Frontend
+/frontend/node_modules
+
+# Backend
+/backend/node_modules

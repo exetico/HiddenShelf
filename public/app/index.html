@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta
+      name="apple-mobile-web-app-status-bar-style"
+      content="black-translucent"
+    />
+    <meta
+      name="theme-color"
+      content="#687061"
+      media="(prefers-color-scheme: light)"
+    />
+    <meta
+      name="theme-color"
+      content="#1b1f18"
+      media="(prefers-color-scheme: dark)"
+    />
+    <title>Hidden Shelf - Save &amp; Share Links</title>
+    <meta name="description" content="Hidden Shelf — a minimal, flexible link-saving and sharing app. Organise links with categories and tags, share collections, and track visits." />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Hidden Shelf" />
+    <meta property="og:description" content="Save, organise, and share your links. Public/private sharing, categories, tags, and visit tracking." />
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="Hidden Shelf" />
+    <meta name="twitter:description" content="Save, organise, and share your links. Public/private sharing, categories, tags, and visit tracking." />
+    <link rel="icon" type="image/png" href="/favicon.png" />
+    <link rel="apple-touch-icon" href="/favicon.png" />
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/@mdi/font@7.4.47/css/materialdesignicons.min.css"
+    />
+    <style>
+      /* Anti-flash: match dark background before Vue mounts */
+      html.dark {
+        background-color: #1b1f18;
+      }
+      /* Hidden scrollbar for category filter bar */
+      .scrollbar-hide::-webkit-scrollbar {
+        display: none;
+      }
+      .scrollbar-hide {
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+      }
+      .drag-scroll {
+        cursor: grab;
+        -webkit-user-select: none;
+           -moz-user-select: none;
+                user-select: none;
+      }
+      .drag-scroll:active {
+        cursor: grabbing;
+      }
+    </style>
+    <script>
+      // Apply dark mode immediately to prevent flash
+      if (
+        localStorage.getItem("hiddenshelf_theme") === "dark" ||
+        (!localStorage.getItem("hiddenshelf_theme") &&
+          window.matchMedia("(prefers-color-scheme: dark)").matches)
+      ) {
+        document.documentElement.classList.add("dark");
+      }
+    </script>
+    <script type="module" crossorigin src="/assets/index-RKZ7dE2m.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-B2BlegT0.css">
+  </head>
+  <body>
+    <div id="app"></div>
+  </body>
+</html>

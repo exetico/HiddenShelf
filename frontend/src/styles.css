@@ -1,0 +1,31 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --brand-50: 247 247 246;
+  --brand-100: 237 238 234;
+  --brand-200: 219 222 216;
+  --brand-300: 187 194 181;
+  --brand-400: 145 156 138;
+  --brand-500: 104 112 97;
+  --brand-600: 88 95 81;
+  --brand-700: 70 76 65;
+  --brand-800: 53 58 49;
+  --brand-900: 35 39 32;
+  --brand-950: 27 31 24;
+}
+
+html,
+body,
+#app {
+  min-height: 100%;
+}
+
+body {
+  @apply bg-gray-50 text-gray-900 transition-colors;
+}
+
+html.dark body {
+  @apply bg-brand-950 text-white;
+}
