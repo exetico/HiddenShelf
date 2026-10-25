@@ -42,7 +42,7 @@ This document provides a comprehensive overview of all features, functionality, 
 │   ├── src/middleware/          # Session, auth guards
 │   └── tests/                  # Backend tests
 ├── backend/migrations/         # SQLite migration SQL files
-├── public/                     # Static files + view.html (public link viewer)
+├── public/                     # Static files; app/ is the built frontend
 ├── frontend/                   # Vue 3 application
 │   ├── src/
 │   │   ├── components/         # Vue components by feature
@@ -61,7 +61,6 @@ This document provides a comprehensive overview of all features, functionality, 
 │   │   └── views/              # Route views (Login, Dashboard, View, Edit, Profile)
 │   ├── vite.config.js
 │   └── vitest.config.js
-├── tailwind.config.js          # Tailwind configuration (for view.html)
 └── docker-compose.yml          # Docker dev/build/test profiles
 ```
 
@@ -247,10 +246,10 @@ This document provides a comprehensive overview of all features, functionality, 
 ### Public Link Sharing
 
 - **Unique Hash Generation**: Each link gets a unique identifier
-- **Preview Page**: Default landing page with metadata (`public/view.html`)
-- **Direct Redirect**: Optional immediate redirect with "stay on page" cancel
+- **Preview Page**: Default landing page with metadata (`/h/{hash}`, Vue `frontend/src/link/`)
+- **Direct Redirect**: Optional server-side redirect; `?stay` shows the page instead
 - **Visit Tracking**: Analytics via `/api/link_visits`
-- **Share URL Format**: `/h/{hash}` short URLs, `/public/view.html?hash={hash}` full URLs
+- **Share URL Format**: `/h/{hash}`; old `/public/view.html?hash={hash}` URLs redirect there
 
 ## Category System
 
@@ -515,21 +514,20 @@ This document provides a comprehensive overview of all features, functionality, 
 
 ## Public Link Viewing
 
-### View Interface (`public/view.html` — Alpine.js, not yet migrated)
+### Link Page (`/h/{hash}`, Vue: `frontend/link.html` + `frontend/src/link/`)
 
-- **Link Preview**: Display link metadata before redirect
-- **Direct Redirect**: Optional immediate redirect (800ms delay)
-- **Cancellable Redirect**: Overlay shows "stay on page" link to cancel redirect timer
-- **`?stay` URL Parameter**: Adding `&stay` prevents direct redirect, always shows preview
-- **Visit Logging**: Track access via `/api/link_visits`
+- **Link Preview**: Title, description, URL, tags and date; a separate small Vite entry, so visitors don't load the app
+- **Social previews**: The server fills the link's title and description into `<title>` and Open Graph tags (`data-link-meta` in `link.html`)
+- **Direct Redirect**: Server-side 302 for direct-redirect links; the visit is logged there
+- **`?stay` URL Parameter**: `/h/{hash}?stay` always shows the page
+- **Visit Logging**: The page posts to `/api/link_visits`
 - **Error Handling**: Invalid/private link messages
-- **Mobile Optimized**: Responsive design
+- **Dark mode**: Follows the app's theme setting
 
 ### URL Routing
 
-- **Short URLs**: `/h/{hash}` format via Hono route handler
-- **Full URLs**: `/public/view.html?hash={hash}`
-- **Stay Parameter**: `/public/view.html?hash={hash}&stay`
+- **Short URLs**: `/h/{hash}` via `backend/src/routes/publicLink.js`
+- **Old URLs**: `/public/view.html?hash={hash}[&stay]` redirect (301) to `/h/{hash}[?stay]`
 
 ## Security Features
 

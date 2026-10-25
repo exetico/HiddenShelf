@@ -11,6 +11,7 @@ docker-compose.yml
 db/*.sqlite
 db/*.db
 db/*.sqlite-*
+db/backups
 
 # Secrets
 .env

@@ -2,10 +2,16 @@ services:
   web:
     build: .
     container_name: hiddenshelf
+    # Settings from .env (see .env.example). Values under environment:
+    # below win, and default to the same names in .env.
+    env_file:
+      - path: .env
+        required: false
     ports:
-      - "3000:3000"
+      # HOST_PORT in .env, e.g. 127.0.0.1:3000 to only allow a proxy on this host
+      - "${HOST_PORT:-3000}:3000"
     volumes:
-      # Mount the db directory for persistence
+      # The database lives on the host, outside the container and the image
       - ./db:/app/db
     environment:
       - PORT=3000
@@ -25,7 +31,8 @@ services:
       - TRUST_PROXY=${TRUST_PROXY:-}
       - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-}
       - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET:-}
-      - GOOGLE_REDIRECT_URI=${GOOGLE_REDIRECT_URI:-http://localhost:3000/api/auth/google/callback}
+      # Empty: derived from SITE_URL
+      - GOOGLE_REDIRECT_URI=${GOOGLE_REDIRECT_URI:-}
     restart: unless-stopped
     networks:
       - hiddenshelf-network

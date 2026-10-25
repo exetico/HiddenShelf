@@ -112,7 +112,7 @@ You need to read the copilot-instructions, and if you introduce features, you mu
 ### Migration Status
 
 - **Completed:** Core app, authentication, link management, categories, tags, profile, sharing, import/export, context menus, category filter bar, brand colors, danger zone, category sharing UI, tag pill input, icon auto-prefix, edit mode search/filter, category collapse/expand, X of Y counter, join share verify/preview flow, pending share code persistence, remove member/sharing, shared-with-me in CategoryManager, app version display, toast progress bar, dashboard theme toggle, public/private emoji on edit cards, Delete Everything styled modal, Danger Zone smooth animation, PHP→Hono backend migration, security audit (rate limiting, open redirect prevention, CORS hardening, input validation, URL protocol whitelist, debug mode default, session cookie flags), code quality review (N+1 query fixes, category data integrity, ownership validation, bulk delete endpoint, modal accessibility, timer leak fix, short URL validation, migration error handling), **migration testing (14 tests for all 7 migrations)**
-- **Still Used:** `public/view.html` (public link viewer - Alpine.js, not migrated)
+- **Public link page:** Vue, a separate Vite entry (`frontend/link.html`, `frontend/src/link/`) served at `/h/{hash}` by `backend/src/routes/publicLink.js`
 
 ### URL Structure
 
@@ -120,8 +120,8 @@ You need to read the copilot-instructions, and if you introduce features, you mu
 - **Dev Server:** `http://localhost:5173` (Vite HMR)
 - **Backend Server:** `http://localhost:3000` (Hono, serves built app + APIs)
 - **Routes:** `#/dashboard`, `#/view`, `#/edit`, `#/profile`, `#/login`
-- **Public Links:** `/public/view.html?hash={hash}` or `/h/{hash}` (short URL)
-- **Public Links (no redirect):** Append `&stay` to prevent direct redirect (e.g., `?hash=abc&stay`)
+- **Public Links:** `/h/{hash}` (old `/public/view.html?hash={hash}` URLs redirect there)
+- **Public Links (no redirect):** `/h/{hash}?stay` shows the page even for direct-redirect links
 
 ### Environment Variables
 
@@ -199,8 +199,8 @@ You need to read the copilot-instructions, and if you introduce features, you mu
 - **Backend Tests:** `backend/tests/*.test.js`
 - **Vite Config:** `frontend/vite.config.js`
 - **Vitest Config:** `frontend/vitest.config.js`
-- **Tailwind Config:** `tailwind.config.js` (project root)
-- **Public Link Viewer:** `public/view.html` (Alpine.js, not yet migrated)
+- **Tailwind Config:** `frontend/src/styles.css` (Tailwind 4, CSS-based config)
+- **Public Link Page:** `frontend/link.html` + `frontend/src/link/PublicLinkPage.vue`
 
 ## Documentation
 

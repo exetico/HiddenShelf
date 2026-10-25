@@ -3,9 +3,9 @@
  *
  * Serves:
  *   /api/*            → API routes (auth, links, categories, tags, shares, settings, visits, config)
- *   /h/:hash          → Short-URL redirect for public links
+ *   /h/:hash          → Public link page, or a redirect for direct-redirect links
  *   /public/app/*     → Built Vue frontend
- *   /public/view.html → Public link viewer (legacy Alpine.js page)
+ *   /public/view.html → Old link page URL, redirects to /h/:hash
  *   /                 → Redirect to Vue app
  */
 
@@ -14,11 +14,10 @@ import { serve } from "@hono/node-server";
 import { serveStatic } from "@hono/node-server/serve-static";
 import { cors } from "hono/cors";
 import path from "node:path";
-import fs from "node:fs";
 import { fileURLToPath } from "node:url";
 
 import config from "./config.js";
-import { initDb, getDb } from "./lib/database.js";
+import { initDb } from "./lib/database.js";
 import { sessionMiddleware } from "./middleware/session.js";
 import { requireJsonBody } from "./middleware/requireJson.js";
 import { baseUrl, allowedCorsOrigin } from "./lib/helpers.js";
@@ -33,6 +32,7 @@ import settingsRoutes from "./routes/settings.js";
 import linkVisitsRoutes from "./routes/linkVisits.js";
 import configRoutes from "./routes/config.js";
 import accountRoutes from "./routes/account.js";
+import { publicLinkRoutes } from "./routes/publicLink.js";
 
 // ─── Initialise database ────────────────────────────────────────
 
@@ -70,37 +70,19 @@ app.route("/api/link_visits", linkVisitsRoutes);
 app.route("/api/config", configRoutes);
 app.route("/api/account", accountRoutes);
 
-// ─── Short URL redirect: /h/:hash ───────────────────────────────
-
-app.get("/h/:hash", (c) => {
-  const hash = c.req.param("hash");
-  if (!/^[a-zA-Z0-9]{1,20}$/.test(hash)) {
-    return c.text("Invalid link", 404);
-  }
-  const db = getDb();
-  const link = db
-    .prepare(
-      "SELECT url, direct_redirect FROM links WHERE hash = ? AND is_public = 1",
-    )
-    .get(hash);
-
-  if (!link) {
-    return c.text("Link not found", 404);
-  }
-
-  // Direct redirect — go straight to the URL
-  if (link.direct_redirect) {
-    return c.redirect(link.url, 302);
-  }
-
-  // Otherwise show the view page
-  return c.redirect(`${baseUrl("/public/view.html")}?hash=${hash}`);
-});
-
 // ─── Resolve project root (one level above backend/) ─────────────
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const projectRoot = path.resolve(__dirname, "..", "..");
+
+// ─── Public links: /h/:hash ─────────────────────────────────────
+
+app.route(
+  "/",
+  publicLinkRoutes({
+    templatePath: path.join(projectRoot, "public", "app", "link.html"),
+  }),
+);
 
 // ─── Static files ────────────────────────────────────────────────
 
@@ -115,7 +97,7 @@ app.use(
   serveStatic({ root: path.join(projectRoot, "public", "app") }),
 );
 
-// Serve public assets (view.html, output.css, favicon.png)
+// Serve public assets (favicon.png)
 app.use("/public/*", serveStatic({ root: projectRoot }));
 
 // Serve favicon from root
@@ -151,6 +133,16 @@ if (process.env.NODE_ENV !== "test") {
     console.log(
       `[server] Hidden Shelf running on http://localhost:${info.port}`,
     );
+    // smtpbucket.com mailboxes are public, so login links sent there can be
+    // read by anyone
+    if (
+      config.smtpHost === "mail.smtpbucket.com" &&
+      !/\/\/(localhost|127\.0\.0\.1)(:|\/|$)/.test(config.siteUrl)
+    ) {
+      console.warn(
+        "[server] WARNING: SMTP_HOST is not set, so login emails go to the public test service smtpbucket.com. Set SMTP_* in .env before going live.",
+      );
+    }
   });
 }
 
