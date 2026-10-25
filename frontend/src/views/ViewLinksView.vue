@@ -94,34 +94,34 @@ function toggleCategory(key) {
 </script>
 
 <template>
-  <section class="space-y-4">
+  <section class="space-y-3 sm:space-y-4">
     <!-- Category Filter Bar -->
     <CategoryFilterBar />
 
     <!-- Search bar -->
     <div
-      class="bg-white dark:bg-brand-900 rounded-lg border border-gray-200 dark:border-brand-800 p-3"
+      class="bg-white dark:bg-brand-900 rounded-lg border border-gray-200 dark:border-brand-800 p-2 sm:p-3"
     >
       <input
         v-model="appStore.search"
         type="search"
         placeholder="Search links..."
-        class="w-full px-3 py-2 rounded-md border border-gray-300 dark:border-brand-700 dark:bg-brand-800"
+        class="w-full px-3 py-1.5 sm:py-2 rounded-md border border-gray-300 dark:border-brand-700 dark:bg-brand-800"
       />
     </div>
 
     <!-- Pagination info -->
     <p
       v-if="appStore.total > 0"
-      class="text-sm text-gray-500 dark:text-brand-400"
+      class="text-xs sm:text-sm text-gray-500 dark:text-brand-400"
     >
       Showing {{ appStore.links.length }} of {{ appStore.total }} links
     </p>
 
-    <section v-if="groupedCategories.length" class="space-y-6">
+    <section v-if="groupedCategories.length" class="space-y-3 sm:space-y-6">
       <article v-for="group in groupedCategories" :key="group.key">
         <button
-          class="flex items-center gap-2 mb-2 w-full text-left group"
+          class="flex items-center gap-2 mb-1 sm:mb-2 w-full text-left group"
           @click="toggleCategory(group.key)"
         >
           <i
@@ -134,10 +134,10 @@ function toggleCategory(key) {
           ></i>
           <i
             :class="group.icon"
-            class="mdi text-lg"
+            class="mdi text-base sm:text-lg"
             :style="group.color ? `color: ${group.color}` : ''"
           ></i>
-          <h2 class="text-xl font-semibold">{{ group.name }}</h2>
+          <h2 class="text-base sm:text-xl font-semibold">{{ group.name }}</h2>
           <span
             v-if="group.owner"
             class="text-xs px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300"
@@ -158,7 +158,7 @@ function toggleCategory(key) {
         >
           <div
             v-show="!collapsedCategories[group.key]"
-            class="bg-white dark:bg-brand-900 rounded-lg border border-gray-200 dark:border-brand-800 p-2 space-y-1"
+            class="bg-white dark:bg-brand-900 rounded-lg border border-gray-200 dark:border-brand-800 p-1 sm:p-2 sm:space-y-1"
           >
             <LinkCardView
               v-for="link in group.links"

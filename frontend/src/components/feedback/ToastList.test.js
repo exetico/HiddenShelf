@@ -82,4 +82,9 @@ describe("ToastList", () => {
     expect(wrapper.text()).toContain("First");
     expect(wrapper.text()).toContain("Second");
   });
+
+  it("stacks above modals", () => {
+    const wrapper = mountToastList();
+    expect(wrapper.find("div.fixed").classes()).toContain("z-[1000]");
+  });
 });
