@@ -29,26 +29,31 @@ function onContextMenu(event) {
   <a
     :href="link.url"
     target="_blank"
-    class="group hover:bg-gray-50 dark:hover:bg-brand-800 p-2 rounded-md transition-colors flex flex-wrap items-center gap-2 cursor-pointer block no-underline relative"
+    class="group hover:bg-gray-50 dark:hover:bg-brand-800 px-1.5 py-1 sm:p-2 rounded-md transition-colors flex sm:flex-wrap items-center gap-2 cursor-pointer block no-underline relative"
     @contextmenu="onContextMenu"
   >
     <i
       :class="link.icon || 'mdi-link-variant'"
-      class="mdi text-lg shrink-0"
+      class="mdi text-base sm:text-lg shrink-0"
       :style="`color: ${iconColor}`"
     ></i>
-    <div class="flex-1 min-w-0 sm:min-w-[200px]">
+    <!-- Mobile: title and URL share one line; sm+: stacked -->
+    <div
+      class="flex-1 min-w-0 sm:min-w-[200px] flex items-baseline gap-2 sm:block"
+    >
       <div
-        class="font-medium text-gray-900 dark:text-brand-100 group-hover:text-brand-600 dark:group-hover:text-brand-400 text-sm"
+        class="font-medium text-gray-900 dark:text-brand-100 group-hover:text-brand-600 dark:group-hover:text-brand-400 text-sm truncate shrink-0 max-w-[70%] sm:max-w-none sm:whitespace-normal sm:overflow-visible"
       >
         {{ link.title }}
       </div>
-      <p class="text-xs text-gray-500 dark:text-brand-400 truncate">
+      <p
+        class="text-xs text-gray-500 dark:text-brand-400 truncate min-w-0 flex-1"
+      >
         {{ link.url }}
       </p>
     </div>
-    <div class="flex items-center gap-2 ml-auto">
-      <div class="flex flex-wrap gap-1 justify-end">
+    <div class="flex items-center gap-2 ml-auto shrink-0">
+      <div class="hidden sm:flex flex-wrap gap-1 justify-end">
         <span
           v-for="tag in (link.tags || []).slice(0, 3)"
           :key="tag.id"

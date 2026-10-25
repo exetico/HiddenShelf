@@ -232,10 +232,25 @@ async function confirmDeleteEverything() {
       class="bg-white dark:bg-brand-900 rounded-lg border border-gray-200 dark:border-brand-800 p-5 space-y-3"
     >
       <h2 class="text-lg font-semibold">Shared categories</h2>
+      <p class="text-sm text-gray-500 dark:text-brand-400">
+        Join a category someone else has shared with you. Paste the share code
+        or URL they sent you and press Verify to preview it before joining.
+        Joined categories show up in your View page (marked "shared by") and
+        stay read-only: the owner controls the links, and you can leave at any
+        time.
+      </p>
+      <p class="text-xs text-gray-500 dark:text-brand-400">
+        <i class="mdi mdi-information-outline"></i>
+        To share one of your own categories, go to Edit, open Categories and
+        tap the
+        <i class="mdi mdi-share-variant text-blue-600 dark:text-blue-400"></i>
+        share icon next to it.
+      </p>
       <form class="flex gap-2" @submit.prevent="verifyShareCode">
         <input
           v-model="shareCode.code"
           placeholder="Share code or URL"
+          aria-label="Share code or URL"
           class="flex-1 px-3 py-2 rounded-md border border-gray-300 dark:border-brand-700 dark:bg-brand-800"
         />
         <button

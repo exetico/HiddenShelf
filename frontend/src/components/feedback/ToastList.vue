@@ -5,12 +5,15 @@ const toastStore = useToastStore();
 </script>
 
 <template>
-  <div class="fixed top-4 right-4 z-50 space-y-2 w-[280px]">
+  <!-- z-[1000] keeps toasts above every modal (those use z-40..z-80) -->
+  <div
+    class="fixed z-[1000] space-y-2 pointer-events-none inset-x-2 top-[max(0.5rem,env(safe-area-inset-top))] sm:inset-x-auto sm:top-4 sm:right-4 sm:w-[280px]"
+  >
     <transition-group name="toast">
       <div
         v-for="item in toastStore.items"
         :key="item.id"
-        class="rounded-lg text-white shadow-lg px-4 py-3 cursor-pointer overflow-hidden relative"
+        class="pointer-events-auto rounded-lg text-white shadow-lg px-4 py-3 cursor-pointer overflow-hidden relative"
         :class="{
           'bg-green-600': item.type === 'success',
           'bg-red-600': item.type === 'error',
