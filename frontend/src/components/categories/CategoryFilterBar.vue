@@ -96,8 +96,8 @@ function stopDrag() {
         <span class="text-xs opacity-75">({{ uncategorizedCount }})</span>
       </button>
 
-      <!-- Own Category Buttons -->
-      <button
+      <!-- Own Category Buttons (with a star to favorite each one) -->
+      <div
         v-for="category in orderedCategories"
         :key="category.id"
         :class="
@@ -105,25 +105,49 @@ function stopDrag() {
             ? 'bg-brand-600 text-white'
             : 'bg-gray-100 dark:bg-brand-800 text-gray-700 dark:text-brand-300 hover:bg-gray-200 dark:hover:bg-brand-700'
         "
-        class="flex items-center gap-1.5 sm:gap-2 px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg transition-colors whitespace-nowrap shrink-0"
-        @click="selectCategory(String(category.id))"
+        class="group flex items-center rounded-lg transition-colors whitespace-nowrap shrink-0"
       >
-        <i
-          :class="category.icon || 'mdi-folder'"
-          class="mdi text-base sm:text-lg"
-          :style="
-            String(appStore.filterCategory) === String(category.id)
-              ? ''
-              : `color: ${category.color || '#6B7280'}`
+        <button
+          class="flex items-center gap-1.5 sm:gap-2 pl-3 pr-1 py-1.5 sm:pl-4 sm:py-2"
+          @click="selectCategory(String(category.id))"
+        >
+          <i
+            :class="category.icon || 'mdi-folder'"
+            class="mdi text-base sm:text-lg"
+            :style="
+              String(appStore.filterCategory) === String(category.id)
+                ? ''
+                : `color: ${category.color || '#6B7280'}`
+            "
+          ></i>
+          <span class="text-sm font-medium">{{ category.name }}</span>
+          <span class="text-xs opacity-75"
+            >({{ category.link_count || 0 }})</span
+          >
+        </button>
+        <button
+          class="pl-1 pr-2.5 sm:pr-3 py-1.5 sm:py-2 transition-opacity"
+          :class="
+            category.is_favorite
+              ? 'text-amber-500'
+              : 'opacity-40 group-hover:opacity-100 focus:opacity-100'
           "
-        ></i>
-        <span class="text-sm font-medium">{{ category.name }}</span>
-        <i
-          v-if="category.is_favorite"
-          class="mdi mdi-star text-xs text-amber-500"
-        ></i>
-        <span class="text-xs opacity-75">({{ category.link_count || 0 }})</span>
-      </button>
+          :title="
+            category.is_favorite ? 'Remove from favorites' : 'Add to favorites'
+          "
+          :aria-label="
+            category.is_favorite
+              ? `Remove ${category.name} from favorites`
+              : `Add ${category.name} to favorites`
+          "
+          @click="!hasDragged && appStore.toggleFavorite(category)"
+        >
+          <i
+            class="mdi text-sm"
+            :class="category.is_favorite ? 'mdi-star' : 'mdi-star-outline'"
+          ></i>
+        </button>
+      </div>
 
       <!-- Shared Category Buttons -->
       <button

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { mount } from "@vue/test-utils";
+import { mount, flushPromises } from "@vue/test-utils";
 import { createPinia, setActivePinia } from "pinia";
 import { ref } from "vue";
 import { useAppStore } from "@/stores/app";
@@ -31,6 +31,17 @@ vi.mock("@/services/api/linkVisitsApi", () => ({
     }),
   },
 }));
+
+vi.mock("@/services/api/linksApi", () => ({
+  linksApi: {
+    list: vi.fn().mockResolvedValue({
+      links: [],
+      pagination: { page: 1, pages: 1, limit: 20, total: 0 },
+    }),
+  },
+}));
+
+import { linksApi } from "@/services/api/linksApi";
 
 describe("DashboardView", () => {
   let pinia;
@@ -148,5 +159,26 @@ describe("DashboardView", () => {
     const wrapper = mountDashboard();
     const themeBtn = wrapper.find('button[title="Switch to dark mode"]');
     expect(themeBtn.exists()).toBe(true);
+  });
+
+  describe("Tags", () => {
+    it("explains tags when there are none", () => {
+      useAppStore().tags = [];
+      expect(mountDashboard().text()).toContain("Tags group links across categories");
+    });
+
+    it("opens View filtered by the tapped tag", async () => {
+      const appStore = useAppStore();
+      appStore.tags = [{ id: 7, name: "recipes", usage_count: 3 }];
+      appStore.search = "old";
+      const wrapper = mountDashboard();
+      const tag = wrapper.findAll("button").find((b) => b.text().includes("#recipes"));
+      await tag.trigger("click");
+      await flushPromises();
+      expect(appStore.filterTag).toBe("7");
+      expect(appStore.search).toBe("");
+      expect(linksApi.list).toHaveBeenCalledWith(expect.objectContaining({ tagId: "7" }));
+      expect(mockPush).toHaveBeenCalledWith({ name: "view" });
+    });
   });
 });

@@ -1,12 +1,19 @@
 import { request } from "@/lib/httpClient";
 
 export const linksApi = {
-  list: async ({ page = 1, limit = 20, categoryId = "", search = "" } = {}) => {
+  list: async ({
+    page = 1,
+    limit = 20,
+    categoryId = "",
+    search = "",
+    tagId = "",
+  } = {}) => {
     const params = new URLSearchParams();
     params.set("page", String(page));
     params.set("limit", String(limit));
     if (categoryId) params.set("category_id", String(categoryId));
     if (search) params.set("search", search);
+    if (tagId) params.set("tag_id", String(tagId));
     params.set("include_shared", "1");
     const response = await request(`/api/links?${params.toString()}`);
     return response;

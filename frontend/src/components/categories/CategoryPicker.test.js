@@ -3,6 +3,7 @@ import { mount } from "@vue/test-utils";
 import { createPinia, setActivePinia } from "pinia";
 import { useAppStore } from "@/stores/app";
 import CategoryPicker from "@/components/categories/CategoryPicker.vue";
+import CategoryFilterBar from "@/components/categories/CategoryFilterBar.vue";
 
 vi.mock("@/services/api/categoriesApi", () => ({
   categoriesApi: {
@@ -64,5 +65,13 @@ describe("CategoryPicker", () => {
     await appStore.moveCategory(appStore.categories[1], "up");
     expect(appStore.categories.map((c) => c.id)).toEqual([2, 1]);
     expect(categoriesApi.reorder).toHaveBeenCalledWith([2, 1]);
+  });
+
+  it("desktop bar lists favorites first and has a star on each category", async () => {
+    const wrapper = mount(CategoryFilterBar, { global: { plugins: [pinia] } });
+    const text = wrapper.text();
+    expect(text.indexOf("Home")).toBeLessThan(text.indexOf("Work"));
+    await wrapper.find('[aria-label="Add Work to favorites"]').trigger("click");
+    expect(categoriesApi.update).toHaveBeenCalledWith(1, { is_favorite: true });
   });
 });

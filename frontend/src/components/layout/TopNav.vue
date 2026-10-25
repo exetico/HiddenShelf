@@ -24,10 +24,12 @@ function goTo(name) {
       class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-12 sm:h-16 flex items-center justify-between gap-2 sm:gap-4"
     >
       <button
-        class="text-base sm:text-xl font-bold text-gray-900 dark:text-white whitespace-nowrap shrink-0"
+        class="flex items-center text-brand-600 dark:text-brand-300 hover:text-brand-700 dark:hover:text-white shrink-0"
+        title="Hidden Shelf"
+        aria-label="Hidden Shelf home"
         @click="goTo('dashboard')"
       >
-        Hidden Shelf
+        <i class="mdi mdi-bookshelf text-3xl sm:text-4xl leading-none"></i>
       </button>
 
       <div class="flex items-center gap-2 sm:gap-3">

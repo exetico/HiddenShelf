@@ -210,6 +210,23 @@ describe("Categories API", () => {
       expect((await putOrder([a], other.cookie)).status).toBe(400);
     });
 
+    it("requires login to save an order", async () => {
+      const res = await app.request("/api/categories/order", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids: [] }),
+      });
+      expect(res.status).toBe(401);
+    });
+
+    it("puts a newly created category first", async () => {
+      const a = (await createCategory("A")).category.id;
+      const b = (await createCategory("B")).category.id;
+      await putOrder([a, b]);
+      await createCategory("New");
+      expect((await list()).map((c) => c.name)).toEqual(["New", "A", "B"]);
+    });
+
     it("toggles is_favorite via update", async () => {
       const id = (await createCategory("Fav")).category.id;
       const res = await app.request(`/api/categories?id=${id}`, {

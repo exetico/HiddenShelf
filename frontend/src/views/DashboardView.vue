@@ -14,43 +14,98 @@ onMounted(() => {
   appStore.loadVisitStats();
 });
 
+// Tag cloud: bigger and bolder the more links use the tag
+const tagCloud = computed(() => {
+  const max = Math.max(1, ...appStore.tags.map((t) => t.usage_count || 0));
+  return appStore.tags.map((tag) => {
+    const weight = (tag.usage_count || 0) / max;
+    return {
+      ...tag,
+      sizeClass:
+        weight > 0.66
+          ? "text-base font-semibold"
+          : weight > 0.33
+            ? "text-sm font-medium"
+            : "text-xs",
+    };
+  });
+});
+
+async function openTag(tag) {
+  appStore.search = "";
+  appStore.filterCategory = "";
+  await appStore.filterByTag(tag.id);
+  router.push({ name: "view" });
+}
+
 const topVisitedLinks = computed(() =>
   appStore.visitStats.summary.slice(0, 5),
 );
 </script>
 
 <template>
-  <section class="space-y-6">
+  <section class="space-y-4 sm:space-y-6">
     <header>
-      <h1 class="text-3xl font-bold text-gray-900 dark:text-white">
+      <h1 class="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">
         Welcome back
       </h1>
       <p class="text-gray-600 dark:text-brand-300">Overview of your shelf</p>
     </header>
 
-    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+    <div class="grid grid-cols-3 gap-2 sm:gap-4">
       <button
-        class="bg-white dark:bg-brand-900 rounded-lg border border-gray-200 dark:border-brand-800 p-5 text-left hover:border-brand-500 transition-colors"
+        class="bg-white dark:bg-brand-900 rounded-lg border border-gray-200 dark:border-brand-800 p-3 sm:p-5 text-left hover:border-brand-500 transition-colors"
         @click="router.push({ name: 'edit' })"
       >
         <p class="text-sm text-gray-600 dark:text-brand-300">Links</p>
-        <p class="text-3xl font-bold">{{ totalLinks }}</p>
+        <p class="text-2xl sm:text-3xl font-bold">{{ totalLinks }}</p>
       </button>
       <button
-        class="bg-white dark:bg-brand-900 rounded-lg border border-gray-200 dark:border-brand-800 p-5 text-left hover:border-brand-500 transition-colors"
+        class="bg-white dark:bg-brand-900 rounded-lg border border-gray-200 dark:border-brand-800 p-3 sm:p-5 text-left hover:border-brand-500 transition-colors"
         @click="router.push({ name: 'edit' })"
       >
         <p class="text-sm text-gray-600 dark:text-brand-300">Categories</p>
-        <p class="text-3xl font-bold">{{ appStore.totalCategories }}</p>
+        <p class="text-2xl sm:text-3xl font-bold">{{ appStore.totalCategories }}</p>
       </button>
       <button
-        class="bg-white dark:bg-brand-900 rounded-lg border border-gray-200 dark:border-brand-800 p-5 text-left hover:border-brand-500 transition-colors"
+        class="bg-white dark:bg-brand-900 rounded-lg border border-gray-200 dark:border-brand-800 p-3 sm:p-5 text-left hover:border-brand-500 transition-colors"
         @click="router.push({ name: 'edit' })"
       >
         <p class="text-sm text-gray-600 dark:text-brand-300">Tags</p>
-        <p class="text-3xl font-bold">{{ appStore.totalTags }}</p>
+        <p class="text-2xl sm:text-3xl font-bold">{{ appStore.totalTags }}</p>
       </button>
     </div>
+
+    <!-- Tags -->
+    <article
+      class="bg-white dark:bg-brand-900 rounded-lg border border-gray-200 dark:border-brand-800 p-5"
+    >
+      <h2 class="font-semibold text-gray-900 dark:text-white mb-1">
+        <i class="mdi mdi-tag-multiple-outline mr-1"></i>Tags
+      </h2>
+      <template v-if="tagCloud.length">
+        <p class="text-sm text-gray-500 dark:text-brand-400 mb-3">
+          Tap a tag to see every link that has it, across all categories.
+        </p>
+        <div class="flex flex-wrap items-center gap-2">
+          <button
+            v-for="tag in tagCloud"
+            :key="tag.id"
+            class="flex items-center gap-1 px-3 py-1 rounded-full bg-gray-100 dark:bg-brand-800 text-gray-700 dark:text-brand-200 hover:bg-brand-600 hover:text-white transition-colors"
+            :class="tag.sizeClass"
+            @click="openTag(tag)"
+          >
+            #{{ tag.name }}
+            <span class="text-xs opacity-60">{{ tag.usage_count || 0 }}</span>
+          </button>
+        </div>
+      </template>
+      <p v-else class="text-sm text-gray-500 dark:text-brand-400">
+        Tags group links across categories, like "work", "recipes" or
+        "read later". Add them when you create or edit a link, then come back
+        here to jump straight to everything with that tag.
+      </p>
+    </article>
 
     <!-- Visit Stats -->
     <article

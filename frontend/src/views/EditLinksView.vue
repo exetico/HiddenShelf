@@ -7,6 +7,7 @@ import LinkCardEdit from "@/components/links/LinkCardEdit.vue";
 import LinkFormModal from "@/components/links/LinkFormModal.vue";
 import CategoryManager from "@/components/categories/CategoryManager.vue";
 import TagManager from "@/components/tags/TagManager.vue";
+import ActiveTagFilter from "@/components/tags/ActiveTagFilter.vue";
 
 const route = useRoute();
 const router = useRouter();
@@ -161,6 +162,8 @@ async function copyPublic(hash) {
         </option>
       </select>
     </div>
+
+    <ActiveTagFilter />
 
     <!-- Pagination info -->
     <p

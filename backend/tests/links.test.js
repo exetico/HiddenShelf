@@ -144,6 +144,31 @@ describe("Links API", () => {
       expect(data.links[0].title).toBe("Apple Link");
     });
 
+    it("search matches tag names", async () => {
+      await createLink({ title: "Tagged", tags: ["recipes"] });
+      await createLink({ title: "Plain", url: "https://plain.com" });
+
+      const res = await app.request("/api/links?search=recipe", {
+        headers: { Cookie: cookie },
+      });
+      const data = await json(res);
+      expect(data.links.map((l) => l.title)).toEqual(["Tagged"]);
+    });
+
+    it("supports tag filter", async () => {
+      await createLink({ title: "Work one", tags: ["work"] });
+      await createLink({ title: "Home", url: "https://home.com", tags: ["home"] });
+      const tag = getDb()
+        .prepare("SELECT id FROM tags WHERE name = 'work'")
+        .get();
+
+      const res = await app.request(`/api/links?tag_id=${tag.id}`, {
+        headers: { Cookie: cookie },
+      });
+      const data = await json(res);
+      expect(data.links.map((l) => l.title)).toEqual(["Work one"]);
+    });
+
     it("supports category filter", async () => {
       const db = getDb();
       const catInfo = db

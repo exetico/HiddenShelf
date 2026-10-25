@@ -5,6 +5,7 @@ import { useToastStore } from "@/stores/toast";
 import LinkCardView from "@/components/links/LinkCardView.vue";
 import CategoryFilterBar from "@/components/categories/CategoryFilterBar.vue";
 import CategoryPicker from "@/components/categories/CategoryPicker.vue";
+import ActiveTagFilter from "@/components/tags/ActiveTagFilter.vue";
 import ContextMenu from "@/components/common/ContextMenu.vue";
 
 const appStore = useAppStore();
@@ -18,7 +19,7 @@ const showContextMenu = ref(false);
 const collapsedCategories = ref({});
 
 watch(
-  () => [appStore.search, appStore.filterCategory],
+  () => [appStore.search, appStore.filterCategory, appStore.filterTag],
   async () => {
     await appStore.loadLinks({ reset: true });
   },
@@ -145,6 +146,8 @@ function toggleCategory(key) {
         {{ category.name }}
       </button>
     </div>
+
+    <ActiveTagFilter />
 
     <!-- Pagination info -->
     <p

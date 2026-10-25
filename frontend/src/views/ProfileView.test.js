@@ -277,4 +277,30 @@ describe("ProfileView", () => {
       expect(wrapper.text()).not.toContain("Team links");
     });
   });
+
+  describe("Shared categories card", () => {
+    it("explains what sharing does", async () => {
+      const wrapper = mountProfile();
+      await flushPromises();
+      const text = wrapper.text();
+      expect(text).toContain("Share a category to let other Hidden Shelf users");
+      expect(text).toContain("read-only");
+      expect(text).toContain("Shared with you");
+    });
+
+    it("copies the share URL for one of my shares", async () => {
+      const writeText = vi.fn().mockResolvedValue();
+      Object.assign(navigator, { clipboard: { writeText } });
+      sharesApi.listOwnedShares.mockResolvedValueOnce([
+        { id: 5, name: "Team", share_code: "xyz", members: [] },
+      ]);
+      const wrapper = mountProfile();
+      await flushPromises();
+      await wrapper.find('[aria-label="Copy share link for Team"]').trigger("click");
+      expect(writeText).toHaveBeenCalledWith(
+        expect.stringContaining("#/login?share=xyz"),
+      );
+      expect(wrapper.text()).toContain("0 people joined");
+    });
+  });
 });

@@ -84,11 +84,13 @@ describe("LoginView", () => {
     expect(emailInput.exists()).toBe(true);
   });
 
-  it('shows "Sign in with your email" when no remembered email', async () => {
+  it("shows the tagline and feature list when no remembered email", async () => {
     const wrapper = mountLogin({});
     await flushPromises();
     const text = wrapper.text();
-    expect(text).toContain("Sign in with your email");
+    expect(text).toContain("Your private shelf for links");
+    expect(text).toContain("What you get");
+    expect(text).toContain("Share collections");
     expect(text).not.toContain("Welcome back");
   });
 
@@ -128,7 +130,8 @@ describe("LoginView", () => {
     const text = wrapper.text();
     expect(wrapper.find('input[type="email"]').exists()).toBe(false);
     expect(text).not.toContain("Send magic link");
-    expect(text).toContain("Sign in with Google");
+    // Only the button says it, not a subtitle above it as well
+    expect(text.split("Sign in with Google")).toHaveLength(2);
   });
 
   it("hides Google when it isn't configured", async () => {
