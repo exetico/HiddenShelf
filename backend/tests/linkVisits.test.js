@@ -113,6 +113,25 @@ describe("Link Visits API", () => {
       expect(data.stats.daily_visits).toBeDefined();
     });
 
+    it("counts all visits separately from the recent window", async () => {
+      const link = createPublicLink("oldvisits1");
+      const db = getDb();
+      const insert = db.prepare(
+        "INSERT INTO link_visits (link_id, ip_masked, visited_at) VALUES (?, ?, datetime('now', ?))",
+      );
+      insert.run(link.id, "1.2.3.xxx", "-2 days");
+      insert.run(link.id, "1.2.3.xxx", "-60 days");
+      insert.run(link.id, "1.2.3.xxx", "-90 days");
+
+      const res = await app.request(`/api/link_visits?link_id=${link.id}`, {
+        headers: { Cookie: cookie },
+      });
+      const data = await json(res);
+      expect(data.stats.total_visits).toBe(1);
+      expect(data.stats.all_time_visits).toBe(3);
+      expect(data.stats.days).toBe(30);
+    });
+
     it("returns 404 for non-owned link", async () => {
       const db = getDb();
       const otherUser = db

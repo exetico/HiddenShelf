@@ -82,7 +82,7 @@ const iconColor = computed(() => {
         <span
           v-if="link.is_public && link.total_visits > 0"
           class="text-xs text-gray-400 dark:text-brand-500"
-          title="Total visits"
+          :title="`${link.total_visits} ${link.total_visits === 1 ? 'visit' : 'visits'} in total`"
         >
           <i class="mdi mdi-eye-outline"></i> {{ link.total_visits }}
         </span>

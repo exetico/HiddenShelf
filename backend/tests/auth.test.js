@@ -194,6 +194,31 @@ describe("Auth API", () => {
       expect(data.user.email).toBe("me@example.com");
     });
 
+    it("reports a fresh login once", async () => {
+      const db = getDb();
+      const token = generateToken();
+      const expiresAt = new Date(Date.now() + 600000)
+        .toISOString()
+        .replace("T", " ")
+        .replace("Z", "");
+      db.prepare(
+        "INSERT INTO magic_tokens (email, token, expires_at) VALUES (?, ?, ?)",
+      ).run("fresh@example.com", token, expiresAt);
+
+      const verify = await app.request(`/api/auth/verify?token=${token}`);
+      const cookie = verify.headers.get("set-cookie").split(";")[0];
+
+      const first = await json(
+        await app.request("/api/auth/me", { headers: { Cookie: cookie } }),
+      );
+      expect(first.welcome).toBe("new");
+
+      const second = await json(
+        await app.request("/api/auth/me", { headers: { Cookie: cookie } }),
+      );
+      expect(second.welcome).toBeNull();
+    });
+
     it("returns 401 when not authenticated", async () => {
       const res = await app.request("/api/auth/me");
       expect(res.status).toBe(401);

@@ -147,6 +147,7 @@ auth.get("/verify", async (c) => {
   // Get or create user
   const email = tokenData.email;
   let user = db.prepare("SELECT * FROM users WHERE email = ?").get(email);
+  const isNewUser = !user;
 
   if (!user) {
     if (!config.signupEnabled) {
@@ -163,6 +164,8 @@ auth.get("/verify", async (c) => {
   // Set session
   c.session.set("user_id", user.id);
   c.session.set("user_email", email);
+  // The app greets once after login (read and cleared by /me)
+  c.session.set("welcome", isNewUser ? "new" : "back");
   c.session.regenerate();
 
   // Determine redirect
@@ -197,7 +200,12 @@ auth.get("/me", requireAuth(), (c) => {
     .prepare("SELECT id, email, created_at FROM users WHERE id = ?")
     .get(c.userId);
   if (!user) return errorResponse(c, "User not found", 404);
-  return successResponse(c, { user });
+
+  // Set by a fresh login; the app shows a greeting once
+  const welcome = c.session.get("welcome") || null;
+  if (welcome) c.session.delete("welcome");
+
+  return successResponse(c, { user, welcome });
 });
 
 // ─── GET /google — initiate Google OAuth ─────────────────────────
@@ -281,6 +289,8 @@ auth.get("/google/callback", async (c) => {
 
     const db = getDb();
 
+    let isNewUser = false;
+
     // Check existing OAuth user
     let user = db
       .prepare("SELECT * FROM users WHERE oauth_provider = ? AND oauth_id = ?")
@@ -304,6 +314,7 @@ auth.get("/google/callback", async (c) => {
             "INSERT INTO users (email, oauth_provider, oauth_id, oauth_email) VALUES (?, ?, ?, ?)",
           )
           .run(email, "google", googleId, email);
+        isNewUser = true;
         user = { id: result.lastInsertRowid, email };
       }
     }
@@ -311,6 +322,7 @@ auth.get("/google/callback", async (c) => {
     // Set session
     c.session.set("user_id", user.id);
     c.session.set("user_email", email);
+    c.session.set("welcome", isNewUser ? "new" : "back");
     c.session.regenerate();
 
     // Redirect
