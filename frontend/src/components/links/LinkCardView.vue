@@ -23,14 +23,46 @@ function onContextMenu(event) {
   event.preventDefault();
   emit("contextAction", { link: props.link, event });
 }
+
+// iOS Safari never fires contextmenu, so a long press opens the same menu
+const LONG_PRESS_MS = 500;
+let pressTimer = null;
+let longPressed = false;
+
+function onTouchStart(event) {
+  longPressed = false;
+  clearTimeout(pressTimer);
+  pressTimer = setTimeout(() => {
+    longPressed = true;
+    emit("contextAction", { link: props.link, event });
+  }, LONG_PRESS_MS);
+}
+
+function cancelPress() {
+  clearTimeout(pressTimer);
+}
+
+function onClick(event) {
+  // Swallow the click that follows a long press so the link doesn't open
+  if (longPressed) {
+    event.preventDefault();
+    longPressed = false;
+  }
+}
 </script>
 
 <template>
   <a
     :href="link.url"
     target="_blank"
-    class="group hover:bg-gray-50 dark:hover:bg-brand-800 px-1.5 py-1 sm:p-2 rounded-md transition-colors flex sm:flex-wrap items-center gap-2 cursor-pointer block no-underline relative"
+    class="group hover:bg-gray-50 dark:hover:bg-brand-800 px-1.5 py-1 sm:p-2 rounded-md transition-colors flex sm:flex-wrap items-center gap-2 cursor-pointer block no-underline relative max-sm:select-none"
+    style="-webkit-touch-callout: none"
     @contextmenu="onContextMenu"
+    @touchstart.passive="onTouchStart"
+    @touchmove.passive="cancelPress"
+    @touchend="cancelPress"
+    @touchcancel="cancelPress"
+    @click="onClick"
   >
     <i
       :class="link.icon || 'mdi-link-variant'"

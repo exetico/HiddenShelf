@@ -98,7 +98,7 @@ describe("Database Migrations", () => {
 
     // Check final schema version
     const version = getSchemaVersion(db);
-    expect(version).toBe(9); // Update this when adding new migrations
+    expect(version).toBe(10); // Update this when adding new migrations
 
     // Verify all tables exist
     expect(tableExists(db, "_meta")).toBe(true);
@@ -123,7 +123,7 @@ describe("Database Migrations", () => {
     const version2 = getSchemaVersion(db);
 
     expect(version1).toBe(version2);
-    expect(version2).toBe(9);
+    expect(version2).toBe(10);
   });
 
   describe("Migration 008: Tags unique per user", () => {
@@ -144,7 +144,7 @@ describe("Database Migrations", () => {
 
       runMigrations(db);
 
-      expect(getSchemaVersion(db)).toBe(9);
+      expect(getSchemaVersion(db)).toBe(10);
       expect(db.prepare("SELECT * FROM link_tags").all()).toEqual([
         { link_id: 1, tag_id: 1 },
       ]);
@@ -161,6 +161,23 @@ describe("Database Migrations", () => {
     it("creates the sessions table", () => {
       runMigrations(db);
       expect(tableExists(db, "sessions")).toBe(true);
+    });
+  });
+
+  describe("Migration 010: Category order and favorites", () => {
+    it("adds position and is_favorite, keeping newest-first order", () => {
+      runMigrations(db, 9);
+      db.prepare("INSERT INTO users (id, email) VALUES (1, 'a@b.c')").run();
+      db.prepare(
+        "INSERT INTO categories (user_id, name, created_at) VALUES (1, 'old', '2024-01-01'), (1, 'new', '2025-01-01')",
+      ).run();
+      runMigrations(db);
+      expect(getSchemaVersion(db)).toBe(10);
+      expect(columnExists(db, "categories", "is_favorite")).toBe(true);
+      const rows = db
+        .prepare("SELECT name FROM categories ORDER BY position")
+        .all();
+      expect(rows.map((r) => r.name)).toEqual(["new", "old"]);
     });
   });
 

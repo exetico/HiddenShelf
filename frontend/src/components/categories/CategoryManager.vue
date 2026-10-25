@@ -238,18 +238,43 @@ async function removeSharing() {
       </form>
 
       <!-- Category list -->
-      <ul class="space-y-2 max-h-64 overflow-auto">
+      <p
+        v-if="categories.length > 1"
+        class="text-xs text-gray-500 dark:text-brand-400"
+      >
+        Use the arrows to set the order and the star to pin favorites to the
+        top of the View page.
+      </p>
+      <ul class="space-y-2 max-h-[50dvh] overflow-auto">
         <li
-          v-for="category in categories"
+          v-for="(category, index) in categories"
           :key="category.id"
           class="border border-gray-200 dark:border-brand-800 rounded-md p-3"
         >
           <!-- View mode -->
           <div
             v-if="editingId !== category.id"
-            class="flex items-center justify-between"
+            class="flex items-center justify-between gap-2"
           >
             <div class="flex items-center gap-2 min-w-0">
+              <div class="flex flex-col -my-1 shrink-0">
+                <button
+                  class="text-gray-400 hover:text-gray-700 dark:text-brand-500 dark:hover:text-brand-200 disabled:opacity-30 leading-none"
+                  :disabled="index === 0"
+                  :aria-label="`Move ${category.name} up`"
+                  @click="appStore.moveCategory(category, 'up')"
+                >
+                  <i class="mdi mdi-chevron-up text-lg"></i>
+                </button>
+                <button
+                  class="text-gray-400 hover:text-gray-700 dark:text-brand-500 dark:hover:text-brand-200 disabled:opacity-30 leading-none"
+                  :disabled="index === categories.length - 1"
+                  :aria-label="`Move ${category.name} down`"
+                  @click="appStore.moveCategory(category, 'down')"
+                >
+                  <i class="mdi mdi-chevron-down text-lg"></i>
+                </button>
+              </div>
               <i
                 :class="category.icon || 'mdi-folder'"
                 class="mdi text-lg"
@@ -262,7 +287,26 @@ async function removeSharing() {
                 </p>
               </div>
             </div>
-            <div class="flex gap-2 text-sm">
+            <div class="flex items-center gap-3 text-sm shrink-0">
+              <button
+                :class="
+                  category.is_favorite
+                    ? 'text-amber-500'
+                    : 'text-gray-400 dark:text-brand-500'
+                "
+                :title="category.is_favorite ? 'Unfavorite' : 'Favorite'"
+                :aria-label="
+                  category.is_favorite
+                    ? `Remove ${category.name} from favorites`
+                    : `Add ${category.name} to favorites`
+                "
+                @click="appStore.toggleFavorite(category)"
+              >
+                <i
+                  class="mdi text-base"
+                  :class="category.is_favorite ? 'mdi-star' : 'mdi-star-outline'"
+                ></i>
+              </button>
               <button
                 class="text-blue-600 dark:text-blue-400"
                 title="Share"

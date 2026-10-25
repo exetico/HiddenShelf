@@ -10,13 +10,16 @@ vi.mock("@/services/api/sharesApi", () => ({
   sharesApi: {
     verifyShareCode: vi.fn(),
     listSharedCategories: vi.fn().mockResolvedValue([]),
+    listOwnedShares: vi.fn().mockResolvedValue([]),
+    removeMember: vi.fn().mockResolvedValue({}),
+    removeSharing: vi.fn().mockResolvedValue({}),
   },
 }));
 vi.mock("@/services/api/linksApi", () => ({
   linksApi: { list: vi.fn(), remove: vi.fn() },
 }));
 vi.mock("@/services/api/categoriesApi", () => ({
-  categoriesApi: { remove: vi.fn() },
+  categoriesApi: { remove: vi.fn(), list: vi.fn().mockResolvedValue([]) },
 }));
 vi.mock("@/services/api/tagsApi", () => ({
   tagsApi: { remove: vi.fn() },
@@ -219,5 +222,59 @@ describe("ProfileView", () => {
       .findAll("button")
       .filter((b) => b.text() === "Leave");
     expect(leaveBtn.length).toBeGreaterThan(0);
+  });
+
+  describe("Shared by you", () => {
+    const share = () => ({
+      id: 5,
+      name: "Team links",
+      share_code: "abc",
+      members: [
+        { id: 11, email: "a@example.com" },
+        { id: 12, email: "b@example.com" },
+      ],
+    });
+
+    it("explains how to share when nothing is shared", async () => {
+      sharesApi.listOwnedShares.mockResolvedValueOnce([]);
+      const wrapper = mountProfile();
+      await flushPromises();
+      expect(wrapper.text()).toContain("You aren't sharing any categories");
+    });
+
+    it("lists own shares with members and removes one", async () => {
+      sharesApi.listOwnedShares.mockResolvedValueOnce([share()]);
+      const wrapper = mountProfile();
+      await flushPromises();
+      expect(wrapper.text()).toContain("Team links");
+      expect(wrapper.text()).toContain("2 people joined");
+
+      const remove = wrapper
+        .findAll("button")
+        .find((b) => b.text() === "Remove");
+      await remove.trigger("click");
+      await flushPromises();
+      expect(sharesApi.removeMember).toHaveBeenCalledWith(5, 11);
+      expect(wrapper.text()).not.toContain("a@example.com");
+    });
+
+    it("asks for a second tap before it stops sharing", async () => {
+      sharesApi.listOwnedShares.mockResolvedValueOnce([share()]);
+      const wrapper = mountProfile();
+      await flushPromises();
+      const stop = () =>
+        wrapper
+          .findAll("button")
+          .find((b) => /Stop sharing|Tap to confirm/.test(b.text()));
+
+      await stop().trigger("click");
+      expect(sharesApi.removeSharing).not.toHaveBeenCalled();
+      expect(stop().text()).toBe("Tap to confirm");
+
+      await stop().trigger("click");
+      await flushPromises();
+      expect(sharesApi.removeSharing).toHaveBeenCalledWith(5);
+      expect(wrapper.text()).not.toContain("Team links");
+    });
   });
 });

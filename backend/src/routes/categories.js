@@ -4,7 +4,8 @@
  * Endpoint mapping:
  *   GET    /api/categories          → list (with link_count, is_shared, member_count)
  *   POST   /api/categories          → create
- *   PUT    /api/categories?id=      → update
+ *   PUT    /api/categories?id=      → update (incl. is_favorite)
+ *   PUT    /api/categories/order    → reorder {ids: [...]}
  *   DELETE /api/categories?id=      → delete
  */
 
@@ -34,7 +35,7 @@ categories.get("/", requireAuth(), (c) => {
      LEFT JOIN links l ON c.id = l.category_id
      WHERE c.user_id = ?
      GROUP BY c.id
-     ORDER BY c.created_at DESC`,
+     ORDER BY c.position ASC, c.created_at DESC`,
     )
     .all(c.userId);
 
@@ -72,11 +73,18 @@ categories.post("/", requireAuth(), async (c) => {
     );
   }
 
+  // New categories go to the top, matching the old newest-first order
+  const { top } = db
+    .prepare(
+      "SELECT COALESCE(MIN(position), 0) - 1 as top FROM categories WHERE user_id = ?",
+    )
+    .get(c.userId);
+
   const info = db
     .prepare(
-      "INSERT INTO categories (user_id, name, icon, color, direct_redirect_default, updated_at) VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)",
+      "INSERT INTO categories (user_id, name, icon, color, direct_redirect_default, position, updated_at) VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)",
     )
-    .run(c.userId, name, icon, color, directRedirectDefault);
+    .run(c.userId, name, icon, color, directRedirectDefault, top);
 
   const category = db
     .prepare("SELECT * FROM categories WHERE id = ?")
@@ -106,6 +114,12 @@ categories.put("/", requireAuth(), async (c) => {
         ? 1
         : 0
       : existing.direct_redirect_default || 0;
+  const isFavorite =
+    input.is_favorite !== undefined
+      ? input.is_favorite
+        ? 1
+        : 0
+      : existing.is_favorite || 0;
 
   if (!name) return errorResponse(c, "Category name is required");
   if (name.length > MAX_LENGTHS.categoryName)
@@ -115,11 +129,39 @@ categories.put("/", requireAuth(), async (c) => {
     );
 
   db.prepare(
-    "UPDATE categories SET name = ?, icon = ?, color = ?, direct_redirect_default = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
-  ).run(name, icon, color, directRedirectDefault, id);
+    "UPDATE categories SET name = ?, icon = ?, color = ?, direct_redirect_default = ?, is_favorite = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+  ).run(name, icon, color, directRedirectDefault, isFavorite, id);
 
   const category = db.prepare("SELECT * FROM categories WHERE id = ?").get(id);
   return successResponse(c, { category }, "Category updated successfully");
+});
+
+// ─── PUT /api/categories/order ──────────────────────────────────
+
+categories.put("/order", requireAuth(), async (c) => {
+  const db = getDb();
+  const input = await c.req.json().catch(() => ({}));
+  const ids = Array.isArray(input.ids) ? input.ids.map(Number) : null;
+  if (!ids || ids.some((id) => !Number.isInteger(id)))
+    return errorResponse(c, "ids must be an array of category IDs");
+
+  const owned = new Set(
+    db
+      .prepare("SELECT id FROM categories WHERE user_id = ?")
+      .all(c.userId)
+      .map((r) => r.id),
+  );
+  if (ids.length !== owned.size || !ids.every((id) => owned.has(id)))
+    return errorResponse(c, "ids must list each of your categories once");
+
+  const update = db.prepare(
+    "UPDATE categories SET position = ? WHERE id = ? AND user_id = ?",
+  );
+  db.transaction(() => {
+    ids.forEach((id, index) => update.run(index, id, c.userId));
+  })();
+
+  return successResponse(c, {}, "Category order saved");
 });
 
 // ─── DELETE /api/categories?id= ──────────────────────────────────

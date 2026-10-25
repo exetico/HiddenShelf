@@ -22,10 +22,10 @@ const iconColor = computed(() => {
 
 <template>
   <article
-    class="bg-white dark:bg-brand-900 border border-gray-200 dark:border-brand-800 rounded-lg p-4"
+    class="bg-white dark:bg-brand-900 border border-gray-200 dark:border-brand-800 rounded-lg p-3 sm:p-4 min-w-0"
   >
     <div class="flex items-start justify-between gap-3">
-      <div class="flex items-start gap-2 min-w-0">
+      <div class="flex items-start gap-2 min-w-0 flex-1">
         <i
           :class="link.icon || 'mdi-link-variant'"
           class="mdi text-lg mt-0.5 shrink-0"
@@ -40,7 +40,7 @@ const iconColor = computed(() => {
           </p>
         </div>
       </div>
-      <div class="flex gap-2 text-sm">
+      <div class="flex gap-3 text-sm shrink-0">
         <button
           class="text-brand-600 dark:text-brand-400"
           @click="$emit('edit', link)"
@@ -56,11 +56,15 @@ const iconColor = computed(() => {
       </div>
     </div>
 
-    <p class="mt-2 text-sm text-gray-600 dark:text-brand-300">
+    <!-- The placeholder only costs height on phones, so it's sm+ only -->
+    <p
+      class="mt-1.5 sm:mt-2 text-sm text-gray-600 dark:text-brand-300"
+      :class="{ 'hidden sm:block': !link.description }"
+    >
       {{ link.description || "No description" }}
     </p>
 
-    <div class="mt-3 flex items-center justify-between">
+    <div class="mt-2 sm:mt-3 flex items-center justify-between">
       <div class="flex flex-wrap gap-1">
         <span
           v-for="tag in (link.tags || []).slice(0, 3)"

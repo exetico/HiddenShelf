@@ -46,6 +46,8 @@ export const useAppStore = defineStore("app", {
 
       return grouped;
     },
+    favoriteCategories: (state) =>
+      state.categories.filter((c) => c.is_favorite),
     totalCategories: (state) =>
       state.categories.length + state.sharedCategories.length,
     totalTags: (state) => state.tags.length,
@@ -198,6 +200,31 @@ export const useAppStore = defineStore("app", {
       await this.loadCategories();
       const toastStore = useToastStore();
       toastStore.success("Category updated");
+    },
+    async toggleFavorite(category) {
+      const isFavorite = !category.is_favorite;
+      category.is_favorite = isFavorite ? 1 : 0; // optimistic
+      try {
+        await categoriesApi.update(category.id, { is_favorite: isFavorite });
+      } catch (error) {
+        category.is_favorite = isFavorite ? 0 : 1;
+        useToastStore().error(error.message);
+      }
+    },
+    async moveCategory(category, direction) {
+      const list = [...this.categories];
+      const from = list.findIndex((c) => c.id === category.id);
+      const to = direction === "up" ? from - 1 : from + 1;
+      if (from < 0 || to < 0 || to >= list.length) return;
+      [list[from], list[to]] = [list[to], list[from]];
+      const previous = this.categories;
+      this.categories = list; // optimistic
+      try {
+        await categoriesApi.reorder(list.map((c) => c.id));
+      } catch (error) {
+        this.categories = previous;
+        useToastStore().error(error.message);
+      }
     },
     async loadTags() {
       this.tags = await tagsApi.list();

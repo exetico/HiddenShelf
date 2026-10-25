@@ -115,22 +115,22 @@ async function copyPublic(hash) {
 </script>
 
 <template>
-  <section class="space-y-4">
+  <section class="space-y-3 sm:space-y-4">
     <div class="flex flex-wrap gap-2">
       <button
-        class="px-4 py-2 rounded-md bg-brand-600 text-white hover:bg-brand-700"
+        class="px-3 py-1.5 sm:px-4 sm:py-2 text-sm sm:text-base rounded-md bg-brand-600 text-white hover:bg-brand-700"
         @click="openCreate"
       >
         + Add link
       </button>
       <button
-        class="px-4 py-2 rounded-md bg-brand-600 text-white hover:bg-brand-700"
+        class="px-3 py-1.5 sm:px-4 sm:py-2 text-sm sm:text-base rounded-md bg-brand-600 text-white hover:bg-brand-700"
         @click="showCategoryModal = true"
       >
         Categories
       </button>
       <button
-        class="px-4 py-2 rounded-md bg-brand-600 text-white hover:bg-brand-700"
+        class="px-3 py-1.5 sm:px-4 sm:py-2 text-sm sm:text-base rounded-md bg-brand-600 text-white hover:bg-brand-700"
         @click="showTagModal = true"
       >
         Tags
@@ -139,17 +139,17 @@ async function copyPublic(hash) {
 
     <!-- Search and category filter -->
     <div
-      class="bg-white dark:bg-brand-900 rounded-lg border border-gray-200 dark:border-brand-800 p-3 flex flex-col sm:flex-row gap-2"
+      class="bg-white dark:bg-brand-900 rounded-lg border border-gray-200 dark:border-brand-800 p-2 sm:p-3 flex gap-2"
     >
       <input
         v-model="localSearch"
         type="search"
         placeholder="Search links..."
-        class="flex-1 min-w-[200px] px-3 py-2 rounded-md border border-gray-300 dark:border-brand-700 dark:bg-brand-800"
+        class="flex-1 min-w-0 sm:min-w-[200px] px-3 py-1.5 sm:py-2 rounded-md border border-gray-300 dark:border-brand-700 dark:bg-brand-800"
       />
       <select
         v-model="localFilterCategory"
-        class="px-3 py-2 rounded-md border border-gray-300 dark:border-brand-700 dark:bg-brand-800"
+        class="max-w-[40%] sm:max-w-none px-2 sm:px-3 py-1.5 sm:py-2 rounded-md border border-gray-300 dark:border-brand-700 dark:bg-brand-800"
       >
         <option value="">All Categories</option>
         <option
@@ -165,14 +165,14 @@ async function copyPublic(hash) {
     <!-- Pagination info -->
     <p
       v-if="appStore.total > 0"
-      class="text-sm text-gray-500 dark:text-brand-400"
+      class="text-xs sm:text-sm text-gray-500 dark:text-brand-400"
     >
       Showing {{ appStore.links.length }} of {{ appStore.total }} links
     </p>
 
     <div
       v-if="appStore.links.length"
-      class="grid gap-3 md:grid-cols-2 lg:grid-cols-3"
+      class="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2 lg:grid-cols-3"
     >
       <LinkCardEdit
         v-for="link in appStore.links"

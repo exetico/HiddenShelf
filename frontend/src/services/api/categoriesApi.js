@@ -19,6 +19,11 @@ export const categoriesApi = {
     });
     return response.category;
   },
+  reorder: async (ids) =>
+    request("/api/categories/order", {
+      method: "PUT",
+      body: JSON.stringify({ ids }),
+    }),
   remove: async (id) =>
     request(`/api/categories?id=${id}`, { method: "DELETE" }),
 };
