@@ -123,8 +123,9 @@ volumes:
 
   and move the existing files there before starting.
 - **Permissions:** the container runs as user `node` (uid 1000), so the folder must be writable by uid 1000. If the app fails with `unable to open database file`, run `sudo chown -R 1000:1000 db`.
-- **Back up:** `make backup` writes a consistent copy to `db/backups/hiddenshelf-<date>.sqlite` while the app runs. Copy that folder off the server, e.g. from a daily cron job (`cd /path/to/hiddenshelf && make backup`). Copying `database.sqlite` by hand while the app runs can miss recent writes.
-- **Restore:** `make down`, replace `db/database.sqlite` with the backup, delete any `database.sqlite-wal`/`-shm` files, then `make up`. Older backups are migrated automatically.
+- **Back up / get the data out:** `make backup` writes a consistent copy to `db/backups/hiddenshelf-<date>.sqlite`. It works while the app runs, and also when it's stopped. Add `OUT=` to also copy it somewhere else, e.g. `make backup OUT=~/hiddenshelf.sqlite`, then fetch it with `scp server:~/hiddenshelf.sqlite .`. For daily backups, run `cd /path/to/hiddenshelf && make backup` from cron and copy `db/backups/` off the server. Copying `database.sqlite` by hand while the app runs can miss recent writes.
+- **Restore:** `make restore FILE=db/backups/hiddenshelf-<date>.sqlite`. It backs up the current database first, stops the app, swaps the file in and starts the app again. The file must be inside `db/`. Older backups are migrated automatically.
+- **Per user:** everyone can also export their own links and categories as JSON from the app (Dashboard → Import Data).
 - **Look inside:** `docker compose exec web sqlite3 /app/db/database.sqlite`, or open the file in any SQLite browser.
 
 ## Configuration
