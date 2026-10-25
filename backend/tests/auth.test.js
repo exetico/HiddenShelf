@@ -11,6 +11,7 @@ import {
 } from "./helpers.js";
 import { getDb } from "../src/lib/database.js";
 import { generateToken } from "../src/lib/helpers.js";
+import config from "../src/config.js";
 
 describe("Auth API", () => {
   let app;
@@ -234,5 +235,41 @@ describe("Auth API", () => {
       const data = await json(res);
       expect(data.error).toContain("not configured");
     });
+  });
+});
+
+// ── EMAIL_LOGIN_ENABLED=false ──
+
+describe("Auth API with email login turned off", () => {
+  let app;
+
+  beforeEach(() => {
+    app = createTestApp();
+    config.emailLoginEnabled = false;
+  });
+
+  afterEach(() => {
+    config.emailLoginEnabled = true;
+    cleanup();
+  });
+
+  it("refuses to send a magic link", async () => {
+    const res = await app.request("/api/auth/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: "a@example.com" }),
+    });
+    expect(res.status).toBe(403);
+  });
+
+  it("refuses an existing token", async () => {
+    const res = await app.request("/api/auth/verify?token=abc");
+    expect(res.status).toBe(302);
+    expect(res.headers.get("location")).toContain("error=email_login_disabled");
+  });
+
+  it("tells the app in /api/config", async () => {
+    const data = await json(await app.request("/api/config"));
+    expect(data.email_login_enabled).toBe(false);
   });
 });

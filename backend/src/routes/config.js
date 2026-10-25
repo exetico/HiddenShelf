@@ -16,6 +16,7 @@ configRoute.get("/", (c) => {
     app_version: config.appVersion,
     site_name: config.siteName,
     signup_enabled: config.signupEnabled,
+    email_login_enabled: config.emailLoginEnabled,
     google_auth_enabled: !!(config.googleClientId && config.googleClientSecret),
   });
 });
