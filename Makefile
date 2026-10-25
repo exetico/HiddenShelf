@@ -1,4 +1,4 @@
-.PHONY: help up down restart logs dev build-frontend test test-backend test-frontend clean install backup upgrade
+.PHONY: help up down restart logs dev build-frontend test test-backend test-frontend clean install backup restore upgrade
 
 # Default target
 help:
@@ -6,7 +6,8 @@ help:
 	@echo ""
 	@echo "  make up              - Build and start the app (production)"
 	@echo "  make upgrade         - Back up the database, pull the latest code, rebuild"
-	@echo "  make backup          - Copy the database to db/backups/"
+	@echo "  make backup          - Copy the database to db/backups/ (OUT=path also copies it there)"
+	@echo "  make restore FILE=.. - Replace the database with a backup from db/"
 	@echo "  make dev             - Start dev mode (backend + Vue HMR)"
 	@echo "  make build-frontend  - Build Vue frontend for production"
 	@echo "  make test-frontend   - Run frontend tests in Docker"
@@ -22,10 +23,36 @@ help:
 up:
 	docker compose up -d --build web
 
-# Consistent copy of the running database, into db/backups/ on the host
+# Runs a shell command in the app container, running or not. Files go
+# through the container (as the app's user), so db/ ownership never matters.
+IN_WEB = if docker compose ps --status running --services | grep -qx web; then \
+		docker compose exec -T web sh -c "$$cmd"; \
+	else \
+		docker compose run --rm --no-deps -T web sh -c "$$cmd"; \
+	fi
+
+BACKUP_NAME := hiddenshelf-$(shell date +%Y%m%d-%H%M%S).sqlite
+
+# Consistent copy of the database (safe while the app runs) into
+# db/backups/ on the host. OUT=/some/path also copies it there.
 backup:
-	docker compose exec -T web sh -c 'mkdir -p /app/db/backups && sqlite3 /app/db/database.sqlite ".backup /app/db/backups/hiddenshelf-$$(date +%Y%m%d-%H%M%S).sqlite"'
-	@ls -1t db/backups | head -1
+	@cmd='mkdir -p /app/db/backups && sqlite3 /app/db/database.sqlite ".backup /app/db/backups/$(BACKUP_NAME)"'; \
+	$(IN_WEB)
+	@echo "Backup: db/backups/$(BACKUP_NAME)"
+	@if [ -n "$(OUT)" ]; then cp "db/backups/$(BACKUP_NAME)" "$(OUT)" && echo "Copied to $(OUT)"; fi
+
+# Replace the database with a backup. The current database is backed up
+# first, so a restore can be undone the same way.
+restore:
+	@[ -n "$(FILE)" ] || { echo "Usage: make restore FILE=db/backups/hiddenshelf-YYYYMMDD-HHMMSS.sqlite"; exit 1; }
+	@case "$(FILE)" in db/*) ;; *) echo "FILE must be inside db/, e.g. db/backups/..."; exit 1;; esac
+	@[ -f "$(FILE)" ] || { echo "$(FILE) not found"; exit 1; }
+	@if [ -f db/database.sqlite ]; then $(MAKE) --no-print-directory backup; fi
+	docker compose stop web
+	@cmd='cp "/app/$(FILE)" /app/db/database.sqlite && rm -f /app/db/database.sqlite-wal /app/db/database.sqlite-shm'; \
+	$(IN_WEB)
+	docker compose up -d web
+	@echo "Restored $(FILE)"
 
 # Back up, update the code and rebuild. The database in db/ is not part of
 # the repository, so git pull never touches it; migrations run on start.
