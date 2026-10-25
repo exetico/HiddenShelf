@@ -14,6 +14,14 @@ vi.mock("@/components/links/LinkCardView.vue", () => ({
 vi.mock("@/components/categories/CategoryFilterBar.vue", () => ({
   default: { template: "<div>FilterBar</div>" },
 }));
+vi.mock("@/services/api/linksApi", () => ({
+  linksApi: {
+    list: vi.fn().mockResolvedValue({
+      links: [],
+      pagination: { page: 1, pages: 1, limit: 20, total: 0 },
+    }),
+  },
+}));
 vi.mock("@/components/common/ContextMenu.vue", () => ({
   default: { template: "<div></div>", props: ["open", "link"] },
 }));
@@ -136,5 +144,35 @@ describe("ViewLinksView", () => {
 
     const wrapper = mountView();
     expect(wrapper.text()).toContain("shared by friend@test.com");
+  });
+
+  describe("mobile layout", () => {
+    it("puts the category picker in the search row and hides the bar on phones", () => {
+      const wrapper = mountView();
+      const searchRow = wrapper.find('input[type="search"]').element.parentElement;
+      expect(searchRow.querySelector('[aria-haspopup="dialog"]')).not.toBeNull();
+      expect(wrapper.html()).toContain("hidden sm:block");
+    });
+
+    it("shows favorite categories as chips that toggle the filter", async () => {
+      const appStore = useAppStore();
+      appStore.categories = [
+        { id: 1, name: "Work", is_favorite: 1 },
+        { id: 2, name: "Home", is_favorite: 0 },
+      ];
+      const wrapper = mountView();
+      const chips = wrapper.findAll("button.rounded-full");
+      expect(chips.map((c) => c.text())).toEqual(["Work"]);
+
+      await chips[0].trigger("click");
+      expect(appStore.filterCategory).toBe("1");
+      await chips[0].trigger("click");
+      expect(appStore.filterCategory).toBe("");
+    });
+
+    it("has no favorite chip row without favorites", () => {
+      const wrapper = mountView();
+      expect(wrapper.findAll("button.rounded-full")).toHaveLength(0);
+    });
   });
 });

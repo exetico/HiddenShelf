@@ -72,4 +72,28 @@ describe("LinkCardView", () => {
     await wrapper.find('[title="Show links tagged infra"]').trigger("click");
     expect(appStore.filterByTag).toHaveBeenCalledWith(9);
   });
+
+  describe("compact rows on phones", () => {
+    it("puts title and URL on one line below sm and stacks them from sm up", () => {
+      const wrapper = mountCard();
+      const textBlock = wrapper.find(".sm\\:block");
+      expect(textBlock.classes()).toEqual(
+        expect.arrayContaining(["flex", "items-baseline", "sm:block"]),
+      );
+      expect(textBlock.text()).toContain("Grafana");
+      expect(textBlock.text()).toContain("https://grafana.example.com");
+    });
+
+    it("hides tags on phones", () => {
+      const wrapper = mountCard();
+      const tagButton = wrapper.find('[title="Show links tagged infra"]');
+      expect(tagButton.element.parentElement.className).toContain("hidden sm:flex");
+    });
+
+    it("uses tighter padding on phones", () => {
+      expect(mountCard().classes()).toEqual(
+        expect.arrayContaining(["py-1", "sm:p-2"]),
+      );
+    });
+  });
 });

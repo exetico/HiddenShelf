@@ -5,12 +5,16 @@ import { useAppStore } from "@/stores/app";
 vi.mock("@/services/api/linksApi", () => ({
   linksApi: { list: vi.fn() },
 }));
+vi.mock("@/services/api/categoriesApi", () => ({
+  categoriesApi: { update: vi.fn(), reorder: vi.fn() },
+}));
 vi.mock("@/services/api/settingsApi", () => ({
   settingsApi: { get: vi.fn(), update: vi.fn() },
 }));
 
 import { linksApi } from "@/services/api/linksApi";
 import { settingsApi } from "@/services/api/settingsApi";
+import { categoriesApi } from "@/services/api/categoriesApi";
 
 // Fake server holding `count` links, paged like GET /api/links
 function serveLinks(count) {
@@ -74,5 +78,57 @@ describe("app store pagination", () => {
 
     expect(store.links).toHaveLength(50);
     expect(store.hasMore).toBe(false);
+  });
+});
+
+describe("app store category favorites and order", () => {
+  let store;
+
+  beforeEach(() => {
+    setActivePinia(createPinia());
+    vi.clearAllMocks();
+    store = useAppStore();
+    store.categories = [
+      { id: 1, name: "A", is_favorite: 0 },
+      { id: 2, name: "B", is_favorite: 1 },
+      { id: 3, name: "C", is_favorite: 0 },
+    ];
+  });
+
+  it("lists favorite categories", () => {
+    expect(store.favoriteCategories.map((c) => c.id)).toEqual([2]);
+  });
+
+  it("toggles a favorite and saves it", async () => {
+    categoriesApi.update.mockResolvedValue({});
+    await store.toggleFavorite(store.categories[0]);
+    expect(store.categories[0].is_favorite).toBe(1);
+    expect(categoriesApi.update).toHaveBeenCalledWith(1, { is_favorite: true });
+  });
+
+  it("rolls the favorite back when saving fails", async () => {
+    categoriesApi.update.mockRejectedValue(new Error("offline"));
+    await store.toggleFavorite(store.categories[1]);
+    expect(store.categories[1].is_favorite).toBe(1);
+  });
+
+  it("moves a category down and saves the full order", async () => {
+    categoriesApi.reorder.mockResolvedValue({});
+    await store.moveCategory(store.categories[0], "down");
+    expect(store.categories.map((c) => c.id)).toEqual([2, 1, 3]);
+    expect(categoriesApi.reorder).toHaveBeenCalledWith([2, 1, 3]);
+  });
+
+  it("does nothing when moving past either end", async () => {
+    await store.moveCategory(store.categories[0], "up");
+    await store.moveCategory(store.categories[2], "down");
+    expect(store.categories.map((c) => c.id)).toEqual([1, 2, 3]);
+    expect(categoriesApi.reorder).not.toHaveBeenCalled();
+  });
+
+  it("restores the old order when saving fails", async () => {
+    categoriesApi.reorder.mockRejectedValue(new Error("offline"));
+    await store.moveCategory(store.categories[2], "up");
+    expect(store.categories.map((c) => c.id)).toEqual([1, 2, 3]);
   });
 });

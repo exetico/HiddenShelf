@@ -96,6 +96,20 @@ describe("LinkCardEdit", () => {
     expect(wrapper2.text()).toContain("My link");
   });
 
+  it("hides the 'No description' placeholder on phones only", () => {
+    const empty = mountCard({ description: "" }).find("p.text-sm");
+    expect(empty.classes()).toEqual(expect.arrayContaining(["hidden", "sm:block"]));
+
+    const filled = mountCard({ description: "My link" }).find("p.text-sm");
+    expect(filled.classes()).not.toContain("hidden");
+  });
+
+  it("lets long titles and URLs shrink instead of overflowing the card", () => {
+    const wrapper = mountCard({ url: "https://example.com/" + "x".repeat(200) });
+    expect(wrapper.classes()).toContain("min-w-0");
+    expect(wrapper.find("h3").classes()).toContain("truncate");
+  });
+
   it("shows direct redirect indicator when direct_redirect is set", () => {
     const wrapper = mountCard({ direct_redirect: 1 });
     expect(wrapper.text()).toContain("redirect");
