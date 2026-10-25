@@ -276,4 +276,36 @@ describe("Shares API", () => {
       expect(share).toBeUndefined();
     });
   });
+
+  describe("List my own shares", () => {
+    it("returns shared categories with their members", async () => {
+      const shared = createCategory("Mine");
+      createCategory("NotShared");
+      const db = getDb();
+      db.prepare(
+        "INSERT INTO category_shares (category_id, share_code, created_by) VALUES (?, ?, ?)",
+      ).run(shared, "ownedcode", userId);
+      const other = createAuthenticatedUser("member@example.com");
+      db.prepare(
+        "INSERT INTO category_share_members (category_id, user_id) VALUES (?, ?)",
+      ).run(shared, other.userId);
+
+      const res = await app.request("/api/category_shares?owned=1", {
+        headers: { Cookie: cookie },
+      });
+      const data = await json(res);
+      expect(data.owned_shares).toHaveLength(1);
+      expect(data.owned_shares[0].name).toBe("Mine");
+      expect(data.owned_shares[0].share_code).toBe("ownedcode");
+      expect(data.owned_shares[0].members.map((m) => m.email)).toEqual([
+        "member@example.com",
+      ]);
+
+      // Members don't see it as their own share
+      const asMember = await app.request("/api/category_shares?owned=1", {
+        headers: { Cookie: other.cookie },
+      });
+      expect((await json(asMember)).owned_shares).toHaveLength(0);
+    });
+  });
 });

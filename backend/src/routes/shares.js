@@ -4,6 +4,7 @@
  * Endpoint mapping:
  *   GET    /api/category_shares                        → list shared-with-me
  *   GET    /api/category_shares?category_id=           → share info for own category
+ *   GET    /api/category_shares?owned=1                → own shared categories + members
  *   GET    /api/category_shares?code=                  → verify share code (public)
  *   POST   /api/category_shares  {category_id}         → create share code
  *   POST   /api/category_shares  {share_code}          → accept share
@@ -84,6 +85,30 @@ shares.get("/", optionalAuth(), (c) => {
       .all(categoryId);
 
     return successResponse(c, { share: share || null, members });
+  }
+
+  // ── List my own shared categories with their members ──
+  if (c.req.query("owned") !== undefined) {
+    const owned = db
+      .prepare(
+        `SELECT c.id, c.name, c.icon, c.color, cs.share_code, cs.created_at as shared_at
+       FROM category_shares cs
+       JOIN categories c ON cs.category_id = c.id
+       WHERE c.user_id = ?
+       ORDER BY c.position ASC, c.created_at DESC`,
+      )
+      .all(c.userId);
+
+    const memberStmt = db.prepare(
+      `SELECT csm.id, csm.accepted_at, u.email
+       FROM category_share_members csm
+       JOIN users u ON csm.user_id = u.id
+       WHERE csm.category_id = ?
+       ORDER BY csm.accepted_at ASC`,
+    );
+    for (const cat of owned) cat.members = memberStmt.all(cat.id);
+
+    return successResponse(c, { owned_shares: owned });
   }
 
   // ── List shared-with-me ──

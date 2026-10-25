@@ -11,6 +11,12 @@ const hasDragged = ref(false);
 let dragStartX = 0;
 let dragScrollLeft = 0;
 
+// Favorites first, then the rest, each in the user's own order
+const orderedCategories = computed(() => [
+  ...appStore.categories.filter((c) => c.is_favorite),
+  ...appStore.categories.filter((c) => !c.is_favorite),
+]);
+
 const uncategorizedCount = computed(() => {
   return (appStore.linksByCategory.get("uncategorized") || []).length;
 });
@@ -92,7 +98,7 @@ function stopDrag() {
 
       <!-- Own Category Buttons -->
       <button
-        v-for="category in appStore.categories"
+        v-for="category in orderedCategories"
         :key="category.id"
         :class="
           String(appStore.filterCategory) === String(category.id)
@@ -112,6 +118,10 @@ function stopDrag() {
           "
         ></i>
         <span class="text-sm font-medium">{{ category.name }}</span>
+        <i
+          v-if="category.is_favorite"
+          class="mdi mdi-star text-xs text-amber-500"
+        ></i>
         <span class="text-xs opacity-75">({{ category.link_count || 0 }})</span>
       </button>
 

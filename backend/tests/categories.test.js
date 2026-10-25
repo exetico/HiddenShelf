@@ -169,4 +169,57 @@ describe("Categories API", () => {
       expect(res.status).toBe(404);
     });
   });
+
+  describe("Order and favorites", () => {
+    async function list() {
+      const res = await app.request("/api/categories", {
+        headers: { Cookie: cookie },
+      });
+      return (await json(res)).categories;
+    }
+
+    function putOrder(ids, as = cookie) {
+      return app.request("/api/categories/order", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", Cookie: as },
+        body: JSON.stringify({ ids }),
+      });
+    }
+
+    it("lists new categories first by default", async () => {
+      await createCategory("First");
+      await createCategory("Second");
+      expect((await list()).map((c) => c.name)).toEqual(["Second", "First"]);
+    });
+
+    it("saves a custom order", async () => {
+      const a = (await createCategory("A")).category.id;
+      const b = (await createCategory("B")).category.id;
+      const c2 = (await createCategory("C")).category.id;
+      const res = await putOrder([a, c2, b]);
+      expect((await json(res)).success).toBe(true);
+      expect((await list()).map((c) => c.name)).toEqual(["A", "C", "B"]);
+    });
+
+    it("rejects an order that does not list exactly your categories", async () => {
+      const a = (await createCategory("A")).category.id;
+      await createCategory("B");
+      expect((await putOrder([a])).status).toBe(400);
+
+      const other = createAuthenticatedUser("other@example.com");
+      expect((await putOrder([a], other.cookie)).status).toBe(400);
+    });
+
+    it("toggles is_favorite via update", async () => {
+      const id = (await createCategory("Fav")).category.id;
+      const res = await app.request(`/api/categories?id=${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", Cookie: cookie },
+        body: JSON.stringify({ is_favorite: true }),
+      });
+      const data = await json(res);
+      expect(data.category.is_favorite).toBe(1);
+      expect(data.category.name).toBe("Fav");
+    });
+  });
 });

@@ -4,6 +4,7 @@ import { useAppStore } from "@/stores/app";
 import { useToastStore } from "@/stores/toast";
 import LinkCardView from "@/components/links/LinkCardView.vue";
 import CategoryFilterBar from "@/components/categories/CategoryFilterBar.vue";
+import CategoryPicker from "@/components/categories/CategoryPicker.vue";
 import ContextMenu from "@/components/common/ContextMenu.vue";
 
 const appStore = useAppStore();
@@ -88,6 +89,11 @@ function closeContextMenu() {
   contextLink.value = null;
 }
 
+function toggleFilter(id) {
+  appStore.filterCategory =
+    String(appStore.filterCategory) === String(id) ? "" : String(id);
+}
+
 function toggleCategory(key) {
   collapsedCategories.value[key] = !collapsedCategories.value[key];
 }
@@ -95,19 +101,49 @@ function toggleCategory(key) {
 
 <template>
   <section class="space-y-3 sm:space-y-4">
-    <!-- Category Filter Bar -->
-    <CategoryFilterBar />
+    <!-- Category Filter Bar (sm+; on mobile the picker sits beside search) -->
+    <CategoryFilterBar class="hidden sm:block" />
 
     <!-- Search bar -->
     <div
-      class="bg-white dark:bg-brand-900 rounded-lg border border-gray-200 dark:border-brand-800 p-2 sm:p-3"
+      class="bg-white dark:bg-brand-900 rounded-lg border border-gray-200 dark:border-brand-800 p-2 sm:p-3 flex gap-2"
     >
+      <CategoryPicker />
       <input
         v-model="appStore.search"
         type="search"
         placeholder="Search links..."
-        class="w-full px-3 py-1.5 sm:py-2 rounded-md border border-gray-300 dark:border-brand-700 dark:bg-brand-800"
+        class="flex-1 min-w-0 px-3 py-1.5 sm:py-2 rounded-md border border-gray-300 dark:border-brand-700 dark:bg-brand-800"
       />
+    </div>
+
+    <!-- Favorite categories as quick chips (mobile) -->
+    <div
+      v-if="appStore.favoriteCategories.length"
+      class="sm:hidden flex gap-1.5 overflow-x-auto scrollbar-hide -mt-1"
+    >
+      <button
+        v-for="category in appStore.favoriteCategories"
+        :key="category.id"
+        class="flex items-center gap-1 px-2.5 py-1 rounded-full text-xs whitespace-nowrap shrink-0"
+        :class="
+          String(appStore.filterCategory) === String(category.id)
+            ? 'bg-brand-600 text-white'
+            : 'bg-gray-100 dark:bg-brand-800 text-gray-700 dark:text-brand-300'
+        "
+        @click="toggleFilter(category.id)"
+      >
+        <i
+          :class="category.icon || 'mdi-folder'"
+          class="mdi"
+          :style="
+            String(appStore.filterCategory) === String(category.id)
+              ? ''
+              : `color: ${category.color || '#6B7280'}`
+          "
+        ></i>
+        {{ category.name }}
+      </button>
     </div>
 
     <!-- Pagination info -->

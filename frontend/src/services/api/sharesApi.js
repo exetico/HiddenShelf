@@ -5,6 +5,10 @@ export const sharesApi = {
     const response = await request("/api/category_shares");
     return response.shared_categories || [];
   },
+  listOwnedShares: async () => {
+    const response = await request("/api/category_shares?owned=1");
+    return response.owned_shares || [];
+  },
   getCategoryShare: async (categoryId) => {
     const response = await request(
       `/api/category_shares?category_id=${categoryId}`,

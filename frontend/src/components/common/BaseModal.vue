@@ -47,13 +47,13 @@ onUnmounted(() => {
       role="dialog"
       aria-modal="true"
       :aria-label="title"
-      class="fixed inset-0 z-40 bg-black/40 flex items-center justify-center p-4"
+      class="fixed inset-0 z-40 bg-black/40 flex items-end sm:items-center justify-center sm:p-4"
       @click.self="$emit('close')"
     >
       <div
         ref="modalRef"
         tabindex="-1"
-        class="w-full max-w-xl bg-white dark:bg-brand-900 rounded-lg shadow-xl border border-gray-200 dark:border-brand-800 outline-hidden"
+        class="w-full max-w-xl max-h-[90dvh] flex flex-col bg-white dark:bg-brand-900 rounded-t-2xl sm:rounded-lg shadow-xl border border-gray-200 dark:border-brand-800 outline-hidden"
       >
         <header
           class="px-4 py-3 border-b border-gray-200 dark:border-brand-800 flex justify-between items-center"
@@ -68,7 +68,9 @@ onUnmounted(() => {
             ✕
           </button>
         </header>
-        <section class="p-4">
+        <section
+          class="p-4 overflow-y-auto pb-[max(1rem,env(safe-area-inset-bottom))] sm:pb-4"
+        >
           <slot />
         </section>
       </div>

@@ -1,5 +1,5 @@
 <script setup>
-import { ref, reactive } from "vue";
+import { ref, reactive, onMounted } from "vue";
 import { useAuthStore } from "@/stores/auth";
 import { useAppStore } from "@/stores/app";
 import { useToastStore } from "@/stores/toast";
@@ -60,6 +60,53 @@ async function confirmJoinShare() {
     toastStore.error(e.message || "Failed to join");
   }
   joinLoading.value = false;
+}
+
+// Categories I share with others
+const ownedShares = ref([]);
+const confirmStopId = ref(null);
+
+async function loadOwnedShares() {
+  try {
+    ownedShares.value = await sharesApi.listOwnedShares();
+  } catch {
+    ownedShares.value = [];
+  }
+}
+
+onMounted(loadOwnedShares);
+
+async function copyOwnedShareUrl(share) {
+  await navigator.clipboard.writeText(
+    `${window.location.origin}/public/app/index.html#/login?share=${share.share_code}`,
+  );
+  toastStore.success("Share URL copied");
+}
+
+async function removeOwnedMember(share, member) {
+  try {
+    await sharesApi.removeMember(share.id, member.id);
+    share.members = share.members.filter((m) => m.id !== member.id);
+    toastStore.success(`Removed ${member.email}`);
+  } catch (e) {
+    toastStore.error(e.message || "Failed to remove member");
+  }
+}
+
+async function stopSharing(share) {
+  if (confirmStopId.value !== share.id) {
+    confirmStopId.value = share.id;
+    return;
+  }
+  confirmStopId.value = null;
+  try {
+    await sharesApi.removeSharing(share.id);
+    ownedShares.value = ownedShares.value.filter((s) => s.id !== share.id);
+    await appStore.loadCategories();
+    toastStore.success(`Stopped sharing ${share.name}`);
+  } catch (e) {
+    toastStore.error(e.message || "Failed to stop sharing");
+  }
 }
 
 function cancelJoinShare() {
@@ -233,58 +280,131 @@ async function confirmDeleteEverything() {
     >
       <h2 class="text-lg font-semibold">Shared categories</h2>
       <p class="text-sm text-gray-500 dark:text-brand-400">
-        Join a category someone else has shared with you. Paste the share code
-        or URL they sent you and press Verify to preview it before joining.
-        Joined categories show up in your View page (marked "shared by") and
-        stay read-only: the owner controls the links, and you can leave at any
-        time.
-      </p>
-      <p class="text-xs text-gray-500 dark:text-brand-400">
-        <i class="mdi mdi-information-outline"></i>
-        To share one of your own categories, go to Edit, open Categories and
-        tap the
-        <i class="mdi mdi-share-variant text-blue-600 dark:text-blue-400"></i>
-        share icon next to it.
-      </p>
-      <form class="flex gap-2" @submit.prevent="verifyShareCode">
-        <input
-          v-model="shareCode.code"
-          placeholder="Share code or URL"
-          aria-label="Share code or URL"
-          class="flex-1 px-3 py-2 rounded-md border border-gray-300 dark:border-brand-700 dark:bg-brand-800"
-        />
-        <button
-          class="px-4 py-2 rounded-md bg-brand-600 text-white hover:bg-brand-700 flex items-center gap-1"
-          :disabled="joinLoading"
-        >
-          <i v-if="joinLoading" class="mdi mdi-loading mdi-spin"></i>
-          Verify
-        </button>
-      </form>
-      <p v-if="joinError" class="text-sm text-red-600 dark:text-red-400">
-        {{ joinError }}
+        Share a category to let other Hidden Shelf users see its links
+        (read-only). Here you can see everything you share and everything
+        shared with you, and take access back at any time.
       </p>
 
-      <ul class="space-y-2">
-        <li
-          v-for="category in appStore.sharedCategories"
-          :key="category.id"
-          class="flex items-center justify-between border border-gray-200 dark:border-brand-800 rounded-md p-2"
+      <!-- Shared by you -->
+      <section class="space-y-2">
+        <h3 class="text-sm font-semibold text-gray-700 dark:text-brand-300">
+          Shared by you
+        </h3>
+        <p
+          v-if="!ownedShares.length"
+          class="text-xs text-gray-500 dark:text-brand-400"
         >
-          <div>
-            <p class="font-medium">{{ category.name }}</p>
-            <p class="text-xs text-gray-500 dark:text-brand-400">
-              Shared by {{ category.owner_email }}
-            </p>
-          </div>
-          <button
-            class="text-red-600 dark:text-red-400 text-sm"
-            @click="appStore.leaveSharedCategory(category.id)"
+          You aren't sharing any categories. To share one, go to Edit, open
+          Categories and tap the
+          <i class="mdi mdi-share-variant text-blue-600 dark:text-blue-400"></i>
+          share icon next to it.
+        </p>
+        <ul v-else class="space-y-2">
+          <li
+            v-for="share in ownedShares"
+            :key="share.id"
+            class="border border-gray-200 dark:border-brand-800 rounded-md p-2 space-y-2"
           >
-            Leave
+            <div class="flex items-center gap-2">
+              <i
+                :class="share.icon || 'mdi-folder'"
+                class="mdi text-lg shrink-0"
+                :style="`color: ${share.color || '#6B7280'}`"
+              ></i>
+              <div class="flex-1 min-w-0">
+                <p class="font-medium truncate">{{ share.name }}</p>
+                <p class="text-xs text-gray-500 dark:text-brand-400">
+                  {{ share.members.length }}
+                  {{ share.members.length === 1 ? "person" : "people" }} joined
+                </p>
+              </div>
+              <button
+                class="p-1.5 text-brand-600 dark:text-brand-300 shrink-0"
+                title="Copy share link"
+                :aria-label="`Copy share link for ${share.name}`"
+                @click="copyOwnedShareUrl(share)"
+              >
+                <i class="mdi mdi-content-copy"></i>
+              </button>
+              <button
+                class="text-sm text-red-600 dark:text-red-400 shrink-0"
+                @click="stopSharing(share)"
+              >
+                {{ confirmStopId === share.id ? "Tap to confirm" : "Stop sharing" }}
+              </button>
+            </div>
+            <ul v-if="share.members.length" class="pl-7 space-y-1">
+              <li
+                v-for="member in share.members"
+                :key="member.id"
+                class="flex items-center justify-between gap-2 text-sm"
+              >
+                <span class="truncate text-gray-700 dark:text-brand-200">{{
+                  member.email
+                }}</span>
+                <button
+                  class="text-xs text-red-600 dark:text-red-400 shrink-0"
+                  @click="removeOwnedMember(share, member)"
+                >
+                  Remove
+                </button>
+              </li>
+            </ul>
+          </li>
+        </ul>
+      </section>
+
+      <!-- Shared with you -->
+      <section
+        class="space-y-2 pt-3 border-t border-gray-200 dark:border-brand-800"
+      >
+        <h3 class="text-sm font-semibold text-gray-700 dark:text-brand-300">
+          Shared with you
+        </h3>
+        <p class="text-xs text-gray-500 dark:text-brand-400">
+          Got a share code or URL from someone? Paste it here and press Verify
+          to preview the category before joining. Joined categories show up in
+          your View page marked "shared by".
+        </p>
+        <form class="flex gap-2" @submit.prevent="verifyShareCode">
+          <input
+            v-model="shareCode.code"
+            placeholder="Share code or URL"
+            aria-label="Share code or URL"
+            class="flex-1 min-w-0 px-3 py-2 rounded-md border border-gray-300 dark:border-brand-700 dark:bg-brand-800"
+          />
+          <button
+            class="px-4 py-2 rounded-md bg-brand-600 text-white hover:bg-brand-700 flex items-center gap-1"
+            :disabled="joinLoading"
+          >
+            <i v-if="joinLoading" class="mdi mdi-loading mdi-spin"></i>
+            Verify
           </button>
-        </li>
-      </ul>
+        </form>
+        <p v-if="joinError" class="text-sm text-red-600 dark:text-red-400">
+          {{ joinError }}
+        </p>
+        <ul class="space-y-2">
+          <li
+            v-for="category in appStore.sharedCategories"
+            :key="category.id"
+            class="flex items-center justify-between border border-gray-200 dark:border-brand-800 rounded-md p-2"
+          >
+            <div>
+              <p class="font-medium">{{ category.name }}</p>
+              <p class="text-xs text-gray-500 dark:text-brand-400">
+                Shared by {{ category.owner_email }}
+              </p>
+            </div>
+            <button
+              class="text-red-600 dark:text-red-400 text-sm"
+              @click="appStore.leaveSharedCategory(category.id)"
+            >
+              Leave
+            </button>
+          </li>
+        </ul>
+      </section>
     </article>
 
     <article
