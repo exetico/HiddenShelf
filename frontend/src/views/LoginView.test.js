@@ -91,6 +91,8 @@ describe("LoginView", () => {
     expect(text).toContain("Your private shelf for links");
     expect(text).toContain("What you get");
     expect(text).toContain("Share collections");
+    expect(text).toContain("Private by default");
+    expect(text).not.toContain("Your data stays yours");
     expect(text).not.toContain("Welcome back");
   });
 

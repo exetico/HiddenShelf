@@ -5,6 +5,9 @@ import { useAppStore } from "@/stores/app";
 import { useAuthStore } from "@/stores/auth";
 import ProfileView from "@/views/ProfileView.vue";
 
+const mockRoute = { query: {} };
+vi.mock("vue-router", () => ({ useRoute: () => mockRoute }));
+
 // Mock all API modules
 vi.mock("@/services/api/sharesApi", () => ({
   sharesApi: {
@@ -302,5 +305,17 @@ describe("ProfileView", () => {
       );
       expect(wrapper.text()).toContain("0 people joined");
     });
+  });
+
+  it("scrolls to the sharing card when opened from the dashboard", async () => {
+    const scrollIntoView = vi.fn();
+    Element.prototype.scrollIntoView = scrollIntoView;
+    mockRoute.query = { section: "sharing" };
+    const wrapper = mountProfile();
+    await flushPromises();
+    expect(scrollIntoView).toHaveBeenCalled();
+    expect(scrollIntoView.mock.instances[0].id).toBe("sharing");
+    mockRoute.query = {};
+    wrapper.unmount();
   });
 });

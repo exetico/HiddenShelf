@@ -74,4 +74,16 @@ describe("CategoryPicker", () => {
     await wrapper.find('[aria-label="Add Work to favorites"]').trigger("click");
     expect(categoriesApi.update).toHaveBeenCalledWith(1, { is_favorite: true });
   });
+
+  it("desktop star sits in the corner so the button keeps its width", () => {
+    const wrapper = mount(CategoryFilterBar, { global: { plugins: [pinia] } });
+    const star = wrapper.find('[aria-label="Remove Home from favorites"]');
+    expect(star.classes()).toEqual(
+      expect.arrayContaining(["absolute", "top-0", "right-0"]),
+    );
+    const notFav = wrapper.find('[aria-label="Add Work to favorites"]');
+    expect(notFav.classes()).toEqual(
+      expect.arrayContaining(["opacity-0", "group-hover:opacity-70"]),
+    );
+  });
 });

@@ -181,4 +181,85 @@ describe("DashboardView", () => {
       expect(mockPush).toHaveBeenCalledWith({ name: "view" });
     });
   });
+
+  describe("layout", () => {
+    it("puts quick links before tags and tags before visits", () => {
+      const appStore = useAppStore();
+      appStore.tags = [{ id: 1, name: "a", usage_count: 2 }];
+      appStore.visitStats = { total_visits: 5, days: 30, summary: [] };
+      const text = mountDashboard().text();
+      expect(text.indexOf("View links")).toBeLessThan(text.indexOf("Tap a tag"));
+      expect(text.indexOf("Tap a tag")).toBeLessThan(text.indexOf("Link visits"));
+    });
+
+    it("shows visits as a compact header with the total and a short list", () => {
+      const appStore = useAppStore();
+      appStore.visitStats = {
+        total_visits: 12,
+        days: 30,
+        summary: [{ id: 1, title: "Grafana", visit_count: 7 }],
+      };
+      const text = mountDashboard().text();
+      expect(text).toContain("12 total");
+      expect(text).toContain("Grafana");
+      expect(text).not.toContain("7 visits");
+    });
+  });
+
+  describe("Sharing card", () => {
+    it("counts categories shared by and with me and opens the sharing section", async () => {
+      const appStore = useAppStore();
+      appStore.categories = [{ id: 1, is_shared: 1 }, { id: 2, is_shared: 0 }];
+      appStore.sharedCategories = [{ id: 9 }, { id: 10 }];
+      const wrapper = mountDashboard();
+      const card = wrapper.findAll("button").find((b) => b.text().includes("Sharing"));
+      expect(card.text()).toContain("1 shared by you");
+      expect(card.text()).toContain("2 shared with you");
+      await card.trigger("click");
+      expect(mockPush).toHaveBeenCalledWith({
+        name: "profile",
+        query: { section: "sharing" },
+      });
+    });
+  });
+
+  describe("single-use tags", () => {
+    const tagButtons = (wrapper) =>
+      wrapper.findAll("button").filter((b) => b.text().startsWith("#"));
+
+    it("hides tags used once behind a toggle", async () => {
+      const appStore = useAppStore();
+      appStore.tags = [
+        { id: 1, name: "work", usage_count: 5 },
+        { id: 2, name: "once", usage_count: 1 },
+        { id: 3, name: "also-once", usage_count: 1 },
+      ];
+      const wrapper = mountDashboard();
+      expect(tagButtons(wrapper).map((b) => b.text())).toEqual(["#work 5"]);
+
+      const toggle = wrapper.findAll("button").find((b) => b.text().includes("Show 2 more"));
+      await toggle.trigger("click");
+      expect(tagButtons(wrapper)).toHaveLength(3);
+      expect(wrapper.text()).toContain("Show fewer");
+    });
+
+    it("shows every tag when all of them are used once", () => {
+      const appStore = useAppStore();
+      appStore.tags = [
+        { id: 1, name: "a", usage_count: 1 },
+        { id: 2, name: "b", usage_count: 1 },
+      ];
+      const wrapper = mountDashboard();
+      expect(tagButtons(wrapper)).toHaveLength(2);
+      expect(wrapper.text()).not.toContain("Show");
+    });
+  });
+
+  it("shows quick links two per row on phones with descriptions from sm up", () => {
+    const wrapper = mountDashboard();
+    const grid = wrapper.findAll("div.grid").find((g) => g.text().includes("View links"));
+    expect(grid.classes()).toContain("grid-cols-2");
+    const desc = grid.findAll("p").find((p) => p.text().includes("Browse categories"));
+    expect(desc.classes()).toEqual(expect.arrayContaining(["hidden", "sm:block"]));
+  });
 });

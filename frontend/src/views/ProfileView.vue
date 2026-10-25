@@ -1,5 +1,6 @@
 <script setup>
-import { ref, reactive, onMounted } from "vue";
+import { ref, reactive, onMounted, nextTick } from "vue";
+import { useRoute } from "vue-router";
 import { useAuthStore } from "@/stores/auth";
 import { useAppStore } from "@/stores/app";
 import { useToastStore } from "@/stores/toast";
@@ -74,7 +75,17 @@ async function loadOwnedShares() {
   }
 }
 
-onMounted(loadOwnedShares);
+const route = useRoute();
+const sharingSection = ref(null);
+
+onMounted(async () => {
+  // The dashboard's Sharing card links here with ?section=sharing
+  if (route.query.section === "sharing") {
+    await nextTick();
+    sharingSection.value?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+  await loadOwnedShares();
+});
 
 async function copyOwnedShareUrl(share) {
   await navigator.clipboard.writeText(
@@ -276,7 +287,9 @@ async function confirmDeleteEverything() {
     />
 
     <article
-      class="bg-white dark:bg-brand-900 rounded-lg border border-gray-200 dark:border-brand-800 p-5 space-y-3"
+      id="sharing"
+      ref="sharingSection"
+      class="bg-white dark:bg-brand-900 rounded-lg border border-gray-200 dark:border-brand-800 p-5 space-y-3 scroll-mt-4"
     >
       <h2 class="text-lg font-semibold">Shared categories</h2>
       <p class="text-sm text-gray-500 dark:text-brand-400">
