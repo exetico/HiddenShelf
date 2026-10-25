@@ -11,6 +11,40 @@ const route = useRoute();
 const authStore = useAuthStore();
 const toastStore = useToastStore();
 
+// Shown below the sign-in card for people who haven't used the app yet
+const features = [
+  {
+    icon: "mdi-folder-multiple-outline",
+    title: "Categories and tags",
+    text: "Group links into categories with their own icon and color, and tag them across categories.",
+  },
+  {
+    icon: "mdi-magnify",
+    title: "Find anything fast",
+    text: "Search titles, URLs, descriptions and tags, or pin favorite categories to the top.",
+  },
+  {
+    icon: "mdi-account-group-outline",
+    title: "Share collections",
+    text: "Share a category with a code or link. Others see it read-only and you can revoke access any time.",
+  },
+  {
+    icon: "mdi-link-variant",
+    title: "Public short links",
+    text: "Make a link public to get a short URL, with optional direct redirect and visit counts.",
+  },
+  {
+    icon: "mdi-cellphone",
+    title: "Built for your phone",
+    text: "A compact layout for mobile, plus light and dark themes in your own brand color.",
+  },
+  {
+    icon: "mdi-database-export-outline",
+    title: "Your data stays yours",
+    text: "Self-hosted in a single container, with import and export whenever you want it.",
+  },
+];
+
 const email = ref("");
 const loading = ref(false);
 const sent = ref(false);
@@ -154,12 +188,12 @@ function clearRememberedEmail() {
 
 <template>
   <div
-    class="min-h-screen bg-brand-50 dark:bg-brand-950 flex items-center justify-center px-4"
+    class="min-h-screen bg-brand-50 dark:bg-brand-950 flex flex-col items-center px-4 py-10 sm:py-16"
   >
     <div class="max-w-md w-full space-y-8">
       <!-- Logo/Header -->
       <div class="text-center">
-        <i class="mdi mdi-link-variant text-6xl text-brand-500"></i>
+        <i class="mdi mdi-bookshelf text-6xl text-brand-500"></i>
         <h2 class="mt-4 text-3xl font-bold text-brand-900 dark:text-white">
           Hidden Shelf
         </h2>
@@ -176,8 +210,8 @@ function clearRememberedEmail() {
             <span class="font-medium">{{ rememberedEmail }}</span>
           </div>
         </div>
-        <p v-else-if="methods" class="mt-2 text-sm text-brand-600 dark:text-brand-400">
-          {{ emailLogin ? "Sign in with your email" : "Sign in with Google" }}
+        <p v-else class="mt-2 text-sm text-brand-600 dark:text-brand-400">
+          Your private shelf for links. Save, organise and share them.
         </p>
       </div>
 
@@ -420,5 +454,36 @@ function clearRememberedEmail() {
         </button>
       </div>
     </div>
+
+    <!-- What Hidden Shelf does -->
+    <section
+      class="max-w-5xl w-full mt-12 sm:mt-16"
+      aria-labelledby="features-heading"
+    >
+      <h2
+        id="features-heading"
+        class="text-center text-xl font-semibold text-brand-900 dark:text-white mb-6"
+      >
+        What you get
+      </h2>
+      <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <article
+          v-for="feature in features"
+          :key="feature.title"
+          class="bg-white dark:bg-brand-900 rounded-lg border border-brand-200 dark:border-brand-800 p-5"
+        >
+          <i
+            :class="feature.icon"
+            class="mdi text-2xl text-brand-500 dark:text-brand-400"
+          ></i>
+          <h3 class="mt-2 font-semibold text-brand-900 dark:text-white">
+            {{ feature.title }}
+          </h3>
+          <p class="mt-1 text-sm text-brand-600 dark:text-brand-300">
+            {{ feature.text }}
+          </p>
+        </article>
+      </div>
+    </section>
   </div>
 </template>

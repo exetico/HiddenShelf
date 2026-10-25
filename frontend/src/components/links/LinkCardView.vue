@@ -86,13 +86,15 @@ function onClick(event) {
     </div>
     <div class="flex items-center gap-2 ml-auto shrink-0">
       <div class="hidden sm:flex flex-wrap gap-1 justify-end">
-        <span
+        <button
           v-for="tag in (link.tags || []).slice(0, 3)"
           :key="tag.id"
-          class="px-2 py-0.5 bg-gray-100 dark:bg-brand-800 text-gray-600 dark:text-brand-300 text-xs rounded-full"
+          class="px-2 py-0.5 bg-gray-100 dark:bg-brand-800 text-gray-600 dark:text-brand-300 hover:bg-brand-600 hover:text-white text-xs rounded-full"
+          :title="`Show links tagged ${tag.name}`"
+          @click.stop.prevent="appStore.filterByTag(tag.id)"
         >
           {{ tag.name }}
-        </span>
+        </button>
         <span
           v-if="(link.tags || []).length > 3"
           class="px-2 py-0.5 text-brand-400 text-xs"

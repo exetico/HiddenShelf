@@ -112,6 +112,7 @@ links.get("/", optionalAuth(), (c) => {
 
   const categoryId = c.req.query("category_id") || null;
   const search = c.req.query("search") || null;
+  const tagId = c.req.query("tag_id") || null;
   const includeShared = c.req.query("include_shared") !== "0";
 
   const where = [];
@@ -143,10 +144,20 @@ links.get("/", optionalAuth(), (c) => {
     params.push(categoryId);
   }
 
+  if (tagId) {
+    where.push("l.id IN (SELECT link_id FROM link_tags WHERE tag_id = ?)");
+    params.push(tagId);
+  }
+
   if (search) {
-    where.push("(l.title LIKE ? OR l.description LIKE ? OR l.url LIKE ?)");
+    // Tag names count too, so searching "work" finds links tagged work
+    where.push(
+      `(l.title LIKE ? OR l.description LIKE ? OR l.url LIKE ?
+        OR EXISTS (SELECT 1 FROM link_tags lt JOIN tags t ON t.id = lt.tag_id
+                   WHERE lt.link_id = l.id AND t.name LIKE ?))`,
+    );
     const term = `%${search}%`;
-    params.push(term, term, term);
+    params.push(term, term, term, term);
   }
 
   const whereClause = where.join(" AND ");

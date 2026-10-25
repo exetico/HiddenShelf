@@ -32,6 +32,7 @@ export const useAppStore = defineStore("app", {
     total: 0,
     search: "",
     filterCategory: "",
+    filterTag: "",
   }),
   getters: {
     hasMore: (state) => state.links.length < state.total,
@@ -125,6 +126,7 @@ export const useAppStore = defineStore("app", {
           categoryId:
             this.filterCategory === "uncategorized" ? "" : this.filterCategory,
           search: this.search,
+          tagId: this.filterTag,
         });
 
         this.links = reset
@@ -225,6 +227,10 @@ export const useAppStore = defineStore("app", {
         this.categories = previous;
         useToastStore().error(error.message);
       }
+    },
+    async filterByTag(tagId) {
+      this.filterTag = tagId ? String(tagId) : "";
+      await this.loadLinks({ reset: true });
     },
     async loadTags() {
       this.tags = await tagsApi.list();
