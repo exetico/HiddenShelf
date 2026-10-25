@@ -4,6 +4,7 @@
  */
 
 import crypto from "node:crypto";
+import { fileURLToPath } from "node:url";
 import { Hono } from "hono";
 import { initDb, getDb, closeDb } from "../src/lib/database.js";
 import { sessionMiddleware, sessions } from "../src/middleware/session.js";
@@ -21,6 +22,11 @@ import settingsRoutes from "../src/routes/settings.js";
 import linkVisitsRoutes from "../src/routes/linkVisits.js";
 import configRoutes from "../src/routes/config.js";
 import accountRoutes from "../src/routes/account.js";
+import { publicLinkRoutes } from "../src/routes/publicLink.js";
+
+const linkTemplatePath = fileURLToPath(
+  new URL("./fixtures/link.html", import.meta.url),
+);
 
 /**
  * Create a fresh test app with an in-memory database.
@@ -57,6 +63,7 @@ export function createTestApp() {
   app.route("/api/link_visits", linkVisitsRoutes);
   app.route("/api/config", configRoutes);
   app.route("/api/account", accountRoutes);
+  app.route("/", publicLinkRoutes({ templatePath: linkTemplatePath }));
 
   return app;
 }

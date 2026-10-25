@@ -21,6 +21,29 @@ import { requireAuth, optionalAuth } from "../middleware/auth.js";
 
 const linkVisits = new Hono();
 
+/**
+ * Record one visit to a public link, from the request's IP (masked),
+ * user agent and referer. Also used by the /h/:hash redirect.
+ */
+export function logVisit(db, linkId, c) {
+  const ip = getClientIp(c);
+  const maskedIp = maskIpAddress(ip);
+  const ua = c.req.header("user-agent") || "";
+  const parsed = parseUserAgent(ua);
+  const referer = c.req.header("referer") || null;
+
+  db.prepare(
+    "INSERT INTO link_visits (link_id, ip_masked, user_agent, browser, os, referer) VALUES (?, ?, ?, ?, ?, ?)",
+  ).run(
+    linkId,
+    maskedIp,
+    ua.substring(0, 500),
+    parsed.browser,
+    parsed.os,
+    referer,
+  );
+}
+
 // ─── POST /api/link_visits — log visit (public) ─────────────────
 
 linkVisits.post("/", async (c) => {
@@ -35,22 +58,7 @@ linkVisits.post("/", async (c) => {
     .get(hash);
   if (!link) return errorResponse(c, "Link not found or is private", 404);
 
-  const ip = getClientIp(c);
-  const maskedIp = maskIpAddress(ip);
-  const ua = c.req.header("user-agent") || "";
-  const parsed = parseUserAgent(ua);
-  const referer = c.req.header("referer") || null;
-
-  db.prepare(
-    "INSERT INTO link_visits (link_id, ip_masked, user_agent, browser, os, referer) VALUES (?, ?, ?, ?, ?, ?)",
-  ).run(
-    link.id,
-    maskedIp,
-    ua.substring(0, 500),
-    parsed.browser,
-    parsed.os,
-    referer,
-  );
+  logVisit(db, link.id, c);
 
   return successResponse(c, {}, "Visit logged");
 });

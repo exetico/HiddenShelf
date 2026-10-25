@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- The server fills in the link's title and description (data-link-meta)
+         so chat apps and social sites show a proper preview -->
+    <title>Shared link - Hidden Shelf</title>
+    <meta name="description" content="View a shared link on Hidden Shelf." />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" data-link-meta="title" content="Hidden Shelf — Shared Link" />
+    <meta property="og:description" data-link-meta="description" content="View a shared link on Hidden Shelf." />
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" data-link-meta="title" content="Hidden Shelf — Shared Link" />
+    <meta name="twitter:description" data-link-meta="description" content="View a shared link on Hidden Shelf." />
+    <meta name="theme-color" content="#687061" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#1b1f18" media="(prefers-color-scheme: dark)" />
+    <link rel="icon" type="image/png" href="/favicon.png" />
+    <link rel="apple-touch-icon" href="/favicon.png" />
+    <style>
+      html.dark {
+        background-color: #1b1f18;
+      }
+    </style>
+    <script>
+      // Same theme as the app, applied before Vue mounts to prevent a flash
+      if (
+        localStorage.getItem("hiddenshelf_theme") === "dark" ||
+        (!localStorage.getItem("hiddenshelf_theme") &&
+          window.matchMedia("(prefers-color-scheme: dark)").matches)
+      ) {
+        document.documentElement.classList.add("dark");
+      }
+    </script>
+  </head>
+  <body>
+    <div id="app"></div>
+    <script type="module" src="/src/link/main.js"></script>
+  </body>
+</html>

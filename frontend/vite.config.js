@@ -28,10 +28,6 @@ export default defineConfig({
         target: apiProxyTarget,
         changeOrigin: true,
       },
-      "/public/output.css": {
-        target: apiProxyTarget,
-        changeOrigin: true,
-      },
       "/public/favicon.png": {
         target: apiProxyTarget,
         changeOrigin: true,
@@ -41,5 +37,12 @@ export default defineConfig({
   build: {
     outDir: "../public/app",
     emptyOutDir: true,
+    rollupOptions: {
+      // The app, plus the public link page served at /h/:hash
+      input: {
+        main: fileURLToPath(new URL("./index.html", import.meta.url)),
+        link: fileURLToPath(new URL("./link.html", import.meta.url)),
+      },
+    },
   },
 });
