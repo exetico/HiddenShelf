@@ -33,16 +33,22 @@ cp .env.example .env
 Edit `.env` and set at least:
 
 ```bash
-SITE_URL=https://links.example.com   # your public address, no trailing slash
-HOST_PORT=127.0.0.1:3000             # only reachable by a proxy on this machine
+# Your public address, no trailing slash
+SITE_URL=https://links.example.com
+# Only reachable by a proxy on this machine. If the proxy runs on another
+# machine, use the host port alone, e.g. 3000.
+HOST_PORT=127.0.0.1:3000
 
 SMTP_HOST=smtp.example.com
 SMTP_PORT=587
 SMTP_USER=you@example.com
 SMTP_PASS=your-password
-SMTP_ENCRYPTION=tls                  # tls (port 587), ssl (port 465) or empty
+# tls (port 587), ssl (port 465) or empty
+SMTP_ENCRYPTION=tls
 FROM_EMAIL=noreply@example.com
 ```
+
+Keep comments in `.env` on their own lines. Some Docker Compose versions read `NAME=value # comment` as part of the value.
 
 Leave `DEBUG_MODE=false`. The full list of settings is under [Configuration](#configuration). For Google sign-in, see [GOOGLE_OAUTH_SETUP.md](GOOGLE_OAUTH_SETUP.md); leave `GOOGLE_REDIRECT_URI` empty and register `{SITE_URL}/api/auth/google/callback` in Google Cloud Console.
 

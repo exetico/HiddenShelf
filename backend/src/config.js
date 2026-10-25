@@ -4,6 +4,33 @@
  * Locally: set them before running, or they fall back to dev defaults.
  */
 
+/**
+ * BASE_PATH must look like "/shelf". Anything else (such as a comment that
+ * a .env parser kept as the value) is ignored, with a warning.
+ */
+export function basePathFromEnv(value) {
+  const trimmed = (value || "").trim();
+  if (!trimmed) return "";
+  if (/^\/[A-Za-z0-9._~\/-]*$/.test(trimmed)) return trimmed.replace(/\/$/, "");
+  console.warn(
+    `[config] Ignoring BASE_PATH=${JSON.stringify(value)}: it must be a path like /shelf, or empty.`,
+  );
+  return "";
+}
+
+// A value with " #" in it is most likely a comment the .env parser kept.
+// Secrets are left out of the check; they may contain anything.
+for (const [name, value] of Object.entries(process.env)) {
+  if (
+    /^(SITE_|BASE_PATH|SMTP_(HOST|PORT|USER|ENCRYPTION)|FROM_|DEBUG_MODE|SIGNUP_ENABLED|EMAIL_LOGIN_ENABLED|TRUST_PROXY|GOOGLE_(CLIENT_ID|REDIRECT_URI)|LINKS_PER_PAGE|MAGIC_LINK_EXPIRY|SESSION_)/.test(name) &&
+    /(^|\s)#/.test(value)
+  ) {
+    console.warn(
+      `[config] ${name}=${JSON.stringify(value)} looks like it includes a comment. Put comments in .env on their own line.`,
+    );
+  }
+}
+
 const config = {
   // Server
   port: parseInt(process.env.PORT || "3000", 10),
@@ -13,7 +40,7 @@ const config = {
 
   // Site
   siteUrl: process.env.SITE_URL || "http://localhost:3000",
-  basePath: process.env.BASE_PATH || "",
+  basePath: basePathFromEnv(process.env.BASE_PATH),
   siteName: process.env.SITE_NAME || "Hidden Shelf",
 
   // Email / SMTP
