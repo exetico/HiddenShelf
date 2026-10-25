@@ -1,5 +1,6 @@
 import { defineStore } from "pinia";
 import { authApi } from "@/services/api/authApi";
+import { useToastStore } from "@/stores/toast";
 
 export const useAuthStore = defineStore("auth", {
   state: () => ({
@@ -24,7 +25,13 @@ export const useAuthStore = defineStore("auth", {
   actions: {
     async bootstrap() {
       try {
-        this.user = await authApi.me();
+        const { user, welcome } = await authApi.me();
+        this.user = user;
+        if (welcome) {
+          useToastStore().success(
+            welcome === "new" ? "Welcome to Hidden Shelf!" : "Welcome back!",
+          );
+        }
       } catch {
         this.user = null;
       } finally {

@@ -1,9 +1,10 @@
 import { request } from "@/lib/httpClient";
 
 export const authApi = {
+  /** The signed-in user, and "new"/"back" right after a login (else null) */
   me: async () => {
     const response = await request("/api/auth/me");
-    return response.user;
+    return { user: response.user, welcome: response.welcome || null };
   },
   logout: async () => request("/api/auth/logout", { method: "POST" }),
   sendMagicLink: async (email) => {

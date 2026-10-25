@@ -96,6 +96,11 @@ linkVisits.get("/", requireAuth(), (c) => {
       )
       .get(linkId, days);
 
+    // Same count as the links list shows: every visit, not just this window
+    const allTime = db
+      .prepare("SELECT COUNT(*) as count FROM link_visits WHERE link_id = ?")
+      .get(linkId);
+
     const browsers = db
       .prepare(
         `SELECT browser, COUNT(*) as count
@@ -130,6 +135,8 @@ linkVisits.get("/", requireAuth(), (c) => {
       visits,
       stats: {
         total_visits: stats.total_visits,
+        all_time_visits: allTime.count,
+        days,
         unique_visitors: stats.unique_visitors,
         browsers,
         operating_systems: operatingSystems,

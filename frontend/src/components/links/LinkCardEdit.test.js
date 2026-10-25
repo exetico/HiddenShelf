@@ -109,11 +109,11 @@ describe("LinkCardEdit", () => {
   it("shows visit count for public links with visits", () => {
     const wrapper = mountCard({ is_public: 1, total_visits: 42 });
     expect(wrapper.text()).toContain("42");
+    expect(wrapper.find('[title="42 visits in total"]').exists()).toBe(true);
   });
 
   it("hides visit count when zero visits", () => {
     const wrapper = mountCard({ is_public: 1, total_visits: 0 });
-    // visit count badge should not show the count "0 visits" badge
-    expect(wrapper.find('[title="Total visits"]').exists()).toBe(false);
+    expect(wrapper.find(".mdi-eye-outline").exists()).toBe(false);
   });
 });

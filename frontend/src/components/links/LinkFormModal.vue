@@ -29,7 +29,10 @@ const form = reactive({
   direct_redirect: false,
 });
 
+// All visits (the number the links list shows) and those in the recent window
 const visitCount = ref(null);
+const recentVisits = ref(null);
+const recentDays = ref(30);
 const loadingVisits = ref(false);
 
 // Normalize icon: auto-prepend mdi- if needed
@@ -60,11 +63,15 @@ watch(
 
     // Load visit stats for existing links
     visitCount.value = null;
+    recentVisits.value = null;
     if (model?.id) {
       loadingVisits.value = true;
       try {
         const data = await linkVisitsApi.getSummary({ linkId: model.id });
-        visitCount.value = data?.stats?.total_visits ?? model.total_visits ?? 0;
+        visitCount.value =
+          data?.stats?.all_time_visits ?? model.total_visits ?? 0;
+        recentVisits.value = data?.stats?.total_visits ?? null;
+        recentDays.value = data?.stats?.days ?? 30;
       } catch {
         visitCount.value = model.total_visits ?? 0;
       } finally {
@@ -234,7 +241,12 @@ function submit() {
       >
         <i class="mdi mdi-eye-outline mr-1"></i>
         <template v-if="loadingVisits">Loading visits...</template>
-        <template v-else>{{ visitCount ?? 0 }} total visits</template>
+        <template v-else>
+          {{ visitCount ?? 0 }} {{ visitCount === 1 ? "visit" : "visits" }} in total<template
+            v-if="recentVisits !== null && recentVisits !== visitCount"
+            >, {{ recentVisits }} in the last {{ recentDays }} days</template
+          >
+        </template>
       </p>
 
       <div class="flex justify-end gap-2 pt-2">
