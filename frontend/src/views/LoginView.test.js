@@ -16,6 +16,11 @@ vi.mock("@/services/api/authApi", () => ({
   },
 }));
 
+const loginMethods = { email_login_enabled: true, google_auth_enabled: true };
+vi.mock("@/services/api/configApi", () => ({
+  configApi: { get: vi.fn(() => Promise.resolve({ ...loginMethods })) },
+}));
+
 // Mock vue-router
 const mockRoute = { query: {} };
 const mockReplace = vi.fn();
@@ -34,6 +39,8 @@ describe("LoginView", () => {
     mockReplace.mockClear();
     sessionStorage.clear();
     localStorage.clear();
+    loginMethods.email_login_enabled = true;
+    loginMethods.google_auth_enabled = true;
   });
 
   function mountLogin(routeQuery = {}) {
@@ -70,14 +77,16 @@ describe("LoginView", () => {
     expect(mockReplace).toHaveBeenCalled();
   });
 
-  it("shows email input for unauthenticated user", () => {
+  it("shows email input for unauthenticated user", async () => {
     const wrapper = mountLogin({});
+    await flushPromises();
     const emailInput = wrapper.find('input[type="email"]');
     expect(emailInput.exists()).toBe(true);
   });
 
-  it('shows "Sign in with your email" when no remembered email', () => {
+  it('shows "Sign in with your email" when no remembered email', async () => {
     const wrapper = mountLogin({});
+    await flushPromises();
     const text = wrapper.text();
     expect(text).toContain("Sign in with your email");
     expect(text).not.toContain("Welcome back");
@@ -108,5 +117,35 @@ describe("LoginView", () => {
     expect(text).toContain("Send magic link");
     expect(text).toContain("Sign in with Google");
     expect(text).toContain("Use a different email");
+  });
+
+  it("shows only Google when email login is off", async () => {
+    loginMethods.email_login_enabled = false;
+    localStorage.setItem("hiddenshelf_email", "remembered@example.com");
+    const wrapper = mountLogin({});
+    await flushPromises();
+
+    const text = wrapper.text();
+    expect(wrapper.find('input[type="email"]').exists()).toBe(false);
+    expect(text).not.toContain("Send magic link");
+    expect(text).toContain("Sign in with Google");
+  });
+
+  it("hides Google when it isn't configured", async () => {
+    loginMethods.google_auth_enabled = false;
+    const wrapper = mountLogin({});
+    await flushPromises();
+
+    expect(wrapper.find('input[type="email"]').exists()).toBe(true);
+    expect(wrapper.text()).not.toContain("Sign in with Google");
+  });
+
+  it("says so when no login method is enabled", async () => {
+    loginMethods.email_login_enabled = false;
+    loginMethods.google_auth_enabled = false;
+    const wrapper = mountLogin({});
+    await flushPromises();
+
+    expect(wrapper.text()).toContain("Login isn't set up on this server yet.");
   });
 });

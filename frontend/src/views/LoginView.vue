@@ -1,7 +1,8 @@
 <script setup>
-import { ref, onMounted } from "vue";
+import { ref, computed, onMounted } from "vue";
 import { useRouter, useRoute } from "vue-router";
 import { authApi } from "@/services/api/authApi";
+import { configApi } from "@/services/api/configApi";
 import { useAuthStore } from "@/stores/auth";
 import { useToastStore } from "@/stores/toast";
 
@@ -16,7 +17,26 @@ const sent = ref(false);
 const rememberedEmail = ref(null);
 const shareNotice = ref(false);
 
+// Login methods the server offers; null until /api/config answers
+const methods = ref(null);
+const emailLogin = computed(() => methods.value?.email === true);
+const googleLogin = computed(() => methods.value?.google === true);
+
+async function loadLoginMethods() {
+  try {
+    const cfg = await configApi.get();
+    methods.value = {
+      email: cfg.email_login_enabled !== false,
+      google: Boolean(cfg.google_auth_enabled),
+    };
+  } catch {
+    methods.value = { email: true, google: true };
+  }
+}
+
 onMounted(() => {
+  loadLoginMethods();
+
   // Check for share code in URL — store before auth check
   const shareParam = route.query.share;
   if (shareParam) {
@@ -42,6 +62,8 @@ onMounted(() => {
       oauth_failed: "Google login failed. Please try again or use email login.",
       signup_disabled:
         "New user registration is disabled. Please contact an administrator.",
+      email_login_disabled:
+        "Email login is turned off on this server. Sign in with Google instead.",
     };
     toastStore.error(errorMessages[errorParam] || errorParam);
   }
@@ -143,7 +165,7 @@ function clearRememberedEmail() {
         </h2>
 
         <!-- Dynamic subtitle based on remembered email -->
-        <div v-if="rememberedEmail" class="mt-4">
+        <div v-if="rememberedEmail && emailLogin" class="mt-4">
           <p class="text-sm text-brand-600 dark:text-brand-400 mb-2">
             Welcome back
           </p>
@@ -154,8 +176,8 @@ function clearRememberedEmail() {
             <span class="font-medium">{{ rememberedEmail }}</span>
           </div>
         </div>
-        <p v-else class="mt-2 text-sm text-brand-600 dark:text-brand-400">
-          Sign in with your email
+        <p v-else-if="methods" class="mt-2 text-sm text-brand-600 dark:text-brand-400">
+          {{ emailLogin ? "Sign in with your email" : "Sign in with Google" }}
         </p>
       </div>
 
@@ -174,12 +196,19 @@ function clearRememberedEmail() {
 
       <!-- Login Form -->
       <div
-        v-if="!sent"
+        v-if="!sent && methods"
         class="bg-white dark:bg-brand-900 py-8 px-6 shadow-lg rounded-lg"
       >
+        <p
+          v-if="!emailLogin && !googleLogin"
+          class="text-sm text-center text-brand-700 dark:text-brand-300"
+        >
+          Login isn't set up on this server yet.
+        </p>
+
         <!-- Remembered Email -->
         <div
-          v-if="rememberedEmail && email !== rememberedEmail"
+          v-if="emailLogin && rememberedEmail && email !== rememberedEmail"
           class="mb-4 p-3 bg-brand-50 dark:bg-brand-900/20 rounded-lg border border-brand-200 dark:border-brand-800"
         >
           <p class="text-sm text-brand-700 dark:text-brand-300 mb-2">
@@ -204,7 +233,7 @@ function clearRememberedEmail() {
 
         <!-- Welcome back flow -->
         <div
-          v-if="rememberedEmail && email === rememberedEmail && !sent"
+          v-if="emailLogin && rememberedEmail && email === rememberedEmail && !sent"
           class="space-y-3 mb-4"
         >
           <button
@@ -217,7 +246,7 @@ function clearRememberedEmail() {
           </button>
 
           <!-- Divider -->
-          <div class="relative my-3">
+          <div v-if="googleLogin" class="relative my-3">
             <div class="absolute inset-0 flex items-center">
               <div
                 class="w-full border-t border-brand-200 dark:border-brand-700"
@@ -234,6 +263,7 @@ function clearRememberedEmail() {
 
           <!-- Google OAuth in remembered email flow -->
           <button
+            v-if="googleLogin"
             @click="loginWithGoogle"
             :disabled="loading"
             class="w-full flex items-center justify-center gap-3 py-2.5 px-4 bg-white dark:bg-brand-800 text-brand-700 dark:text-brand-200 border border-brand-300 dark:border-brand-700 rounded-lg hover:bg-brand-50 dark:hover:bg-brand-700 focus:ring-4 focus:ring-brand-200 dark:focus:ring-brand-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
@@ -274,7 +304,7 @@ function clearRememberedEmail() {
         <form
           @submit.prevent="sendMagicLink"
           class="space-y-4"
-          v-if="(!rememberedEmail || email !== rememberedEmail) && !sent"
+          v-if="emailLogin && (!rememberedEmail || email !== rememberedEmail) && !sent"
         >
           <div>
             <label
@@ -306,7 +336,7 @@ function clearRememberedEmail() {
 
         <!-- Divider -->
         <div
-          v-if="(!rememberedEmail || email !== rememberedEmail) && !sent"
+          v-if="emailLogin && googleLogin && (!rememberedEmail || email !== rememberedEmail) && !sent"
           class="relative my-6"
         >
           <div class="absolute inset-0 flex items-center">
@@ -325,7 +355,7 @@ function clearRememberedEmail() {
 
         <!-- Google OAuth Button -->
         <button
-          v-if="(!rememberedEmail || email !== rememberedEmail) && !sent"
+          v-if="googleLogin && (!emailLogin || !rememberedEmail || email !== rememberedEmail) && !sent"
           @click="loginWithGoogle"
           :disabled="loading"
           class="w-full flex items-center justify-center gap-3 py-2.5 px-4 bg-white dark:bg-brand-800 text-brand-700 dark:text-brand-200 border border-brand-300 dark:border-brand-700 rounded-lg hover:bg-brand-50 dark:hover:bg-brand-700 focus:ring-4 focus:ring-brand-200 dark:focus:ring-brand-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
@@ -368,7 +398,7 @@ function clearRememberedEmail() {
 
       <!-- Success State -->
       <div
-        v-else
+        v-else-if="sent"
         class="bg-white dark:bg-brand-900 py-8 px-6 shadow-lg rounded-lg text-center"
       >
         <i class="mdi mdi-email-check text-5xl text-green-500 mb-4"></i>

@@ -52,6 +52,10 @@ const config = {
   // Registration
   signupEnabled: (process.env.SIGNUP_ENABLED || "true") === "true",
 
+  // Magic link login by email. Off: no email is ever sent (SMTP unused) and
+  // Google sign-in is the only way to log in.
+  emailLoginEnabled: (process.env.EMAIL_LOGIN_ENABLED || "true") === "true",
+
   // Google OAuth
   googleClientId: process.env.GOOGLE_CLIENT_ID || "",
   googleClientSecret: process.env.GOOGLE_CLIENT_SECRET || "",

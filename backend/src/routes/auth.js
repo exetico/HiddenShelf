@@ -62,6 +62,9 @@ setInterval(() => {
 // ─── POST /login — request magic link ────────────────────────────
 
 auth.post("/login", async (c) => {
+  if (!config.emailLoginEnabled) {
+    return errorResponse(c, "Email login is turned off on this server", 403);
+  }
   const body = await c.req.json().catch(() => ({}));
   const email = sanitize(body.email || "");
   const rawRedirect = body.redirect_origin || null;
@@ -115,6 +118,11 @@ auth.post("/login", async (c) => {
 // ─── GET /verify — verify magic link token ───────────────────────
 
 auth.get("/verify", async (c) => {
+  if (!config.emailLoginEnabled) {
+    return c.redirect(
+      `${config.siteUrl}${baseUrl("/public/app/index.html")}#/login?error=email_login_disabled`,
+    );
+  }
   const token = c.req.query("token") || "";
   if (!token) {
     return c.redirect(

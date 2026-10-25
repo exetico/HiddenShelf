@@ -16,8 +16,9 @@
    - Click "Create Credentials" > "OAuth client ID"
    - Choose "Web application"
    - Add authorized redirect URIs:
-     - `http://localhost:3000/api/auth/google/callback` (for local development)
-     - `https://yourdomain.com/api/auth/google/callback` (for production)
+     - `https://yourdomain.com/api/auth/google/callback` (production: your `SITE_URL` + `/api/auth/google/callback`)
+     - `http://localhost:3000/api/auth/google/callback` (local development)
+     - Older PHP versions used `/api/auth/google-callback.php`. That URL no longer exists, so replace it if it's still registered or in your `.env`.
    - Copy the Client ID and Client Secret
 
 ## 2. Configure Environment Variables
@@ -27,21 +28,16 @@ Create a `.env` file in the project root (copy from `.env.example`):
 ```bash
 GOOGLE_CLIENT_ID=your_client_id_here.apps.googleusercontent.com
 GOOGLE_CLIENT_SECRET=your_client_secret_here
-GOOGLE_REDIRECT_URI=http://localhost:3000/api/auth/google/callback
+GOOGLE_REDIRECT_URI=   # leave empty: {SITE_URL}/api/auth/google/callback
 ```
 
-## 3. Install Dependencies
+To use Google as the only login, also set `EMAIL_LOGIN_ENABLED=false`. No SMTP is needed then.
+
+## 3. Restart
 
 ```bash
-docker compose down
-docker compose up -d --build
+make up
 ```
-
-This will:
-
-- Install the `league/oauth2-google` package
-- Apply database migration for OAuth fields
-- Rebuild the container with dependencies
 
 ## 4. Test the Integration
 
@@ -52,7 +48,6 @@ This will:
 
 ## Notes
 
-- The migration will add `oauth_provider`, `oauth_id`, and `oauth_email` columns to the users table
 - If a user with the same email already exists, it will link the Google account to that user
 - Otherwise, it creates a new user account
 - Sessions work the same way as magic link authentication (30-day token)

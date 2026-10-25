@@ -133,9 +133,26 @@ if (process.env.NODE_ENV !== "test") {
     console.log(
       `[server] Hidden Shelf running on http://localhost:${info.port}`,
     );
+    const googleEnabled = Boolean(
+      config.googleClientId && config.googleClientSecret,
+    );
+    if (!config.emailLoginEnabled && !googleEnabled) {
+      console.error(
+        "[server] ERROR: no way to log in. EMAIL_LOGIN_ENABLED=false and Google sign-in isn't configured (GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET).",
+      );
+    }
+    if (
+      googleEnabled &&
+      !config.googleRedirectUri.endsWith("/api/auth/google/callback")
+    ) {
+      console.warn(
+        `[server] WARNING: GOOGLE_REDIRECT_URI is ${config.googleRedirectUri}, but the callback is ${config.siteUrl}/api/auth/google/callback. Leave it empty to use that.`,
+      );
+    }
     // smtpbucket.com mailboxes are public, so login links sent there can be
     // read by anyone
     if (
+      config.emailLoginEnabled &&
       config.smtpHost === "mail.smtpbucket.com" &&
       !/\/\/(localhost|127\.0\.0\.1)(:|\/|$)/.test(config.siteUrl)
     ) {

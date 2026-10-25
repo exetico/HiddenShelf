@@ -13,7 +13,7 @@ A minimal, self-hosted place to save links, organise them with categories and ta
 
 ## Run it in production (Docker)
 
-This is the recommended way to run Hidden Shelf. You need a Linux server with **Docker** (with Compose v2.24 or newer), **git** and **make**, a **domain name**, and an **SMTP account** for the login emails.
+This is the recommended way to run Hidden Shelf. You need a Linux server with **Docker** (with the `docker compose` plugin), **git** and **make**, a **domain name**, and either an **SMTP account** for the login emails or **Google sign-in** (see [Login without email](#login-without-email)).
 
 ### 1. Get the code
 
@@ -44,7 +44,7 @@ SMTP_ENCRYPTION=tls                  # tls (port 587), ssl (port 465) or empty
 FROM_EMAIL=noreply@example.com
 ```
 
-Leave `DEBUG_MODE=false`. The full list of settings is under [Configuration](#configuration). For Google sign-in, see [GOOGLE_OAUTH_SETUP.md](GOOGLE_OAUTH_SETUP.md).
+Leave `DEBUG_MODE=false`. The full list of settings is under [Configuration](#configuration). For Google sign-in, see [GOOGLE_OAUTH_SETUP.md](GOOGLE_OAUTH_SETUP.md); leave `GOOGLE_REDIRECT_URI` empty and register `{SITE_URL}/api/auth/google/callback` in Google Cloud Console.
 
 > If SMTP isn't set, login emails go to smtpbucket.com, a public test inbox anyone can read. The server prints a warning at startup when that happens on a non-localhost `SITE_URL`.
 
@@ -70,7 +70,11 @@ A proxy on the same machine or Docker network is trusted automatically for clien
 
 ### 5. Log in
 
-Open your `SITE_URL`, enter your email and click the link you receive. The first login creates your account. When everyone who needs an account has one, set `SIGNUP_ENABLED=false` in `.env` and run `make up` again to close registration.
+Open your `SITE_URL`, enter your email and click the link you receive (or use Google). The first login creates your account. When everyone who needs an account has one, set `SIGNUP_ENABLED=false` in `.env` and run `make up` again to close registration.
+
+### Login without email
+
+If you don't want to run SMTP, set up Google sign-in and add `EMAIL_LOGIN_ENABLED=false` to `.env`. The login page then only offers Google, no email is ever sent, and the `SMTP_*` settings are ignored. The server logs an error at startup if neither login method is available.
 
 ## Upgrading
 
@@ -138,10 +142,11 @@ Set these in `.env`. Docker Compose passes them to the container. When running N
 | `FROM_NAME`            | `Hidden Shelf`                        | Sender name                             |
 | `DEBUG_MODE`           | `false`                               | Log magic links instead of emailing them, show detailed errors. Dev only |
 | `SIGNUP_ENABLED`       | `true`                                | Allow new user registration             |
+| `EMAIL_LOGIN_ENABLED`  | `true`                                | `false`: no magic link login and no email at all; Google sign-in only |
 | `TRUST_PROXY`          | (auto)                                | `true`/`false`: trust `X-Forwarded-For` for client IPs. Auto trusts it only from private addresses |
 | `GOOGLE_CLIENT_ID`     | ``                                    | Google OAuth client ID                  |
 | `GOOGLE_CLIENT_SECRET` | ``                                    | Google OAuth client secret              |
-| `GOOGLE_REDIRECT_URI`  | `{SITE_URL}/api/auth/google/callback` | OAuth redirect                          |
+| `GOOGLE_REDIRECT_URI`  | `{SITE_URL}/api/auth/google/callback` | OAuth redirect. Leave empty; the server warns if it doesn't end in `/api/auth/google/callback` |
 
 ### Subpath deployment
 
