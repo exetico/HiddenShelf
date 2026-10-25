@@ -96,7 +96,9 @@ function stopDrag() {
         <span class="text-xs opacity-75">({{ uncategorizedCount }})</span>
       </button>
 
-      <!-- Own Category Buttons (with a star to favorite each one) -->
+      <!-- Own Category Buttons. A small star sits in the corner (inside the
+           padding, so the button is no wider): always shown for favorites,
+           on hover for the rest. -->
       <div
         v-for="category in orderedCategories"
         :key="category.id"
@@ -105,10 +107,10 @@ function stopDrag() {
             ? 'bg-brand-600 text-white'
             : 'bg-gray-100 dark:bg-brand-800 text-gray-700 dark:text-brand-300 hover:bg-gray-200 dark:hover:bg-brand-700'
         "
-        class="group flex items-center rounded-lg transition-colors whitespace-nowrap shrink-0"
+        class="group relative flex items-center rounded-lg transition-colors whitespace-nowrap shrink-0"
       >
         <button
-          class="flex items-center gap-1.5 sm:gap-2 pl-3 pr-1 py-1.5 sm:pl-4 sm:py-2"
+          class="flex items-center gap-1.5 sm:gap-2 px-3 py-1.5 sm:px-4 sm:py-2"
           @click="selectCategory(String(category.id))"
         >
           <i
@@ -126,11 +128,11 @@ function stopDrag() {
           >
         </button>
         <button
-          class="pl-1 pr-2.5 sm:pr-3 py-1.5 sm:py-2 transition-opacity"
+          class="absolute top-0 right-0 p-0.5 leading-none transition-opacity"
           :class="
             category.is_favorite
               ? 'text-amber-500'
-              : 'opacity-40 group-hover:opacity-100 focus:opacity-100'
+              : 'opacity-0 group-hover:opacity-70 hover:opacity-100! focus:opacity-100'
           "
           :title="
             category.is_favorite ? 'Remove from favorites' : 'Add to favorites'
@@ -143,7 +145,7 @@ function stopDrag() {
           @click="!hasDragged && appStore.toggleFavorite(category)"
         >
           <i
-            class="mdi text-sm"
+            class="mdi text-[11px]"
             :class="category.is_favorite ? 'mdi-star' : 'mdi-star-outline'"
           ></i>
         </button>

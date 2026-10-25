@@ -39,9 +39,9 @@ const features = [
     text: "A compact layout for mobile, plus light and dark themes in your own brand color.",
   },
   {
-    icon: "mdi-database-export-outline",
-    title: "Your data stays yours",
-    text: "Self-hosted in a single container, with import and export whenever you want it.",
+    icon: "mdi-lock-outline",
+    title: "Private by default",
+    text: "Links are only visible to you until you choose to share or publish them. No password to create or remember.",
   },
 ];
 

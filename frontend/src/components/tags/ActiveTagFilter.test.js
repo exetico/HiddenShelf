@@ -25,7 +25,11 @@ describe("ActiveTagFilter", () => {
   it("shows the active tag and clears it on click", async () => {
     appStore.filterTag = "4";
     const wrapper = mountFilter();
-    expect(wrapper.text()).toContain("#recipes");
+    expect(wrapper.text()).toContain("Only links tagged #recipes");
+    // Stands out as a highlighted banner, not just a small chip
+    expect(wrapper.find('[role="status"]').classes()).toEqual(
+      expect.arrayContaining(["border-2", "border-brand-500"]),
+    );
     await wrapper.find("button").trigger("click");
     expect(appStore.filterByTag).toHaveBeenCalledWith("");
   });

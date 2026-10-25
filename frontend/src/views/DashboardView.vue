@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted } from "vue";
+import { ref, computed, onMounted } from "vue";
 import { useRouter } from "vue-router";
 import { useAppStore } from "@/stores/app";
 import { useTheme } from "@/composables/useTheme";
@@ -14,8 +14,10 @@ onMounted(() => {
   appStore.loadVisitStats();
 });
 
-// Tag cloud: bigger and bolder the more links use the tag
-const tagCloud = computed(() => {
+// Tag cloud: bigger and bolder the more links use the tag. Tags on a
+// single link are tucked behind "Show more" so the common ones stand out.
+const showAllTags = ref(false);
+const allTags = computed(() => {
   const max = Math.max(1, ...appStore.tags.map((t) => t.usage_count || 0));
   return appStore.tags.map((tag) => {
     const weight = (tag.usage_count || 0) / max;
@@ -30,6 +32,21 @@ const tagCloud = computed(() => {
     };
   });
 });
+
+const commonTags = computed(() =>
+  allTags.value.filter((t) => (t.usage_count || 0) > 1),
+);
+// If every tag is single-use, hiding them all would leave nothing to show
+const tagCloud = computed(() =>
+  showAllTags.value || !commonTags.value.length ? allTags.value : commonTags.value,
+);
+const hiddenTagCount = computed(
+  () => allTags.value.length - commonTags.value.length,
+);
+
+const ownSharedCount = computed(
+  () => appStore.categories.filter((c) => c.is_shared).length,
+);
 
 async function openTag(tag) {
   appStore.search = "";
@@ -76,14 +93,73 @@ const topVisitedLinks = computed(() =>
       </button>
     </div>
 
+    <div class="grid grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-3">
+      <button
+        class="p-3 sm:p-4 rounded-lg bg-white dark:bg-brand-900 border border-gray-200 dark:border-brand-800 text-left hover:border-brand-500"
+        @click="router.push({ name: 'view' })"
+      >
+        <h2 class="font-semibold">
+          <i class="mdi mdi-eye-outline mr-1"></i>View links
+        </h2>
+        <p class="hidden sm:block text-sm text-gray-600 dark:text-brand-300">
+          Browse categories and shared collections
+        </p>
+      </button>
+      <button
+        class="p-3 sm:p-4 rounded-lg bg-white dark:bg-brand-900 border border-gray-200 dark:border-brand-800 text-left hover:border-brand-500"
+        @click="router.push({ name: 'edit' })"
+      >
+        <h2 class="font-semibold">
+          <i class="mdi mdi-pencil-outline mr-1"></i>Edit links
+        </h2>
+        <p class="hidden sm:block text-sm text-gray-600 dark:text-brand-300">
+          Manage links, tags and categories
+        </p>
+      </button>
+      <button
+        class="p-3 sm:p-4 rounded-lg bg-white dark:bg-brand-900 border border-gray-200 dark:border-brand-800 text-left hover:border-brand-500"
+        @click="router.push({ name: 'profile', query: { section: 'sharing' } })"
+      >
+        <h2 class="font-semibold">
+          <i class="mdi mdi-account-group-outline mr-1"></i>Sharing
+        </h2>
+        <p class="text-xs sm:text-sm text-gray-600 dark:text-brand-300">
+          {{ ownSharedCount }} shared by you ·
+          {{ appStore.sharedCategories.length }} shared with you
+        </p>
+      </button>
+      <button
+        class="p-3 sm:p-4 rounded-lg bg-white dark:bg-brand-900 border border-gray-200 dark:border-brand-800 text-left hover:border-brand-500"
+        @click="router.push({ name: 'profile' })"
+      >
+        <h2 class="font-semibold">
+          <i class="mdi mdi-account-outline mr-1"></i>Profile
+        </h2>
+        <p class="hidden sm:block text-sm text-gray-600 dark:text-brand-300">
+          Settings and account actions
+        </p>
+      </button>
+      <button
+        class="p-3 sm:p-4 rounded-lg bg-white dark:bg-brand-900 border border-gray-200 dark:border-brand-800 text-left hover:border-brand-500"
+        @click="router.push({ name: 'profile' })"
+      >
+        <h2 class="font-semibold">
+          <i class="mdi mdi-swap-horizontal mr-1"></i>Import Data
+        </h2>
+        <p class="hidden sm:block text-sm text-gray-600 dark:text-brand-300">
+          Import or export your links and categories
+        </p>
+      </button>
+    </div>
+
     <!-- Tags -->
     <article
-      class="bg-white dark:bg-brand-900 rounded-lg border border-gray-200 dark:border-brand-800 p-5"
+      class="bg-white dark:bg-brand-900 rounded-lg border border-gray-200 dark:border-brand-800 p-4 sm:p-5"
     >
       <h2 class="font-semibold text-gray-900 dark:text-white mb-1">
         <i class="mdi mdi-tag-multiple-outline mr-1"></i>Tags
       </h2>
-      <template v-if="tagCloud.length">
+      <template v-if="allTags.length">
         <p class="text-sm text-gray-500 dark:text-brand-400 mb-3">
           Tap a tag to see every link that has it, across all categories.
         </p>
@@ -98,6 +174,17 @@ const topVisitedLinks = computed(() =>
             #{{ tag.name }}
             <span class="text-xs opacity-60">{{ tag.usage_count || 0 }}</span>
           </button>
+          <button
+            v-if="hiddenTagCount && commonTags.length"
+            class="text-xs text-brand-600 dark:text-brand-300 hover:underline px-1"
+            @click="showAllTags = !showAllTags"
+          >
+            {{
+              showAllTags
+                ? "Show fewer"
+                : `Show ${hiddenTagCount} more (used once)`
+            }}
+          </button>
         </div>
       </template>
       <p v-else class="text-sm text-gray-500 dark:text-brand-400">
@@ -110,75 +197,37 @@ const topVisitedLinks = computed(() =>
     <!-- Visit Stats -->
     <article
       v-if="appStore.visitStats.total_visits > 0 || appStore.visitStats.summary.length > 0"
-      class="bg-white dark:bg-brand-900 rounded-lg border border-gray-200 dark:border-brand-800 p-5"
+      class="bg-white dark:bg-brand-900 rounded-lg border border-gray-200 dark:border-brand-800 p-4 sm:p-5"
     >
-      <h2 class="font-semibold text-gray-900 dark:text-white mb-3">
-        <i class="mdi mdi-chart-bar mr-1"></i>Link visits
-        <span class="text-sm font-normal text-gray-500 dark:text-brand-400 ml-1">(last {{ appStore.visitStats.days }} days)</span>
-      </h2>
-      <p class="text-2xl font-bold mb-3">{{ appStore.visitStats.total_visits }} <span class="text-sm font-normal text-gray-500 dark:text-brand-400">total visits</span></p>
-      <ul v-if="topVisitedLinks.length" class="space-y-1">
+      <div class="flex items-baseline justify-between gap-2 mb-2">
+        <h2 class="font-semibold text-gray-900 dark:text-white">
+          <i class="mdi mdi-chart-bar mr-1"></i>Link visits
+          <span class="text-xs font-normal text-gray-500 dark:text-brand-400"
+            >last {{ appStore.visitStats.days }} days</span
+          >
+        </h2>
+        <p class="text-sm text-gray-500 dark:text-brand-400 shrink-0">
+          <span class="text-lg font-bold text-gray-900 dark:text-white">{{
+            appStore.visitStats.total_visits
+          }}</span>
+          total
+        </p>
+      </div>
+      <ul v-if="topVisitedLinks.length" class="divide-y divide-gray-100 dark:divide-brand-800">
         <li
           v-for="item in topVisitedLinks"
           :key="item.id"
-          class="flex items-center justify-between text-sm"
+          class="flex items-center justify-between gap-2 text-sm py-1"
         >
-          <span class="truncate text-gray-700 dark:text-brand-200 mr-2">{{ item.title }}</span>
-          <span class="shrink-0 text-brand-600 dark:text-brand-400 font-medium">{{ item.visit_count }} visits</span>
+          <span class="truncate text-gray-700 dark:text-brand-200">{{ item.title }}</span>
+          <span class="shrink-0 text-xs text-brand-600 dark:text-brand-400 font-medium">{{ item.visit_count }}</span>
         </li>
       </ul>
     </article>
 
-    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-      <button
-        class="p-4 rounded-lg bg-white dark:bg-brand-900 border border-gray-200 dark:border-brand-800 text-left hover:border-brand-500"
-        @click="router.push({ name: 'view' })"
-      >
-        <h2 class="font-semibold">
-          <i class="mdi mdi-eye-outline mr-1"></i>View links
-        </h2>
-        <p class="text-sm text-gray-600 dark:text-brand-300">
-          Browse categories and shared collections
-        </p>
-      </button>
-      <button
-        class="p-4 rounded-lg bg-white dark:bg-brand-900 border border-gray-200 dark:border-brand-800 text-left hover:border-brand-500"
-        @click="router.push({ name: 'edit' })"
-      >
-        <h2 class="font-semibold">
-          <i class="mdi mdi-pencil-outline mr-1"></i>Edit links
-        </h2>
-        <p class="text-sm text-gray-600 dark:text-brand-300">
-          Manage links, tags and categories
-        </p>
-      </button>
-      <button
-        class="p-4 rounded-lg bg-white dark:bg-brand-900 border border-gray-200 dark:border-brand-800 text-left hover:border-brand-500"
-        @click="router.push({ name: 'profile' })"
-      >
-        <h2 class="font-semibold">
-          <i class="mdi mdi-account-outline mr-1"></i>Profile
-        </h2>
-        <p class="text-sm text-gray-600 dark:text-brand-300">
-          Settings and account actions
-        </p>
-      </button>
-      <button
-        class="p-4 rounded-lg bg-white dark:bg-brand-900 border border-gray-200 dark:border-brand-800 text-left hover:border-brand-500"
-        @click="router.push({ name: 'profile' })"
-      >
-        <h2 class="font-semibold">
-          <i class="mdi mdi-swap-horizontal mr-1"></i>Import Data
-        </h2>
-        <p class="text-sm text-gray-600 dark:text-brand-300">
-          Import or export your links and categories
-        </p>
-      </button>
-    </div>
-
     <!-- Theme Toggle -->
     <article
-      class="bg-white dark:bg-brand-900 rounded-lg border border-gray-200 dark:border-brand-800 p-5"
+      class="bg-white dark:bg-brand-900 rounded-lg border border-gray-200 dark:border-brand-800 p-4 sm:p-5"
     >
       <div class="flex items-center justify-between">
         <div>
