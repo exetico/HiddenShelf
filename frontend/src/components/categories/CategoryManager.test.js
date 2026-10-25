@@ -161,4 +161,37 @@ describe("CategoryManager", () => {
       .filter((b) => b.text() === "Leave");
     expect(leaveBtn.length).toBeGreaterThan(0);
   });
+
+  describe("order and favorites", () => {
+    it("disables moving the first category up and the last one down", () => {
+      const wrapper = mountManager();
+      expect(
+        wrapper.find('[aria-label="Move Work up"]').attributes("disabled"),
+      ).toBeDefined();
+      expect(
+        wrapper.find('[aria-label="Move Personal down"]').attributes("disabled"),
+      ).toBeDefined();
+      expect(
+        wrapper.find('[aria-label="Move Work down"]').attributes("disabled"),
+      ).toBeUndefined();
+    });
+
+    it("moves a category and toggles a favorite through the store", async () => {
+      const appStore = useAppStore();
+      appStore.moveCategory = vi.fn();
+      appStore.toggleFavorite = vi.fn();
+      const wrapper = mountManager();
+
+      await wrapper.find('[aria-label="Move Work down"]').trigger("click");
+      expect(appStore.moveCategory).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 1 }),
+        "down",
+      );
+
+      await wrapper.find('[aria-label="Add Personal to favorites"]').trigger("click");
+      expect(appStore.toggleFavorite).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 2 }),
+      );
+    });
+  });
 });
