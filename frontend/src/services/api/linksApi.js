@@ -39,5 +39,14 @@ export const linksApi = {
     const response = await request(`/api/links?${params.toString()}`);
     return response.matches || [];
   },
+  reorder: async (ids) =>
+    request("/api/links/order", {
+      method: "PUT",
+      body: JSON.stringify({ ids }),
+    }),
+  random: async () => {
+    const response = await request("/api/links?random=1");
+    return response.link;
+  },
   remove: async (id) => request(`/api/links?id=${id}`, { method: "DELETE" }),
 };

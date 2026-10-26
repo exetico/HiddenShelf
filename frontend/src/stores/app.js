@@ -166,19 +166,36 @@ export const useAppStore = defineStore("app", {
       const toastStore = useToastStore();
       toastStore.success("Link deleted");
     },
+    /** Save a dragged order; `ids` is one category's links, in order */
+    async reorderLinks(ids) {
+      const previous = this.links;
+      // Optimistic: put these links in their new order, in the slots they
+      // already take up in the list, so nothing else moves
+      const slots = this.links
+        .map((link, i) => (ids.includes(link.id) ? i : -1))
+        .filter((i) => i !== -1);
+      const byId = new Map(this.links.map((link) => [link.id, link]));
+      const next = [...this.links];
+      slots.forEach((slot, n) => {
+        next[slot] = { ...byId.get(ids[n]), display_order: n + 1 };
+      });
+      this.links = next;
+      try {
+        await linksApi.reorder(ids);
+      } catch (error) {
+        this.links = previous;
+        useToastStore().error(error.message || "Couldn't save the new order");
+      }
+    },
+    /** One step up or down within the link's category */
     async moveLink(link, direction) {
-      const allLinks = this.links;
-      const index = allLinks.findIndex((l) => l.id === link.id);
-      if (index === -1) return;
-      const targetIndex = direction === "up" ? index - 1 : index + 1;
-      if (targetIndex < 0 || targetIndex >= allLinks.length) return;
-      // Swap display_order values
-      const currentOrder = link.display_order ?? index;
-      const targetLink = allLinks[targetIndex];
-      const targetOrder = targetLink.display_order ?? targetIndex;
-      await linksApi.update(link.id, { display_order: targetOrder });
-      await linksApi.update(targetLink.id, { display_order: currentOrder });
-      await this.loadLinks({ reset: true });
+      const key = link.category_id || "uncategorized";
+      const ids = (this.linksByCategory.get(key) || []).map((l) => l.id);
+      const from = ids.indexOf(link.id);
+      const to = direction === "up" ? from - 1 : from + 1;
+      if (from === -1 || to < 0 || to >= ids.length) return;
+      [ids[from], ids[to]] = [ids[to], ids[from]];
+      await this.reorderLinks(ids);
     },
     async loadCategories() {
       this.categories = await categoriesApi.list();

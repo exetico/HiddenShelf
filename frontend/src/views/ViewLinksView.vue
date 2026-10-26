@@ -6,13 +6,36 @@ import LinkCardView from "@/components/links/LinkCardView.vue";
 import CategoryFilterBar from "@/components/categories/CategoryFilterBar.vue";
 import CategoryPicker from "@/components/categories/CategoryPicker.vue";
 import ActiveTagFilter from "@/components/tags/ActiveTagFilter.vue";
+import LinkDetailsSheet from "@/components/links/LinkDetailsSheet.vue";
+import LinkPreviewPopover from "@/components/links/LinkPreviewPopover.vue";
 import { useLinkMenu } from "@/composables/useLinkMenu";
+import { reorderIds } from "@/composables/useLinkDrag";
+import { useLinkDetailsStore } from "@/stores/linkDetails";
 import { appUrl } from "@/lib/appUrl";
 
 const appStore = useAppStore();
 const toastStore = useToastStore();
 
-const linkMenu = useLinkMenu();
+const details = useLinkDetailsStore();
+const linkMenu = useLinkMenu({ onDetails: openDetails });
+
+// Details sheet: previous/next walk through the links in the order shown,
+// skipping collapsed categories
+function openDetails(link) {
+  const visible = groupedCategories.value
+    .filter((group) => !collapsedCategories.value[group.key])
+    .flatMap((group) => group.links);
+  details.open(visible, link);
+}
+
+// Drag-and-drop within a category
+async function onReorder({ groupKey, ...move }) {
+  const group = groupedCategories.value.find((g) => g.key === groupKey);
+  if (!group) return;
+  const ids = group.links.map((l) => l.id);
+  const next = reorderIds(ids, move);
+  if (next.join() !== ids.join()) await appStore.reorderLinks(next);
+}
 
 // Collapse state
 const collapsedCategories = ref({});
@@ -150,8 +173,19 @@ function toggleCategory(key) {
       Showing {{ appStore.links.length }} of {{ appStore.total }} links
     </p>
 
-    <section v-if="groupedCategories.length" class="space-y-3 sm:space-y-6">
-      <article v-for="group in groupedCategories" :key="group.key">
+    <!-- Two columns on wide screens when there's more than one category -->
+    <section
+      v-if="groupedCategories.length"
+      :class="
+        groupedCategories.length > 1 ? 'xl:columns-2 xl:gap-6' : ''
+      "
+      data-testid="link-groups"
+    >
+      <article
+        v-for="group in groupedCategories"
+        :key="group.key"
+        class="break-inside-avoid mb-3 sm:mb-6"
+      >
         <button
           :title="collapsedCategories[group.key] ? 'Expand' : 'Collapse'"
           class="flex items-center gap-2 mb-1 sm:mb-2 w-full text-left group"
@@ -197,8 +231,12 @@ function toggleCategory(key) {
               v-for="link in group.links"
               :key="link.id"
               :link="link"
+              :group-key="group.key"
+              :reorderable="!group.owner && group.links.length > 1"
               @copy-public="copyPublic"
               @context-action="handleContextAction"
+              @details="openDetails"
+              @reorder="onReorder"
             />
           </div>
         </transition>
@@ -219,5 +257,7 @@ function toggleCategory(key) {
         Load more
       </button>
     </div>
+    <LinkPreviewPopover />
+    <LinkDetailsSheet />
   </section>
 </template>

@@ -1,17 +1,57 @@
 <script setup>
 import { computed } from "vue";
 import { useAppStore } from "@/stores/app";
+import { useLinkPreviewStore } from "@/stores/linkPreview";
+import { useLinkDrag } from "@/composables/useLinkDrag";
 
 const props = defineProps({
   link: {
     type: Object,
     required: true,
   },
+  // Which category list the card is in; drops only land in the same one
+  groupKey: {
+    type: [String, Number],
+    default: null,
+  },
+  // Show the drag handle (own links on desktop)
+  reorderable: {
+    type: Boolean,
+    default: false,
+  },
 });
 
-const emit = defineEmits(["copyPublic", "contextAction"]);
+const emit = defineEmits(["copyPublic", "contextAction", "details", "reorder"]);
 
 const appStore = useAppStore();
+const preview = useLinkPreviewStore();
+const drag = useLinkDrag();
+
+// Hover card with the description, on devices that can hover
+const canHover =
+  typeof window !== "undefined" &&
+  window.matchMedia?.("(hover: hover)").matches;
+
+function onMouseEnter(event) {
+  if (canHover && !drag.state.draggingId) {
+    preview.hoverStart(props.link, event.currentTarget);
+  }
+}
+
+// Not armed by the grip: the browser's normal drag of the URL goes ahead
+function onDragStart(event) {
+  preview.hide();
+  drag.start(event, props.link, props.groupKey);
+}
+
+function onDrop(event) {
+  const result = drag.drop(event, props.link, props.groupKey);
+  if (result) emit("reorder", { ...result, groupKey: props.groupKey });
+}
+
+const dropIndicator = computed(() =>
+  drag.state.overId === props.link.id ? drag.state.overPosition : null,
+);
 
 const iconColor = computed(() => {
   if (!props.link.category_id) return "#3B82F6";
@@ -24,7 +64,8 @@ function onContextMenu(event) {
   emit("contextAction", { link: props.link, event });
 }
 
-// iOS Safari never fires contextmenu, so a long press opens the same menu
+// A long press on a phone opens the details sheet (iOS never fires
+// contextmenu, and the sheet has the menu's actions too)
 const LONG_PRESS_MS = 500;
 let pressTimer = null;
 let longPressed = false;
@@ -34,7 +75,7 @@ function onTouchStart(event) {
   clearTimeout(pressTimer);
   pressTimer = setTimeout(() => {
     longPressed = true;
-    emit("contextAction", { link: props.link, event });
+    emit("details", props.link);
   }, LONG_PRESS_MS);
 }
 
@@ -53,18 +94,43 @@ function onClick(event) {
 
 <template>
   <a
-    :title="link.description ? `${link.title}: ${link.description}` : link.url"
+    :title="link.url"
     :href="link.url"
     target="_blank"
     class="group hover:bg-gray-50 dark:hover:bg-brand-800 px-1.5 py-1 sm:p-2 rounded-md transition-colors flex sm:flex-wrap items-center gap-2 cursor-pointer block no-underline relative max-sm:select-none"
+    :class="{
+      'opacity-40': drag.state.draggingId === link.id,
+      'shadow-[inset_0_2px_0_0] shadow-brand-500': dropIndicator === 'before',
+      'shadow-[inset_0_-2px_0_0] shadow-brand-500': dropIndicator === 'after',
+    }"
     style="-webkit-touch-callout: none"
+    :data-link-id="link.id"
     @contextmenu="onContextMenu"
+    @mouseenter="onMouseEnter"
+    @mouseleave="preview.hoverEnd()"
+    @dragstart="onDragStart"
+    @dragover="drag.over($event, link, groupKey)"
+    @dragleave="drag.leave(link)"
+    @drop="onDrop"
+    @dragend="drag.end()"
     @touchstart.passive="onTouchStart"
     @touchmove.passive="cancelPress"
     @touchend="cancelPress"
     @touchcancel="cancelPress"
     @click="onClick"
   >
+    <!-- Grip: the only place a reorder drag can start (desktop) -->
+    <span
+      v-if="reorderable"
+      class="drag-handle hidden md:flex -ml-1 -mr-1 cursor-grab active:cursor-grabbing text-gray-300 dark:text-brand-600 opacity-0 group-hover:opacity-100 hover:text-brand-500 transition-opacity"
+      title="Drag to change the order"
+      aria-hidden="true"
+      @mousedown="drag.arm(link)"
+      @mouseup="drag.disarm()"
+      @click.stop.prevent
+    >
+      <i class="mdi mdi-drag-vertical text-lg leading-none"></i>
+    </span>
     <i
       :class="link.icon || 'mdi-link-variant'"
       class="mdi text-base sm:text-lg shrink-0"
@@ -78,6 +144,16 @@ function onClick(event) {
         class="font-medium text-gray-900 dark:text-brand-100 group-hover:text-brand-600 dark:group-hover:text-brand-400 text-sm truncate shrink-0 max-w-[70%] sm:max-w-none sm:whitespace-normal sm:overflow-visible"
       >
         {{ link.title }}
+        <button
+          v-if="link.description"
+          type="button"
+          class="ml-0.5 align-middle text-gray-400 hover:text-brand-600 dark:text-brand-500 dark:hover:text-brand-300"
+          title="Show the description and details"
+          :aria-label="`Details for ${link.title}`"
+          @click.stop.prevent="emit('details', link)"
+        >
+          <i class="mdi mdi-text-box-outline text-sm leading-none"></i>
+        </button>
       </div>
       <p
         class="text-xs text-gray-500 dark:text-brand-400 truncate min-w-0 flex-1"

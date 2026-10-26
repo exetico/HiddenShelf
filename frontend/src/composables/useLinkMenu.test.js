@@ -92,4 +92,30 @@ describe("useLinkMenu", () => {
     useLinkMenu({ onEdit }).items(link()).find((i) => i.label === "Edit").action();
     expect(onEdit).toHaveBeenCalledWith(expect.objectContaining({ id: 3 }));
   });
+
+  it("offers Details and one-step moves where they make sense", () => {
+    appStore.links = [
+      { id: 1, category_id: 5 },
+      link({ category_id: 5 }),
+      { id: 7, category_id: 5 },
+    ];
+    const onDetails = vi.fn();
+    const items = useLinkMenu({ onDetails }).items(appStore.links[1]);
+    const names = items.filter((i) => !i.hidden).map((i) => i.label);
+    expect(names).toEqual(expect.arrayContaining(["Details", "Move up", "Move down"]));
+    items.find((i) => i.label === "Details").action();
+    expect(onDetails).toHaveBeenCalled();
+    const first = useLinkMenu().items(appStore.links[0]);
+    expect(first.find((i) => i.label === "Move up").hidden).toBe(true);
+  });
+
+  it("an empty position goes back to the default order", async () => {
+    const { items } = useLinkMenu();
+    items(link()).find((i) => i.label === "Set position…").action();
+    const dialog = useDialogStore();
+    dialog.current.value = "";
+    dialog.close(true);
+    await flushPromises();
+    expect(appStore.updateLink).toHaveBeenCalledWith(3, { display_order: null });
+  });
 });

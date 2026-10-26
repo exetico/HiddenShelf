@@ -22,6 +22,14 @@ export const sharesApi = {
     });
     return response.share;
   },
+  // New code for a shared category; the old one stops working
+  resetShareCode: async (categoryId) => {
+    const response = await request("/api/category_shares", {
+      method: "POST",
+      body: JSON.stringify({ category_id: categoryId, reset: true }),
+    });
+    return response.share;
+  },
   verifyShareCode: async (code) => {
     const response = await request(
       `/api/category_shares?code=${encodeURIComponent(code)}`,

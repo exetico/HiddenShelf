@@ -7,7 +7,11 @@
  *   GET    /api/category_shares?owned=1                → own shared categories + members
  *   GET    /api/category_shares?code=                  → verify share code (public)
  *   POST   /api/category_shares  {category_id}         → create share code
- *   POST   /api/category_shares  {share_code}          → accept share
+ *   POST   /api/category_shares  {category_id, reset}  → new code; the old one stops working
+ *   POST   /api/category_shares  {share_code}          → accept share (uses the code up)
+ *
+ * A share code works once: when someone joins, the category gets a new
+ * code, so a code passed on to a third person no longer works.
  *   DELETE /api/category_shares?category_id=&leave=1    → leave shared category
  *   DELETE /api/category_shares?category_id=&member_id= → remove member
  *   DELETE /api/category_shares?category_id=            → remove sharing
@@ -43,7 +47,7 @@ shares.get("/", optionalAuth(), (c) => {
       )
       .get(shareCode);
 
-    if (!share) return errorResponse(c, "Invalid or expired share code", 404);
+    if (!share) return errorResponse(c, "This share link has been used or replaced. Ask the owner for a new one.", 404);
 
     const linkCount = db
       .prepare("SELECT COUNT(*) as count FROM links WHERE category_id = ?")
@@ -159,7 +163,7 @@ shares.post("/", requireAuth(), async (c) => {
       )
       .get(shareCode);
 
-    if (!share) return errorResponse(c, "Invalid or expired share code", 404);
+    if (!share) return errorResponse(c, "This share link has been used or replaced. Ask the owner for a new one.", 404);
     if (share.owner_id === c.userId)
       return errorResponse(c, "You cannot accept your own share");
 
@@ -171,9 +175,15 @@ shares.post("/", requireAuth(), async (c) => {
     if (existing)
       return errorResponse(c, "You have already accepted this share");
 
-    db.prepare(
-      "INSERT INTO category_share_members (category_id, user_id) VALUES (?, ?)",
-    ).run(share.category_id, c.userId);
+    db.transaction(() => {
+      db.prepare(
+        "INSERT INTO category_share_members (category_id, user_id) VALUES (?, ?)",
+      ).run(share.category_id, c.userId);
+      db.prepare("UPDATE category_shares SET share_code = ? WHERE id = ?").run(
+        generateShareCode(),
+        share.id,
+      );
+    })();
 
     return successResponse(c, {}, "Successfully joined shared category");
   }
@@ -188,6 +198,20 @@ shares.post("/", requireAuth(), async (c) => {
     const existing = db
       .prepare("SELECT * FROM category_shares WHERE category_id = ?")
       .get(categoryId);
+    if (existing && input.reset) {
+      db.prepare("UPDATE category_shares SET share_code = ? WHERE id = ?").run(
+        generateShareCode(),
+        existing.id,
+      );
+      const share = db
+        .prepare("SELECT * FROM category_shares WHERE id = ?")
+        .get(existing.id);
+      return successResponse(
+        c,
+        { share },
+        "New share link made; the old one no longer works",
+      );
+    }
     if (existing)
       return successResponse(
         c,

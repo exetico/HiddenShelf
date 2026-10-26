@@ -33,6 +33,12 @@ describe("Shares API", () => {
     return info.lastInsertRowid;
   }
 
+  function currentCode(catId) {
+    return getDb()
+      .prepare("SELECT share_code FROM category_shares WHERE category_id = ?")
+      .get(catId).share_code;
+  }
+
   // ── POST /api/category_shares (create share code) ──
 
   describe("Create share code", () => {
@@ -157,12 +163,91 @@ describe("Shares API", () => {
         headers: { "Content-Type": "application/json", Cookie: other.cookie },
         body: JSON.stringify({ share_code: "doublecode" }),
       });
+      const fresh = currentCode(catId);
       const res = await app.request("/api/category_shares", {
         method: "POST",
         headers: { "Content-Type": "application/json", Cookie: other.cookie },
-        body: JSON.stringify({ share_code: "doublecode" }),
+        body: JSON.stringify({ share_code: fresh }),
       });
       expect(res.status).toBe(400);
+      // A refused join doesn't use the code up
+      expect(currentCode(catId)).toBe(fresh);
+    });
+
+    it("uses the code up, so it can't be passed on", async () => {
+      const catId = createCategory();
+      getDb()
+        .prepare(
+          "INSERT INTO category_shares (category_id, share_code, created_by) VALUES (?, ?, ?)",
+        )
+        .run(catId, "oncecode", userId);
+
+      const first = createAuthenticatedUser("first@example.com");
+      const ok = await app.request("/api/category_shares", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Cookie: first.cookie },
+        body: JSON.stringify({ share_code: "oncecode" }),
+      });
+      expect(ok.status).toBe(200);
+      expect(currentCode(catId)).not.toBe("oncecode");
+
+      const second = createAuthenticatedUser("second@example.com");
+      const res = await app.request("/api/category_shares", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Cookie: second.cookie },
+        body: JSON.stringify({ share_code: "oncecode" }),
+      });
+      expect(res.status).toBe(404);
+      const verify = await app.request("/api/category_shares?code=oncecode");
+      expect(verify.status).toBe(404);
+      expect((await json(verify)).error).toContain("Ask the owner for a new one");
+    });
+  });
+
+  describe("Reset share code", () => {
+    it("makes a new code and keeps the members", async () => {
+      const catId = createCategory();
+      const db = getDb();
+      db.prepare(
+        "INSERT INTO category_shares (category_id, share_code, created_by) VALUES (?, ?, ?)",
+      ).run(catId, "oldcode", userId);
+      const member = createAuthenticatedUser("member@example.com");
+      db.prepare(
+        "INSERT INTO category_share_members (category_id, user_id) VALUES (?, ?)",
+      ).run(catId, member.userId);
+
+      const res = await app.request("/api/category_shares", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Cookie: cookie },
+        body: JSON.stringify({ category_id: catId, reset: true }),
+      });
+      const data = await json(res);
+      expect(data.success).toBe(true);
+      expect(data.share.share_code).not.toBe("oldcode");
+      expect(currentCode(catId)).toBe(data.share.share_code);
+      const verify = await app.request("/api/category_shares?code=oldcode");
+      expect(verify.status).toBe(404);
+      const members = db
+        .prepare("SELECT COUNT(*) AS n FROM category_share_members WHERE category_id = ?")
+        .get(catId).n;
+      expect(members).toBe(1);
+    });
+
+    it("refuses to reset someone else's category", async () => {
+      const catId = createCategory();
+      getDb()
+        .prepare(
+          "INSERT INTO category_shares (category_id, share_code, created_by) VALUES (?, ?, ?)",
+        )
+        .run(catId, "theircode", userId);
+      const other = createAuthenticatedUser("intruder@example.com");
+      const res = await app.request("/api/category_shares", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Cookie: other.cookie },
+        body: JSON.stringify({ category_id: catId, reset: true }),
+      });
+      expect(res.status).toBe(404);
+      expect(currentCode(catId)).toBe("theircode");
     });
   });
 

@@ -39,6 +39,7 @@ vi.mock("@/services/api/linksApi", () => ({
       links: [],
       pagination: { page: 1, pages: 1, limit: 20, total: 0 },
     }),
+    random: vi.fn(),
   },
 }));
 
@@ -311,5 +312,31 @@ describe("DashboardView", () => {
       "Show its links",
       "Delete tag",
     ]);
+  });
+
+  describe("I'm feeling lucky", () => {
+    it("opens a random link in a tab it opened right away", async () => {
+      const tab = { location: { href: "" }, close: vi.fn() };
+      window.open = vi.fn(() => tab);
+      linksApi.random.mockResolvedValue({ id: 1, url: "https://lucky.example.com" });
+      const wrapper = mountDashboard();
+      await wrapper.find('[data-testid="feeling-lucky"]').trigger("click");
+      expect(window.open).toHaveBeenCalledWith("", "_blank");
+      await flushPromises();
+      expect(tab.location.href).toBe("https://lucky.example.com");
+      expect(tab.opener).toBeNull();
+    });
+
+    it("closes the tab and explains when the shelf is empty", async () => {
+      const tab = { location: { href: "" }, close: vi.fn() };
+      window.open = vi.fn(() => tab);
+      linksApi.random.mockRejectedValue(new Error("Your shelf is empty"));
+      const wrapper = mountDashboard();
+      await wrapper.find('[data-testid="feeling-lucky"]').trigger("click");
+      await flushPromises();
+      expect(tab.close).toHaveBeenCalled();
+      const { useToastStore } = await import("@/stores/toast");
+      expect(useToastStore().items[0].message).toBe("Add a link first, then try your luck");
+    });
   });
 });

@@ -12,8 +12,9 @@ import { appUrl } from "@/lib/appUrl";
  * @param {object} [options]
  * @param {(link) => void} [options.onEdit] opens the editor; without it,
  *   Edit goes to the Edit page with the link's editor open
+ * @param {(link) => void} [options.onDetails] adds "Details" at the top
  */
-export function useLinkMenu({ onEdit } = {}) {
+export function useLinkMenu({ onEdit, onDetails } = {}) {
   const router = useRouter();
   const appStore = useAppStore();
   const toast = useToastStore();
@@ -41,13 +42,13 @@ export function useLinkMenu({ onEdit } = {}) {
   async function setPosition(link) {
     const value = await dialog.prompt({
       title: "Set position",
-      message: "Lower numbers come first in the category. 0 means the default order.",
+      message: "Lower numbers come first in the category. Leave it empty for the default order.",
       value: link.display_order || "",
       inputType: "number",
       icon: "mdi-sort-numeric-variant",
     });
-    if (value === null || value === "") return;
-    await save(link, { display_order: Number(value) });
+    if (value === null) return;
+    await save(link, { display_order: value === "" ? null : Number(value) });
   }
 
   async function remove(link) {
@@ -57,7 +58,16 @@ export function useLinkMenu({ onEdit } = {}) {
 
   function items(link) {
     const own = !link.is_from_shared_category;
+    const key = link.category_id || "uncategorized";
+    const siblings = appStore.linksByCategory.get(key) || [];
+    const position = siblings.findIndex((l) => l.id === link.id);
     return [
+      {
+        label: "Details",
+        icon: "mdi-text-box-outline",
+        hidden: !onDetails,
+        action: () => onDetails(link),
+      },
       {
         label: "Open in new tab",
         icon: "mdi-open-in-new",
@@ -85,6 +95,18 @@ export function useLinkMenu({ onEdit } = {}) {
             : router.push({ name: "edit", query: { editId: link.id } }),
       },
       {
+        label: "Move up",
+        icon: "mdi-arrow-up",
+        hidden: !own || position <= 0,
+        action: () => appStore.moveLink(link, "up"),
+      },
+      {
+        label: "Move down",
+        icon: "mdi-arrow-down",
+        hidden: !own || position === -1 || position >= siblings.length - 1,
+        action: () => appStore.moveLink(link, "down"),
+      },
+      {
         label: "Set position…",
         icon: "mdi-sort-numeric-variant",
         hidden: !own,
@@ -93,8 +115,8 @@ export function useLinkMenu({ onEdit } = {}) {
       {
         label: "Reset position",
         icon: "mdi-sort-variant-remove",
-        hidden: !own || !link.display_order,
-        action: () => save(link, { display_order: 0 }),
+        hidden: !own || link.display_order == null,
+        action: () => save(link, { display_order: null }),
       },
       { divider: true },
       {

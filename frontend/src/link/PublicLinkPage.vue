@@ -1,6 +1,7 @@
 <script setup>
 import { ref, onMounted } from "vue";
 import { request } from "@/lib/httpClient";
+import { renderMarkdown } from "@/lib/markdown";
 
 const link = ref(null);
 const loading = ref(true);
@@ -75,9 +76,12 @@ onMounted(async () => {
         </span>
       </header>
 
-      <p v-if="link.description" class="mb-6 text-gray-600 dark:text-brand-200">
-        {{ link.description }}
-      </p>
+      <!-- renderMarkdown escapes all HTML, so v-html is safe here -->
+      <div
+        v-if="link.description"
+        class="md-content mb-6 text-gray-600 dark:text-brand-200"
+        v-html="renderMarkdown(link.description)"
+      ></div>
 
       <a
         :title="`Open ${link.url}`"

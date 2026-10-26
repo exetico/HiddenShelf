@@ -5,7 +5,7 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { createTestApp, createAuthenticatedUser, cleanup } from "./helpers.js";
 import { getDb } from "../src/lib/database.js";
-import { renderLinkPage } from "../src/routes/publicLink.js";
+import { renderLinkPage, stripMarkdown } from "../src/routes/publicLink.js";
 
 describe("Public link page", () => {
   let app, userId;
@@ -98,6 +98,21 @@ describe("Public link page", () => {
         { title: "T", description: null },
       );
       expect(html).toContain('content="View &quot;T&quot; shared via Hidden Shelf"');
+    });
+
+    it("shows a Markdown description as plain text in previews", () => {
+      const html = renderLinkPage(
+        '<meta data-link-meta="description" content="x" />',
+        { title: "T", description: "**Fast** [docs](https://x.com)\n- one\n- two" },
+      );
+      expect(html).toContain('content="Fast docs one two"');
+    });
+  });
+
+  describe("stripMarkdown", () => {
+    it("drops marks but keeps the words", () => {
+      expect(stripMarkdown("_a_ `b` ~~c~~ # d")).toBe("a b c # d");
+      expect(stripMarkdown("# Title\n1. x")).toBe("Title x");
     });
   });
 });

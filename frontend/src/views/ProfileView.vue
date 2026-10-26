@@ -100,17 +100,24 @@ async function leaveShared(category) {
   if (ok) await appStore.leaveSharedCategory(category.id);
 }
 
+// Links work once, so fetch the current one: it changes when someone joins
 async function copyOwnedShareUrl(share) {
+  try {
+    const { share: current } = await sharesApi.getCategoryShare(share.id);
+    if (current?.share_code) share.share_code = current.share_code;
+  } catch {
+    // Copy the one we have
+  }
   await navigator.clipboard.writeText(
     appUrl(`/login?share=${share.share_code}`),
   );
-  toastStore.success("Share URL copied");
+  toastStore.success("Share URL copied. It works for one person.");
 }
 
 async function removeOwnedMember(share, member) {
   const ok = await dialog.confirm({
     title: `Remove ${member.email}?`,
-    message: `They lose access to "${share.name}". They can join again with the share link.`,
+    message: `They lose access to "${share.name}". To let them back in, send them a new share link.`,
     confirmText: "Remove",
     danger: true,
     icon: "mdi-account-remove-outline",

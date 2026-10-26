@@ -5,6 +5,8 @@ import { useAppStore } from "@/stores/app";
 import { useTheme } from "@/composables/useTheme";
 import { useContextMenuStore } from "@/stores/contextMenu";
 import { useDialogStore } from "@/stores/dialog";
+import { useToastStore } from "@/stores/toast";
+import { linksApi } from "@/services/api/linksApi";
 
 const appStore = useAppStore();
 const router = useRouter();
@@ -107,6 +109,33 @@ function openTagMenu(event, tag) {
       },
     ],
   });
+}
+
+// The quiet easter egg at the bottom: open a random link from your shelf.
+// The tab opens right away (inside the click) so pop-up blockers allow it,
+// and gets its address once the server has picked a link.
+const feelingLucky = ref(false);
+async function openRandomLink() {
+  const tab = window.open("", "_blank");
+  feelingLucky.value = true;
+  try {
+    const link = await linksApi.random();
+    if (tab) {
+      tab.opener = null;
+      tab.location.href = link.url;
+    } else {
+      window.location.assign(link.url);
+    }
+  } catch (error) {
+    tab?.close();
+    useToastStore().error(
+      error.message === "Your shelf is empty"
+        ? "Add a link first, then try your luck"
+        : "Couldn't pick a link, try again",
+    );
+  } finally {
+    feelingLucky.value = false;
+  }
 }
 
 async function openTag(tag) {
@@ -323,5 +352,20 @@ const topVisitedLinks = computed(() =>
         </button>
       </div>
     </article>
+
+    <!-- Easter egg -->
+    <p class="text-center pt-2 pb-4">
+      <button
+        type="button"
+        class="text-xs text-gray-400 dark:text-brand-600 hover:text-brand-600 dark:hover:text-brand-300 transition-colors disabled:opacity-50"
+        title="Open a random link from your shelf in a new tab"
+        :disabled="feelingLucky"
+        data-testid="feeling-lucky"
+        @click="openRandomLink"
+      >
+        <i class="mdi mdi-dice-5-outline" aria-hidden="true"></i>
+        I'm feeling lucky
+      </button>
+    </p>
   </section>
 </template>
