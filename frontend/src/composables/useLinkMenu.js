@@ -3,6 +3,7 @@ import { useAppStore } from "@/stores/app";
 import { useToastStore } from "@/stores/toast";
 import { useDialogStore } from "@/stores/dialog";
 import { useContextMenuStore } from "@/stores/contextMenu";
+import { usePublicShareStore } from "@/stores/publicShare";
 import { appUrl } from "@/lib/appUrl";
 
 /**
@@ -20,6 +21,7 @@ export function useLinkMenu({ onEdit, onDetails } = {}) {
   const toast = useToastStore();
   const dialog = useDialogStore();
   const menu = useContextMenuStore();
+  const publicShare = usePublicShareStore();
 
   async function copy(text, message) {
     try {
@@ -51,12 +53,13 @@ export function useLinkMenu({ onEdit, onDetails } = {}) {
     await save(link, { display_order: value === "" ? null : Number(value) });
   }
 
-  // No "are you sure?": the link goes to the trash and the toast can undo it
+  // Asks first; the toast after it can still undo. Resolves true if moved.
   async function remove(link) {
     try {
-      await appStore.deleteLink(link.id);
+      return await appStore.trashLink(link);
     } catch (error) {
       toast.error(error.message || "Couldn't delete the link");
+      return false;
     }
   }
 
@@ -92,6 +95,12 @@ export function useLinkMenu({ onEdit, onDetails } = {}) {
         icon: "mdi-link-variant",
         hidden: !link.is_public || !link.hash,
         action: () => copy(appUrl(`/h/${link.hash}`), "Public link copied"),
+      },
+      {
+        label: "QR code",
+        icon: "mdi-qrcode",
+        hidden: !link.is_public || !link.hash,
+        action: () => publicShare.open(link),
       },
       { divider: true },
       {

@@ -4,6 +4,7 @@ import { useAppStore } from "@/stores/app";
 import { useLinkMenu } from "@/composables/useLinkMenu";
 import { renderMarkdown } from "@/lib/markdown";
 import { formatDate } from "@/lib/date";
+import { usePublicShareStore } from "@/stores/publicShare";
 
 const props = defineProps({
   link: {
@@ -12,9 +13,10 @@ const props = defineProps({
   },
 });
 
-const emit = defineEmits(["edit", "delete", "copyPublic"]);
+const emit = defineEmits(["edit", "delete"]);
 
 const appStore = useAppStore();
+const publicShare = usePublicShareStore();
 // Right-click menu; its Edit opens the same editor as the Edit button
 const linkMenu = useLinkMenu({ onEdit: (link) => emit("edit", link) });
 
@@ -144,13 +146,13 @@ const iconColor = computed(() => {
           title="Direct redirect: the public link goes straight to the site"
           data-testid="redirect-indicator"
         ></i>
-        <!-- Public: the globe says so and copies the public link -->
+        <!-- Public: the globe says so and opens the link to copy, with a QR code -->
         <button
           v-if="link.is_public"
           class="text-sm text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300"
-          title="Public: copy the public link"
+          title="Public link: copy it or show a QR code"
           data-testid="public-indicator"
-          @click="$emit('copyPublic', link.hash)"
+          @click="publicShare.open(link)"
         >
           <i class="mdi mdi-earth"></i>
         </button>

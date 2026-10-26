@@ -109,3 +109,9 @@ html.dark body {
 .md-content code {
   @apply rounded-sm bg-gray-100 px-1 text-[0.9em] dark:bg-brand-800;
 }
+
+/* SearchField draws its own clear button */
+.search-field::-webkit-search-cancel-button {
+  -webkit-appearance: none;
+  appearance: none;
+}
