@@ -153,4 +153,11 @@ describe("LoginView", () => {
 
     expect(wrapper.text()).toContain("Login isn't set up on this server yet.");
   });
+
+  it("draws the shelf art behind the page", () => {
+    const wrapper = mountLogin({});
+    const art = wrapper.find('[data-testid="shelf-backdrop"]');
+    expect(art.exists()).toBe(true);
+    expect(art.attributes("aria-hidden")).toBe("true");
+  });
 });

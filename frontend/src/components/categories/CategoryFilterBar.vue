@@ -67,6 +67,7 @@ function stopDrag() {
     >
       <!-- All Categories Button -->
       <button
+        title="Show links from all categories"
         :class="
           appStore.filterCategory === ''
             ? 'bg-brand-600 text-white'
@@ -82,6 +83,7 @@ function stopDrag() {
 
       <!-- Uncategorized Button -->
       <button
+        title="Show links without a category"
         v-if="uncategorizedCount > 0"
         :class="
           appStore.filterCategory === 'uncategorized'
@@ -110,6 +112,7 @@ function stopDrag() {
         class="group relative flex items-center rounded-lg transition-colors whitespace-nowrap shrink-0"
       >
         <button
+          :title="`Show links in ${category.name}`"
           class="flex items-center gap-1.5 sm:gap-2 px-3 py-1.5 sm:px-4 sm:py-2"
           @click="selectCategory(String(category.id))"
         >
@@ -142,7 +145,7 @@ function stopDrag() {
               ? `Remove ${category.name} from favorites`
               : `Add ${category.name} to favorites`
           "
-          @click="!hasDragged && appStore.toggleFavorite(category)"
+          @click="!hasDragged && appStore.confirmToggleFavorite(category)"
         >
           <i
             class="mdi text-[11px]"

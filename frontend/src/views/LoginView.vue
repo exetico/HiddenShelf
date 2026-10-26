@@ -5,6 +5,7 @@ import { authApi } from "@/services/api/authApi";
 import { configApi } from "@/services/api/configApi";
 import { useAuthStore } from "@/stores/auth";
 import { useToastStore } from "@/stores/toast";
+import ShelfBackdrop from "@/components/login/ShelfBackdrop.vue";
 
 const router = useRouter();
 const route = useRoute();
@@ -188,9 +189,10 @@ function clearRememberedEmail() {
 
 <template>
   <div
-    class="min-h-screen bg-brand-50 dark:bg-brand-950 flex flex-col items-center px-4 py-10 sm:py-16"
+    class="relative isolate min-h-screen bg-brand-50 dark:bg-brand-950 flex flex-col items-center px-4 pt-10 pb-32 sm:pt-16 sm:pb-48"
   >
-    <div class="max-w-md w-full space-y-8">
+    <ShelfBackdrop />
+    <div class="relative z-10 max-w-md w-full space-y-8">
       <!-- Logo/Header -->
       <div class="text-center">
         <i class="mdi mdi-bookshelf text-6xl text-brand-500"></i>
@@ -250,6 +252,7 @@ function clearRememberedEmail() {
           </p>
           <div class="flex gap-2">
             <button
+              :title="`Send a sign-in link to ${rememberedEmail}`"
               @click="useRememberedEmail"
               class="text-sm font-medium text-brand-600 dark:text-brand-400 hover:underline"
             >
@@ -257,6 +260,7 @@ function clearRememberedEmail() {
             </button>
             <span class="text-brand-400">·</span>
             <button
+              title="Sign in with another email"
               @click="clearRememberedEmail"
               class="text-sm text-brand-500 hover:text-brand-700 dark:hover:text-brand-300"
             >
@@ -271,6 +275,7 @@ function clearRememberedEmail() {
           class="space-y-3 mb-4"
         >
           <button
+            title="Email me a sign-in link"
             @click="sendMagicLink"
             :disabled="loading"
             class="w-full flex justify-center items-center gap-2 py-2.5 px-4 bg-brand-500 hover:bg-brand-600 text-white font-medium rounded-lg focus:ring-4 focus:ring-brand-300 dark:focus:ring-brand-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
@@ -297,6 +302,7 @@ function clearRememberedEmail() {
 
           <!-- Google OAuth in remembered email flow -->
           <button
+            title="Sign in with your Google account"
             v-if="googleLogin"
             @click="loginWithGoogle"
             :disabled="loading"
@@ -328,6 +334,7 @@ function clearRememberedEmail() {
           </button>
 
           <button
+            title="Sign in with another email"
             @click="clearRememberedEmail"
             class="w-full text-sm text-brand-600 dark:text-brand-400 hover:text-brand-800 dark:hover:text-brand-200 py-2"
           >
@@ -359,6 +366,7 @@ function clearRememberedEmail() {
           </div>
 
           <button
+            title="Email me a sign-in link"
             type="submit"
             :disabled="loading"
             class="w-full flex justify-center items-center gap-2 py-2.5 px-4 bg-brand-500 hover:bg-brand-600 text-white font-medium rounded-lg focus:ring-4 focus:ring-brand-300 dark:focus:ring-brand-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
@@ -389,6 +397,7 @@ function clearRememberedEmail() {
 
         <!-- Google OAuth Button -->
         <button
+          title="Sign in with your Google account"
           v-if="googleLogin && (!emailLogin || !rememberedEmail || email !== rememberedEmail) && !sent"
           @click="loginWithGoogle"
           :disabled="loading"
@@ -447,6 +456,7 @@ function clearRememberedEmail() {
           minutes.
         </p>
         <button
+          title="Send the link to another email"
           @click="sent = false"
           class="mt-6 text-brand-500 hover:text-brand-600 font-medium text-sm"
         >
@@ -457,7 +467,7 @@ function clearRememberedEmail() {
 
     <!-- What Hidden Shelf does -->
     <section
-      class="max-w-5xl w-full mt-12 sm:mt-16"
+      class="relative z-10 max-w-5xl w-full mt-12 sm:mt-16"
       aria-labelledby="features-heading"
     >
       <h2
@@ -470,7 +480,7 @@ function clearRememberedEmail() {
         <article
           v-for="feature in features"
           :key="feature.title"
-          class="bg-white dark:bg-brand-900 rounded-lg border border-brand-200 dark:border-brand-800 p-5"
+          class="bg-white/80 dark:bg-brand-900/80 backdrop-blur-sm rounded-lg border border-brand-200 dark:border-brand-800 p-5"
         >
           <i
             :class="feature.icon"

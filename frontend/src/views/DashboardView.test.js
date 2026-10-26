@@ -262,4 +262,30 @@ describe("DashboardView", () => {
     const desc = grid.findAll("p").find((p) => p.text().includes("Browse categories"));
     expect(desc.classes()).toEqual(expect.arrayContaining(["hidden", "sm:block"]));
   });
+
+  it("gives each stat tile a decorative icon on the right", () => {
+    const wrapper = mountDashboard();
+    for (const [key, icon] of [
+      ["links", "mdi-link-variant"],
+      ["categories", "mdi-folder-multiple-outline"],
+      ["tags", "mdi-tag-multiple-outline"],
+    ]) {
+      const tile = wrapper.find(`[data-testid="stat-${key}"]`);
+      const art = tile.find(".stat-art");
+      expect(art.classes()).toEqual(
+        expect.arrayContaining([icon, "absolute", "pointer-events-none"]),
+      );
+      expect(art.attributes("aria-hidden")).toBe("true");
+      expect(tile.attributes("title")).toBeTruthy();
+    }
+  });
+
+  it("has a hover title on every button", () => {
+    const wrapper = mountDashboard();
+    const missing = wrapper
+      .findAll("button")
+      .filter((b) => !b.attributes("title"))
+      .map((b) => b.text());
+    expect(missing).toEqual([]);
+  });
 });

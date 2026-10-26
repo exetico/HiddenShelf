@@ -299,7 +299,7 @@ All API calls go through service modules in `frontend/src/services/api/` — no 
 - `stores/toast.js` - Toast notifications
 
 **Routing:**
-Hash-based routing (`#/dashboard`, `#/edit`, etc.) to avoid server-side routing conflicts.
+Clean URLs (`/dashboard`, `/edit`, etc.). The backend serves the app for these routes only (`backend/src/routes/appShell.js`); old `#/dashboard` links are rewritten on load.
 
 ## Database Schema
 

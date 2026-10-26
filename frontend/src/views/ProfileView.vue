@@ -1,4 +1,5 @@
 <script setup>
+import { appUrl } from "@/lib/appUrl";
 import { ref, reactive, onMounted, nextTick } from "vue";
 import { useRoute } from "vue-router";
 import { useAuthStore } from "@/stores/auth";
@@ -89,7 +90,7 @@ onMounted(async () => {
 
 async function copyOwnedShareUrl(share) {
   await navigator.clipboard.writeText(
-    `${window.location.origin}/public/app/index.html#/login?share=${share.share_code}`,
+    appUrl(`/login?share=${share.share_code}`),
   );
   toastStore.success("Share URL copied");
 }
@@ -216,6 +217,7 @@ async function confirmDeleteEverything() {
         <strong>Beta notice:</strong> Hidden Shelf is currently in beta. Data
         may be reset or deleted without prior notice. Please
         <button
+          title="Open import and export"
           class="underline hover:no-underline font-medium"
           @click="showImportExport = true"
         >
@@ -249,6 +251,7 @@ async function confirmDeleteEverything() {
           class="h-10 w-20 rounded-md border border-gray-300 dark:border-brand-700 dark:bg-brand-800 cursor-pointer"
         />
         <button
+          title="Use the default brand color"
           class="text-xs text-gray-500 dark:text-brand-400 hover:text-gray-700 dark:hover:text-brand-200"
           @click="resetBrandColor"
         >
@@ -257,6 +260,7 @@ async function confirmDeleteEverything() {
       </div>
 
       <button
+        title="Save your settings"
         class="px-4 py-2 rounded-md bg-brand-600 text-white hover:bg-brand-700"
         @click="saveSettings"
       >
@@ -273,6 +277,7 @@ async function confirmDeleteEverything() {
         Export or import your links, categories, and tags.
       </p>
       <button
+        title="Import or export your data"
         class="px-4 py-2 rounded-md bg-brand-600 text-white hover:bg-brand-700"
         @click="showImportExport = true"
       >
@@ -340,6 +345,7 @@ async function confirmDeleteEverything() {
                 <i class="mdi mdi-content-copy"></i>
               </button>
               <button
+                :title="`Stop sharing ${share.name}; people who joined lose access`"
                 class="text-sm text-red-600 dark:text-red-400 shrink-0"
                 @click="stopSharing(share)"
               >
@@ -356,6 +362,7 @@ async function confirmDeleteEverything() {
                   member.email
                 }}</span>
                 <button
+                  :title="`Remove ${member.email} from ${share.name}`"
                   class="text-xs text-red-600 dark:text-red-400 shrink-0"
                   @click="removeOwnedMember(share, member)"
                 >
@@ -387,6 +394,7 @@ async function confirmDeleteEverything() {
             class="flex-1 min-w-0 px-3 py-2 rounded-md border border-gray-300 dark:border-brand-700 dark:bg-brand-800"
           />
           <button
+            title="Check the share code"
             class="px-4 py-2 rounded-md bg-brand-600 text-white hover:bg-brand-700 flex items-center gap-1"
             :disabled="joinLoading"
           >
@@ -410,6 +418,7 @@ async function confirmDeleteEverything() {
               </p>
             </div>
             <button
+              :title="`Leave ${category.name}`"
               class="text-red-600 dark:text-red-400 text-sm"
               @click="appStore.leaveSharedCategory(category.id)"
             >
@@ -424,6 +433,7 @@ async function confirmDeleteEverything() {
       class="bg-white dark:bg-brand-900 rounded-lg border border-gray-200 dark:border-brand-800 p-5"
     >
       <button
+        title="Sign out on this device"
         class="px-4 py-2 rounded-md border border-red-400 text-red-700 dark:text-red-300"
         @click="authStore.logout"
       >
@@ -436,6 +446,7 @@ async function confirmDeleteEverything() {
       class="bg-red-50 dark:bg-red-950 rounded-lg border-2 border-red-300 dark:border-red-800 p-5"
     >
       <button
+        title="Show or hide dangerous actions"
         class="w-full flex items-center justify-between text-left"
         @click="showDangerZone = !showDangerZone"
       >
@@ -461,6 +472,7 @@ async function confirmDeleteEverything() {
             These actions are irreversible. Please be certain before proceeding.
           </p>
           <button
+            title="Delete all your links, categories and tags"
             class="w-full px-4 py-2 bg-red-600 dark:bg-red-700 text-white rounded-md hover:bg-red-700 dark:hover:bg-red-600 transition-colors"
             @click="openDeleteEverythingModal"
           >
@@ -539,12 +551,14 @@ async function confirmDeleteEverything() {
           </div>
           <div class="flex justify-end gap-2">
             <button
+              title="Cancel"
               class="px-4 py-2 rounded-md border border-gray-300 dark:border-brand-700"
               @click="cancelJoinShare"
             >
               Cancel
             </button>
             <button
+              title="Join this shared category"
               class="px-4 py-2 rounded-md bg-brand-600 text-white hover:bg-brand-700 flex items-center gap-1"
               :disabled="joinLoading"
               @click="confirmJoinShare"
@@ -598,12 +612,14 @@ async function confirmDeleteEverything() {
           />
           <div class="flex justify-end gap-2">
             <button
+              title="Keep my data"
               class="px-4 py-2 rounded-md border border-gray-300 dark:border-brand-700"
               @click="showDeleteModal = false"
             >
               Cancel
             </button>
             <button
+              title="Delete everything for good"
               class="px-4 py-2 rounded-md bg-red-600 text-white hover:bg-red-700"
               @click="confirmDeleteEverything"
             >

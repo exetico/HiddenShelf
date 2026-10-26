@@ -44,6 +44,7 @@ function confirmDelete() {
           class="flex-1 px-3 py-2 rounded-md border border-gray-300 dark:border-brand-700 dark:bg-brand-800"
         />
         <button
+          title="Add this tag"
           class="px-3 py-2 rounded-md bg-brand-600 text-white hover:bg-brand-700"
         >
           Add
@@ -58,6 +59,7 @@ function confirmDelete() {
         >
           <span>{{ tag.name }}</span>
           <button
+            :title="`Delete tag ${tag.name}`"
             class="text-red-600 dark:text-red-400 text-sm"
             @click="promptDelete(tag)"
           >
@@ -90,12 +92,14 @@ function confirmDelete() {
         </p>
         <div class="flex justify-end gap-2">
           <button
+            title="Keep the tag"
             class="px-4 py-2 rounded-md border border-gray-300 dark:border-brand-700"
             @click="showDeleteModal = false"
           >
             Cancel
           </button>
           <button
+            title="Delete the tag"
             class="px-4 py-2 rounded-md bg-red-600 text-white hover:bg-red-700"
             @click="confirmDelete"
           >

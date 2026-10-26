@@ -80,6 +80,7 @@ onMounted(async () => {
       </p>
 
       <a
+        :title="`Open ${link.url}`"
         :href="link.url"
         rel="noopener noreferrer"
         class="mb-6 block text-lg break-all text-blue-600 hover:underline dark:text-blue-400"
@@ -99,6 +100,7 @@ onMounted(async () => {
 
       <div class="border-t border-gray-200 pt-6 dark:border-brand-700">
         <a
+          :title="`Open ${link.url}`"
           :href="link.url"
           rel="noopener noreferrer"
           class="inline-block rounded-md bg-brand-600 px-6 py-3 text-white transition hover:bg-brand-700"

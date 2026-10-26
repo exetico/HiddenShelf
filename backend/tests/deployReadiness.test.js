@@ -24,6 +24,7 @@ import {
   generateToken,
   getClientIp,
   safeReturnTo,
+  returnToUrl,
   isAllowedRedirectOrigin,
 } from "../src/lib/helpers.js";
 import config from "../src/config.js";
@@ -79,9 +80,20 @@ describe("Deploy readiness", () => {
         const location = res.headers.get("location");
         expect(location.startsWith(`${config.siteUrl}/`)).toBe(true);
         expect(new URL(location).host).toBe(new URL(config.siteUrl).host);
-        expect(location).toContain("#/dashboard");
+        expect(location).toBe(`${config.siteUrl}/dashboard`);
       },
     );
+
+    it("sends app routes to clean URLs and keeps site paths", () => {
+      expect(returnToUrl("#/edit")).toBe(`${config.siteUrl}/edit`);
+      expect(returnToUrl("/h/abc123")).toBe(`${config.siteUrl}/h/abc123`);
+      expect(returnToUrl("#/view", "http://localhost:5173")).toBe(
+        "http://localhost:5173/view",
+      );
+      expect(returnToUrl("/h/abc123", "http://localhost:5173")).toBe(
+        "http://localhost:5173/dashboard",
+      );
+    });
 
     it("keeps app routes and site paths", () => {
       expect(safeReturnTo("#/edit")).toBe("#/edit");

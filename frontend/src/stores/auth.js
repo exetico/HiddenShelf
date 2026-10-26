@@ -41,8 +41,8 @@ export const useAuthStore = defineStore("auth", {
     async logout() {
       await authApi.logout();
       this.user = null;
-      // Redirect to login using hash navigation
-      window.location.hash = "#/login";
+      // Full reload into the login page, so no signed-in state lingers
+      window.location.assign(`${import.meta.env.BASE_URL}login`);
     },
   },
 });

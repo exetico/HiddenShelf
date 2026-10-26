@@ -1,7 +1,8 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { mount } from "@vue/test-utils";
+import { mount, flushPromises } from "@vue/test-utils";
 import { createPinia, setActivePinia } from "pinia";
 import { useAppStore } from "@/stores/app";
+import { useDialogStore } from "@/stores/dialog";
 import CategoryPicker from "@/components/categories/CategoryPicker.vue";
 import CategoryFilterBar from "@/components/categories/CategoryFilterBar.vue";
 
@@ -53,12 +54,33 @@ describe("CategoryPicker", () => {
     expect(wrapper.find('[role="dialog"]').exists()).toBe(false);
   });
 
-  it("toggles a favorite from the sheet", async () => {
+  it("asks before it favorites from the sheet", async () => {
     const wrapper = mountPicker();
     await wrapper.find("button").trigger("click");
     await wrapper.find('[aria-label="Add Work to favorites"]').trigger("click");
+    const dialog = useDialogStore();
+    expect(dialog.current.title).toBe("Add to favorites?");
+    expect(dialog.current.message).toContain("Work");
+    expect(categoriesApi.update).not.toHaveBeenCalled();
+
+    dialog.close(true);
+    await flushPromises();
     expect(categoriesApi.update).toHaveBeenCalledWith(1, { is_favorite: true });
     expect(appStore.categories[0].is_favorite).toBe(1);
+  });
+
+  it("leaves the favorite alone when the question is cancelled", async () => {
+    const wrapper = mountPicker();
+    await wrapper.find("button").trigger("click");
+    await wrapper
+      .find('[aria-label="Remove Home from favorites"]')
+      .trigger("click");
+    const dialog = useDialogStore();
+    expect(dialog.current.title).toBe("Remove from favorites?");
+    dialog.close(false);
+    await flushPromises();
+    expect(categoriesApi.update).not.toHaveBeenCalled();
+    expect(appStore.categories[1].is_favorite).toBe(1);
   });
 
   it("moveCategory swaps order and saves it", async () => {
@@ -72,6 +94,9 @@ describe("CategoryPicker", () => {
     const text = wrapper.text();
     expect(text.indexOf("Home")).toBeLessThan(text.indexOf("Work"));
     await wrapper.find('[aria-label="Add Work to favorites"]').trigger("click");
+    expect(categoriesApi.update).not.toHaveBeenCalled();
+    useDialogStore().close(true);
+    await flushPromises();
     expect(categoriesApi.update).toHaveBeenCalledWith(1, { is_favorite: true });
   });
 

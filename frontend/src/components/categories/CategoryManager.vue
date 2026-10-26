@@ -1,4 +1,5 @@
 <script setup>
+import { appUrl } from "@/lib/appUrl";
 import { ref, reactive } from "vue";
 import BaseModal from "@/components/common/BaseModal.vue";
 import { sharesApi } from "@/services/api/sharesApi";
@@ -124,7 +125,7 @@ async function createShare() {
 
 function getShareUrl() {
   if (!shareData.value?.share_code) return "";
-  return `${window.location.origin}/public/app/index.html#/login?share=${shareData.value.share_code}`;
+  return appUrl(`/login?share=${shareData.value.share_code}`);
 }
 
 async function copyShareUrl() {
@@ -169,6 +170,7 @@ async function removeSharing() {
     <div class="space-y-4">
       <!-- Add Category toggle button -->
       <button
+        title="Create a new category"
         v-if="!showCreateForm"
         class="w-full px-3 py-2 rounded-md border-2 border-dashed border-gray-300 dark:border-brand-700 text-gray-600 dark:text-brand-400 hover:border-brand-500 hover:text-brand-600 dark:hover:border-brand-500 dark:hover:text-brand-300 transition-colors flex items-center justify-center gap-2"
         @click="showCreateForm = true"
@@ -216,11 +218,13 @@ async function removeSharing() {
         </div>
         <div class="flex items-center gap-2">
           <button
+            title="Create this category"
             class="px-3 py-2 rounded-md bg-brand-600 text-white hover:bg-brand-700"
           >
             Create category
           </button>
           <button
+            title="Cancel without creating"
             type="button"
             class="px-3 py-2 rounded-md border border-gray-300 dark:border-brand-700 text-gray-600 dark:text-brand-400 hover:bg-gray-100 dark:hover:bg-brand-800"
             @click="showCreateForm = false"
@@ -228,6 +232,7 @@ async function removeSharing() {
             Cancel
           </button>
           <a
+            title="Find icon names on pictogrammers.com (opens in a new tab)"
             href="https://pictogrammers.com/library/mdi/"
             target="_blank"
             class="text-xs text-brand-600 dark:text-brand-400 hover:underline"
@@ -261,6 +266,7 @@ async function removeSharing() {
                 <button
                   class="text-gray-400 hover:text-gray-700 dark:text-brand-500 dark:hover:text-brand-200 disabled:opacity-30 leading-none"
                   :disabled="index === 0"
+                  title="Move up"
                   :aria-label="`Move ${category.name} up`"
                   @click="appStore.moveCategory(category, 'up')"
                 >
@@ -269,6 +275,7 @@ async function removeSharing() {
                 <button
                   class="text-gray-400 hover:text-gray-700 dark:text-brand-500 dark:hover:text-brand-200 disabled:opacity-30 leading-none"
                   :disabled="index === categories.length - 1"
+                  title="Move down"
                   :aria-label="`Move ${category.name} down`"
                   @click="appStore.moveCategory(category, 'down')"
                 >
@@ -315,12 +322,14 @@ async function removeSharing() {
                 <i class="mdi mdi-share-variant"></i>
               </button>
               <button
+                :title="`Edit ${category.name}`"
                 class="text-brand-600 dark:text-brand-400"
                 @click="startEdit(category)"
               >
                 Edit
               </button>
               <button
+                :title="`Delete ${category.name}`"
                 class="text-red-600 dark:text-red-400"
                 @click="promptDelete(category)"
               >
@@ -363,12 +372,14 @@ async function removeSharing() {
             </div>
             <div class="flex gap-2">
               <button
+                title="Save changes"
                 class="px-3 py-1.5 rounded-md bg-brand-600 text-white hover:bg-brand-700 text-sm"
                 @click="saveEdit(category.id)"
               >
                 Save
               </button>
               <button
+                title="Discard changes"
                 class="px-3 py-1.5 rounded-md border border-gray-300 dark:border-brand-700 text-sm"
                 @click="cancelEdit"
               >
@@ -408,6 +419,7 @@ async function removeSharing() {
             </div>
           </div>
           <button
+            :title="`Leave ${category.name}; you will no longer see its links`"
             class="text-red-600 dark:text-red-400 text-sm hover:text-red-800"
             @click="appStore.leaveSharedCategory(category.id)"
           >
@@ -450,6 +462,7 @@ async function removeSharing() {
               @focus="$event.target.select()"
             />
             <button
+              title="Copy the share link"
               class="px-3 py-1.5 rounded-md bg-brand-600 text-white text-sm hover:bg-brand-700 shrink-0"
               @click="copyShareUrl"
             >
@@ -467,6 +480,7 @@ async function removeSharing() {
               shareData.share_code
             }}</code>
             <button
+              title="Copy the share code"
               class="px-3 py-1.5 rounded-md bg-brand-600 text-white text-sm hover:bg-brand-700 shrink-0"
               @click="copyShareCode"
             >
@@ -504,6 +518,7 @@ async function removeSharing() {
           <!-- Remove sharing -->
           <div v-if="!showRemoveSharingConfirm" class="mb-2">
             <button
+              title="Stop sharing this category"
               class="w-full px-4 py-2 rounded-md border border-red-400 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950 text-sm"
               @click="showRemoveSharingConfirm = true"
             >
@@ -516,12 +531,14 @@ async function removeSharing() {
             </p>
             <div class="flex gap-2">
               <button
+                title="Stop sharing; people who joined lose access"
                 class="px-4 py-2 rounded-md bg-red-600 text-white hover:bg-red-700 text-sm"
                 @click="removeSharing"
               >
                 Yes, remove sharing
               </button>
               <button
+                title="Keep sharing"
                 class="px-4 py-2 rounded-md border border-gray-300 dark:border-brand-700 text-sm"
                 @click="showRemoveSharingConfirm = false"
               >
@@ -537,6 +554,7 @@ async function removeSharing() {
             view its links.
           </p>
           <button
+            title="Create a link others can use to join"
             class="px-4 py-2 rounded-md bg-brand-600 text-white hover:bg-brand-700"
             @click="createShare"
           >
@@ -546,6 +564,7 @@ async function removeSharing() {
 
         <div class="flex justify-end mt-4">
           <button
+            title="Close"
             class="px-4 py-2 rounded-md border border-gray-300 dark:border-brand-700"
             @click="showShareModal = false"
           >
@@ -578,12 +597,14 @@ async function removeSharing() {
         </p>
         <div class="flex justify-end gap-2">
           <button
+            title="Keep the category"
             class="px-4 py-2 rounded-md border border-gray-300 dark:border-brand-700"
             @click="showDeleteModal = false"
           >
             Cancel
           </button>
           <button
+            title="Delete the category"
             class="px-4 py-2 rounded-md bg-red-600 text-white hover:bg-red-700"
             @click="confirmDelete"
           >

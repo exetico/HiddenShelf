@@ -301,7 +301,7 @@ describe("ProfileView", () => {
       await flushPromises();
       await wrapper.find('[aria-label="Copy share link for Team"]').trigger("click");
       expect(writeText).toHaveBeenCalledWith(
-        expect.stringContaining("#/login?share=xyz"),
+        expect.stringMatching(/\/login\?share=xyz$/),
       );
       expect(wrapper.text()).toContain("0 people joined");
     });

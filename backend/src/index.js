@@ -4,9 +4,9 @@
  * Serves:
  *   /api/*            → API routes (auth, links, categories, tags, shares, settings, visits, config)
  *   /h/:hash          → Public link page, or a redirect for direct-redirect links
- *   /public/app/*     → Built Vue frontend
+ *   /, /dashboard, …  → Vue app (clean URLs, see routes/appShell.js)
+ *   /public/app/*     → Built Vue frontend (old hash URLs still work)
  *   /public/view.html → Old link page URL, redirects to /h/:hash
- *   /                 → Redirect to Vue app
  */
 
 import { Hono } from "hono";
@@ -28,6 +28,7 @@ import linksRoutes from "./routes/links.js";
 import categoriesRoutes from "./routes/categories.js";
 import tagsRoutes from "./routes/tags.js";
 import sharesRoutes from "./routes/shares.js";
+import { appShellRoutes } from "./routes/appShell.js";
 import settingsRoutes from "./routes/settings.js";
 import linkVisitsRoutes from "./routes/linkVisits.js";
 import configRoutes from "./routes/config.js";
@@ -106,14 +107,19 @@ app.use(
   serveStatic({ root: path.join(projectRoot, "public") }),
 );
 
-// ─── Root redirect ───────────────────────────────────────────────
+// ─── App routes: /, /dashboard, /view, … serve the Vue app ────────
 
-app.get("/", (c) => c.redirect(baseUrl("/public/app/index.html")));
+app.route(
+  "/",
+  appShellRoutes({
+    indexPath: path.join(projectRoot, "public", "app", "index.html"),
+  }),
+);
 
 // ─── Old URL compat: redirect /public/index.html to Vue app ────
 
 app.get("/public/index.html", (c) =>
-  c.redirect(baseUrl("/public/app/index.html"), 301),
+  c.redirect(baseUrl("/dashboard"), 301),
 );
 
 // ─── Error handling ──────────────────────────────────────────────

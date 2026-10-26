@@ -53,6 +53,7 @@ function onClick(event) {
 
 <template>
   <a
+    :title="link.description ? `${link.title}: ${link.description}` : link.url"
     :href="link.url"
     target="_blank"
     class="group hover:bg-gray-50 dark:hover:bg-brand-800 px-1.5 py-1 sm:p-2 rounded-md transition-colors flex sm:flex-wrap items-center gap-2 cursor-pointer block no-underline relative max-sm:select-none"

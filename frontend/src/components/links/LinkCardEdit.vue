@@ -32,10 +32,16 @@ const iconColor = computed(() => {
           :style="`color: ${iconColor}`"
         ></i>
         <div class="min-w-0">
-          <h3 class="font-semibold text-gray-900 dark:text-white truncate">
+          <h3
+            class="font-semibold text-gray-900 dark:text-white truncate"
+            :title="link.title"
+          >
             {{ link.title }}
           </h3>
-          <p class="text-xs text-gray-500 dark:text-brand-400 truncate">
+          <p
+            class="text-xs text-gray-500 dark:text-brand-400 truncate"
+            :title="link.url"
+          >
             {{ link.url }}
           </p>
         </div>
@@ -43,12 +49,14 @@ const iconColor = computed(() => {
       <div class="flex gap-3 text-sm shrink-0">
         <button
           class="text-brand-600 dark:text-brand-400"
+          :title="`Edit ${link.title}`"
           @click="$emit('edit', link)"
         >
           Edit
         </button>
         <button
           class="text-red-600 dark:text-red-400"
+          :title="`Delete ${link.title}`"
           @click="$emit('delete', link.id)"
         >
           Delete
@@ -66,11 +74,29 @@ const iconColor = computed(() => {
 
     <div class="mt-2 sm:mt-3 flex items-center justify-between">
       <div class="flex flex-wrap gap-1">
-        <span
+        <button
           v-for="tag in (link.tags || []).slice(0, 3)"
           :key="tag.id"
-          class="px-2 py-0.5 rounded-full text-xs bg-gray-100 dark:bg-brand-800 text-gray-600 dark:text-brand-300"
-          >{{ tag.name }}</span
+          type="button"
+          class="px-2 py-0.5 rounded-full text-xs bg-gray-100 dark:bg-brand-800 text-gray-600 dark:text-brand-300 hover:bg-brand-600 hover:text-white"
+          :class="{
+            'bg-brand-600! text-white!': appStore.filterTag === String(tag.id),
+          }"
+          :title="`Show links tagged ${tag.name}`"
+          @click="appStore.filterByTag(tag.id)"
+        >
+          {{ tag.name }}
+        </button>
+        <span
+          v-if="(link.tags || []).length > 3"
+          class="px-1 py-0.5 text-xs text-gray-400 dark:text-brand-500"
+          :title="
+            link.tags
+              .slice(3)
+              .map((t) => t.name)
+              .join(', ')
+          "
+          >+{{ link.tags.length - 3 }}</span
         >
       </div>
       <div class="flex items-center gap-2 flex-wrap justify-end">
@@ -99,6 +125,7 @@ const iconColor = computed(() => {
         <button
           v-if="link.is_public"
           class="text-xs text-green-600 dark:text-green-400"
+          title="Copy the public link to the clipboard"
           @click="$emit('copyPublic', link.hash)"
         >
           Copy public URL

@@ -44,6 +44,35 @@ const hiddenTagCount = computed(
   () => allTags.value.length - commonTags.value.length,
 );
 
+// Top tiles. The big faded icon on the right is decoration (art), so it
+// is hidden from screen readers.
+const statTiles = computed(() => [
+  {
+    key: "links",
+    label: "Links",
+    value: totalLinks.value,
+    icon: "mdi-link-variant",
+    art: "from-sky-500/25 to-brand-500/5 text-sky-500",
+    title: "Manage your links",
+  },
+  {
+    key: "categories",
+    label: "Categories",
+    value: appStore.totalCategories,
+    icon: "mdi-folder-multiple-outline",
+    art: "from-amber-500/25 to-brand-500/5 text-amber-500",
+    title: "Manage your categories",
+  },
+  {
+    key: "tags",
+    label: "Tags",
+    value: appStore.totalTags,
+    icon: "mdi-tag-multiple-outline",
+    art: "from-emerald-500/25 to-brand-500/5 text-emerald-500",
+    title: "Manage your tags",
+  },
+]);
+
 const ownSharedCount = computed(
   () => appStore.categories.filter((c) => c.is_shared).length,
 );
@@ -71,31 +100,35 @@ const topVisitedLinks = computed(() =>
 
     <div class="grid grid-cols-3 gap-2 sm:gap-4">
       <button
-        class="bg-white dark:bg-brand-900 rounded-lg border border-gray-200 dark:border-brand-800 p-3 sm:p-5 text-left hover:border-brand-500 transition-colors"
+        v-for="tile in statTiles"
+        :key="tile.key"
+        class="group relative overflow-hidden bg-white dark:bg-brand-900 rounded-lg border border-gray-200 dark:border-brand-800 p-3 sm:p-5 text-left hover:border-brand-500 transition-colors"
+        :title="tile.title"
+        :data-testid="`stat-${tile.key}`"
         @click="router.push({ name: 'edit' })"
       >
-        <p class="text-sm text-gray-600 dark:text-brand-300">Links</p>
-        <p class="text-2xl sm:text-3xl font-bold">{{ totalLinks }}</p>
-      </button>
-      <button
-        class="bg-white dark:bg-brand-900 rounded-lg border border-gray-200 dark:border-brand-800 p-3 sm:p-5 text-left hover:border-brand-500 transition-colors"
-        @click="router.push({ name: 'edit' })"
-      >
-        <p class="text-sm text-gray-600 dark:text-brand-300">Categories</p>
-        <p class="text-2xl sm:text-3xl font-bold">{{ appStore.totalCategories }}</p>
-      </button>
-      <button
-        class="bg-white dark:bg-brand-900 rounded-lg border border-gray-200 dark:border-brand-800 p-3 sm:p-5 text-left hover:border-brand-500 transition-colors"
-        @click="router.push({ name: 'edit' })"
-      >
-        <p class="text-sm text-gray-600 dark:text-brand-300">Tags</p>
-        <p class="text-2xl sm:text-3xl font-bold">{{ appStore.totalTags }}</p>
+        <!-- Icon art: a soft glow with an oversized, tilted icon -->
+        <span
+          class="pointer-events-none absolute -right-4 -bottom-5 sm:-right-3 sm:-bottom-6 size-20 sm:size-28 rounded-full bg-linear-to-br blur-md"
+          :class="tile.art"
+          aria-hidden="true"
+        ></span>
+        <i
+          class="stat-art mdi pointer-events-none absolute -right-2 -bottom-3 sm:right-1 sm:-bottom-4 text-5xl sm:text-7xl leading-none opacity-25 dark:opacity-30 -rotate-12 transition-transform duration-300 group-hover:-rotate-3 group-hover:scale-110"
+          :class="[tile.icon, tile.art.split(' ').pop()]"
+          aria-hidden="true"
+        ></i>
+        <p class="relative text-sm text-gray-600 dark:text-brand-300">
+          {{ tile.label }}
+        </p>
+        <p class="relative text-2xl sm:text-3xl font-bold">{{ tile.value }}</p>
       </button>
     </div>
 
     <div class="grid grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-3">
       <button
         class="p-3 sm:p-4 rounded-lg bg-white dark:bg-brand-900 border border-gray-200 dark:border-brand-800 text-left hover:border-brand-500"
+        title="Browse your links"
         @click="router.push({ name: 'view' })"
       >
         <h2 class="font-semibold">
@@ -107,6 +140,7 @@ const topVisitedLinks = computed(() =>
       </button>
       <button
         class="p-3 sm:p-4 rounded-lg bg-white dark:bg-brand-900 border border-gray-200 dark:border-brand-800 text-left hover:border-brand-500"
+        title="Add and change links, tags and categories"
         @click="router.push({ name: 'edit' })"
       >
         <h2 class="font-semibold">
@@ -118,6 +152,7 @@ const topVisitedLinks = computed(() =>
       </button>
       <button
         class="p-3 sm:p-4 rounded-lg bg-white dark:bg-brand-900 border border-gray-200 dark:border-brand-800 text-left hover:border-brand-500"
+        title="See what you share and what is shared with you"
         @click="router.push({ name: 'profile', query: { section: 'sharing' } })"
       >
         <h2 class="font-semibold">
@@ -130,6 +165,7 @@ const topVisitedLinks = computed(() =>
       </button>
       <button
         class="p-3 sm:p-4 rounded-lg bg-white dark:bg-brand-900 border border-gray-200 dark:border-brand-800 text-left hover:border-brand-500"
+        title="Settings and account"
         @click="router.push({ name: 'profile' })"
       >
         <h2 class="font-semibold">
@@ -141,6 +177,7 @@ const topVisitedLinks = computed(() =>
       </button>
       <button
         class="p-3 sm:p-4 rounded-lg bg-white dark:bg-brand-900 border border-gray-200 dark:border-brand-800 text-left hover:border-brand-500"
+        title="Import or export your links and categories"
         @click="router.push({ name: 'profile' })"
       >
         <h2 class="font-semibold">
@@ -169,6 +206,7 @@ const topVisitedLinks = computed(() =>
             :key="tag.id"
             class="flex items-center gap-1 px-3 py-1 rounded-full bg-gray-100 dark:bg-brand-800 text-gray-700 dark:text-brand-200 hover:bg-brand-600 hover:text-white transition-colors"
             :class="tag.sizeClass"
+            :title="`Show the ${tag.usage_count || 0} links tagged ${tag.name}`"
             @click="openTag(tag)"
           >
             #{{ tag.name }}
@@ -177,6 +215,7 @@ const topVisitedLinks = computed(() =>
           <button
             v-if="hiddenTagCount && commonTags.length"
             class="text-xs text-brand-600 dark:text-brand-300 hover:underline px-1"
+            :title="showAllTags ? 'Hide tags used on only one link' : 'Show tags used on only one link'"
             @click="showAllTags = !showAllTags"
           >
             {{
@@ -240,6 +279,7 @@ const topVisitedLinks = computed(() =>
           class="p-2 rounded-md hover:bg-gray-100 dark:hover:bg-brand-800 transition-colors"
           @click="toggleTheme()"
           :title="isDark ? 'Switch to light mode' : 'Switch to dark mode'"
+          :aria-label="isDark ? 'Switch to light mode' : 'Switch to dark mode'"
         >
           <i
             class="mdi text-xl"

@@ -1,6 +1,7 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { mount } from "@vue/test-utils";
 import { createPinia, setActivePinia } from "pinia";
+import { useAppStore } from "@/stores/app";
 import LinkCardEdit from "@/components/links/LinkCardEdit.vue";
 
 describe("LinkCardEdit", () => {
@@ -129,5 +130,42 @@ describe("LinkCardEdit", () => {
   it("hides visit count when zero visits", () => {
     const wrapper = mountCard({ is_public: 1, total_visits: 0 });
     expect(wrapper.find(".mdi-eye-outline").exists()).toBe(false);
+  });
+
+  it("filters by a tag when you click it", async () => {
+    const wrapper = mountCard({
+      tags: [
+        { id: 7, name: "infra" },
+        { id: 8, name: "docs" },
+      ],
+    });
+    const appStore = useAppStore();
+    appStore.filterByTag = vi.fn();
+    const tag = wrapper.findAll("button").find((b) => b.text() === "infra");
+    expect(tag.attributes("title")).toBe("Show links tagged infra");
+    await tag.trigger("click");
+    expect(appStore.filterByTag).toHaveBeenCalledWith(7);
+  });
+
+  it("highlights the tag that is filtered on and counts hidden tags", () => {
+    const tags = ["a", "b", "c", "d", "e"].map((name, i) => ({ id: i + 1, name }));
+    const wrapper = mountCard({ tags });
+    useAppStore().filterTag = "1";
+    return wrapper.vm.$nextTick().then(() => {
+      const a = wrapper.findAll("button").find((b) => b.text() === "a");
+      expect(a.classes()).toContain("bg-brand-600!");
+      const more = wrapper.findAll("span").find((s) => s.text() === "+2");
+      expect(more.attributes("title")).toBe("d, e");
+    });
+  });
+
+  it("has hover titles on its actions", () => {
+    const wrapper = mountCard();
+    const titles = wrapper.findAll("button").map((b) => b.attributes("title"));
+    expect(titles).toEqual([
+      "Edit Example",
+      "Delete Example",
+      "Copy the public link to the clipboard",
+    ]);
   });
 });

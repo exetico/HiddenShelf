@@ -1,4 +1,4 @@
-import { createRouter, createWebHashHistory } from "vue-router";
+import { createRouter, createWebHistory } from "vue-router";
 import DashboardView from "@/views/DashboardView.vue";
 import ViewLinksView from "@/views/ViewLinksView.vue";
 import EditLinksView from "@/views/EditLinksView.vue";
@@ -6,6 +6,13 @@ import ProfileView from "@/views/ProfileView.vue";
 import LoginView from "@/views/LoginView.vue";
 import { useAuthStore } from "@/stores/auth";
 import { useToastStore } from "@/stores/toast";
+import { cleanUrlFromLegacyHash } from "@/lib/appUrl";
+
+const legacyTarget = cleanUrlFromLegacyHash(
+  window.location,
+  import.meta.env.BASE_URL,
+);
+if (legacyTarget) window.history.replaceState(null, "", legacyTarget);
 
 const routes = [
   {
@@ -24,7 +31,7 @@ const routes = [
 ];
 
 const router = createRouter({
-  history: createWebHashHistory(import.meta.env.BASE_URL),
+  history: createWebHistory(import.meta.env.BASE_URL),
   routes,
 });
 
