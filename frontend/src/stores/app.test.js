@@ -3,7 +3,7 @@ import { createPinia, setActivePinia } from "pinia";
 import { useAppStore } from "@/stores/app";
 
 vi.mock("@/services/api/linksApi", () => ({
-  linksApi: { list: vi.fn() },
+  linksApi: { list: vi.fn(), reorder: vi.fn() },
 }));
 vi.mock("@/services/api/categoriesApi", () => ({
   categoriesApi: { update: vi.fn(), reorder: vi.fn() },
@@ -130,5 +130,43 @@ describe("app store category favorites and order", () => {
     categoriesApi.reorder.mockRejectedValue(new Error("offline"));
     await store.moveCategory(store.categories[2], "up");
     expect(store.categories.map((c) => c.id)).toEqual([1, 2, 3]);
+  });
+});
+
+describe("app store link order", () => {
+  let store;
+  beforeEach(() => {
+    setActivePinia(createPinia());
+    vi.clearAllMocks();
+    store = useAppStore();
+    store.links = [
+      { id: 1, category_id: 5 },
+      { id: 2, category_id: 6 },
+      { id: 3, category_id: 5 },
+      { id: 4, category_id: 5 },
+    ];
+  });
+
+  it("reorders one category in place and saves it", async () => {
+    linksApi.reorder.mockResolvedValue({});
+    await store.reorderLinks([4, 1, 3]);
+    expect(store.links.map((l) => l.id)).toEqual([4, 2, 1, 3]);
+    expect(store.links[0].display_order).toBe(1);
+    expect(linksApi.reorder).toHaveBeenCalledWith([4, 1, 3]);
+  });
+
+  it("puts the old order back when saving fails", async () => {
+    linksApi.reorder.mockRejectedValue(new Error("offline"));
+    await store.reorderLinks([4, 1, 3]);
+    expect(store.links.map((l) => l.id)).toEqual([1, 2, 3, 4]);
+  });
+
+  it("moves a link one step within its category", async () => {
+    linksApi.reorder.mockResolvedValue({});
+    await store.moveLink(store.links[2], "up");
+    expect(linksApi.reorder).toHaveBeenCalledWith([3, 1, 4]);
+    linksApi.reorder.mockClear();
+    await store.moveLink({ id: 4, category_id: 5 }, "down");
+    expect(linksApi.reorder).not.toHaveBeenCalled();
   });
 });

@@ -6,8 +6,10 @@
  *   GET    /api/links?id=            → single link (auth)
  *   GET    /api/links?hash=          → public link by hash
  *   GET    /api/links?duplicate_of=  → own links with the same URL (auth)
+ *   GET    /api/links?random=1       → one random own link (auth)
  *   POST   /api/links                → create
  *   PUT    /api/links?id=            → update
+ *   PUT    /api/links/order          → set the order of some links {ids: [...]}
  *   DELETE /api/links?id=            → delete
  */
 
@@ -103,6 +105,17 @@ links.get("/", optionalAuth(), (c) => {
 
   // Everything below requires auth
   if (!c.userId) return errorResponse(c, "Authentication required", 401);
+
+  // ── "I'm feeling lucky": one random link ──
+  if (c.req.query("random") !== undefined) {
+    const link = db
+      .prepare(
+        "SELECT id, title, url FROM links WHERE user_id = ? ORDER BY RANDOM() LIMIT 1",
+      )
+      .get(c.userId);
+    if (!link) return errorResponse(c, "Your shelf is empty", 404);
+    return successResponse(c, { link });
+  }
 
   // ── Duplicate check: is this URL already on the shelf? ──
   const duplicateOf = c.req.query("duplicate_of");
@@ -359,6 +372,39 @@ links.post("/", requireAuth(), async (c) => {
 });
 
 // ─── PUT /api/links?id= ─────────────────────────────────────────
+
+// ─── PUT /api/links/order ────────────────────────────────────────
+// Drag-and-drop: the links in `ids` get positions 1, 2, 3… in that order.
+// Usually one category's links; other links keep their position.
+
+links.put("/order", requireAuth(), async (c) => {
+  const db = getDb();
+  const input = await c.req.json().catch(() => ({}));
+  const ids = Array.isArray(input.ids) ? input.ids.map(Number) : null;
+  if (!ids || !ids.length || ids.some((id) => !Number.isInteger(id)))
+    return errorResponse(c, "ids must be a list of link IDs");
+  if (ids.length > 1000) return errorResponse(c, "Too many links at once");
+  if (new Set(ids).size !== ids.length)
+    return errorResponse(c, "ids must not repeat a link");
+
+  const placeholders = ids.map(() => "?").join(",");
+  const ownCount = db
+    .prepare(
+      `SELECT COUNT(*) as n FROM links WHERE user_id = ? AND id IN (${placeholders})`,
+    )
+    .get(c.userId, ...ids).n;
+  if (ownCount !== ids.length)
+    return errorResponse(c, "You can only reorder your own links", 403);
+
+  const update = db.prepare(
+    "UPDATE links SET display_order = ? WHERE id = ? AND user_id = ?",
+  );
+  db.transaction(() => {
+    ids.forEach((id, index) => update.run(index + 1, id, c.userId));
+  })();
+
+  return successResponse(c, {}, "Link order saved");
+});
 
 links.put("/", requireAuth(), async (c) => {
   const db = getDb();

@@ -3,12 +3,16 @@ import { mount } from "@vue/test-utils";
 import { createPinia, setActivePinia } from "pinia";
 import { useAppStore } from "@/stores/app";
 import ViewLinksView from "@/views/ViewLinksView.vue";
+import { useLinkDetailsStore } from "@/stores/linkDetails";
 
 // Mock child components
 vi.mock("@/components/links/LinkCardView.vue", () => ({
   default: {
-    template: '<div class="link-card">{{ link.title }}</div>',
-    props: ["link"],
+    name: "LinkCardView",
+    template:
+      '<div class="link-card" @click="$emit(\'details\', link)">{{ link.title }}</div>',
+    props: ["link", "groupKey", "reorderable"],
+    emits: ["details", "reorder", "copyPublic", "contextAction"],
   },
 }));
 vi.mock("@/components/categories/CategoryFilterBar.vue", () => ({
@@ -172,5 +176,49 @@ describe("ViewLinksView", () => {
       const wrapper = mountView();
       expect(wrapper.findAll("button.rounded-full")).toHaveLength(0);
     });
+  });
+
+  describe("wide screens", () => {
+    it("uses two columns when there is more than one category", () => {
+      const groups = mountView().find('[data-testid="link-groups"]');
+      expect(groups.classes()).toEqual(expect.arrayContaining(["xl:columns-2"]));
+    });
+
+    it("stays one column for a single category", () => {
+      useAppStore().filterCategory = "1";
+      const groups = mountView().find('[data-testid="link-groups"]');
+      expect(groups.classes()).not.toContain("xl:columns-2");
+    });
+  });
+
+  it("opens details with previous/next across the visible links", async () => {
+    const wrapper = mountView();
+    await wrapper.findAll(".link-card").find((c) => c.text() === "Link B").trigger("click");
+    const details = useLinkDetailsStore();
+    expect(details.current.title).toBe("Link B");
+    expect(details.links.map((l) => l.title)).toEqual(["Link C", "Link A", "Link B"]);
+  });
+
+  it("saves a drag-and-drop move within a category", async () => {
+    const appStore = useAppStore();
+    appStore.reorderLinks = vi.fn();
+    const wrapper = mountView();
+    const cards = wrapper.findAllComponents({ name: "LinkCardView" });
+    const cardA = cards.find((c) => c.props("link").title === "Link A");
+    expect(cardA.props("reorderable")).toBe(true);
+    cardA.vm.$emit("reorder", { groupKey: 1, draggedId: 2, targetId: 1, position: "before" });
+    await wrapper.vm.$nextTick();
+    expect(appStore.reorderLinks).toHaveBeenCalledWith([2, 1]);
+  });
+
+  it("doesn't offer dragging in a category shared with you", () => {
+    const appStore = useAppStore();
+    appStore.links = [
+      { id: 8, title: "S1", category_id: 50, url: "https://s.com" },
+      { id: 9, title: "S2", category_id: 50, url: "https://t.com" },
+    ];
+    appStore.sharedCategories = [{ id: 50, name: "Team", owner_email: "x@y.z" }];
+    const cards = mountView().findAllComponents({ name: "LinkCardView" });
+    expect(cards.every((c) => c.props("reorderable") === false)).toBe(true);
   });
 });

@@ -100,3 +100,20 @@ describe("LinkFormModal duplicate warning", () => {
     expect(wrapper.emitted("save")).toBeTruthy();
   });
 });
+
+describe("LinkFormModal description", () => {
+  beforeEach(() => setActivePinia(createPinia()));
+
+  it("previews the Markdown and goes back to editing", async () => {
+    const wrapper = mount(LinkFormModal, {
+      props: { open: true, model: null, categories: [] },
+      global: { plugins: [createPinia()], stubs: { Teleport: true } },
+    });
+    await wrapper.find('textarea[placeholder="Description"]').setValue("**Hi** - there");
+    await wrapper.findAll("button").find((b) => b.text() === "Preview").trigger("click");
+    expect(wrapper.find('[data-testid="description-preview"] strong').text()).toBe("Hi");
+    expect(wrapper.find("textarea").exists()).toBe(false);
+    await wrapper.findAll("button").find((b) => b.text() === "Edit").trigger("click");
+    expect(wrapper.find("textarea").element.value).toBe("**Hi** - there");
+  });
+});

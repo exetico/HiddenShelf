@@ -2,6 +2,7 @@
 import { computed } from "vue";
 import { useAppStore } from "@/stores/app";
 import { useLinkMenu } from "@/composables/useLinkMenu";
+import { renderMarkdown } from "@/lib/markdown";
 
 const props = defineProps({
   link: {
@@ -69,11 +70,17 @@ const iconColor = computed(() => {
     </div>
 
     <!-- The placeholder only costs height on phones, so it's sm+ only -->
+    <!-- renderMarkdown escapes all HTML, so v-html is safe here -->
+    <div
+      v-if="link.description"
+      class="md-content mt-1.5 sm:mt-2 text-sm text-gray-600 dark:text-brand-300 line-clamp-4"
+      v-html="renderMarkdown(link.description)"
+    ></div>
     <p
-      class="mt-1.5 sm:mt-2 text-sm text-gray-600 dark:text-brand-300"
-      :class="{ 'hidden sm:block': !link.description }"
+      v-else
+      class="hidden sm:block mt-2 text-sm text-gray-400 dark:text-brand-500"
     >
-      {{ link.description || "No description" }}
+      No description
     </p>
 
     <div class="mt-2 sm:mt-3 flex items-center justify-between">

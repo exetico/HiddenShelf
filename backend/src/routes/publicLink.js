@@ -27,6 +27,18 @@ function escapeHtml(value) {
     .replace(/"/g, "&quot;");
 }
 
+/** Descriptions may use simple Markdown; previews want plain text */
+export function stripMarkdown(text) {
+  return String(text)
+    .replace(/\[([^\]\n]+)\]\([^)\s]+\)/g, "$1")
+    .replace(/(\*\*|__|~~|`)/g, "")
+    .replace(/(^|\s)[*_]([^*_\n]+)[*_](?=\s|$)/g, "$1$2")
+    .replace(/^\s*([-*+]|\d+[.)])\s+/gm, "")
+    .replace(/^#{1,6}\s+/gm, "")
+    .replace(/\s*\n+\s*/g, " ")
+    .trim();
+}
+
 /**
  * Fill the link's title and description into the page's head.
  * The template marks the values to replace with data-link-meta attributes.
@@ -34,7 +46,8 @@ function escapeHtml(value) {
 export function renderLinkPage(template, link) {
   const title = `${link.title} — Hidden Shelf`;
   const description =
-    link.description || `View "${link.title}" shared via Hidden Shelf`;
+    (link.description && stripMarkdown(link.description)) ||
+    `View "${link.title}" shared via Hidden Shelf`;
 
   return template
     .replace(/<title>[^<]*<\/title>/, `<title>${escapeHtml(title)}</title>`)

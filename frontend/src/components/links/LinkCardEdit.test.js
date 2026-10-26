@@ -104,8 +104,14 @@ describe("LinkCardEdit", () => {
     const empty = mountCard({ description: "" }).find("p.text-sm");
     expect(empty.classes()).toEqual(expect.arrayContaining(["hidden", "sm:block"]));
 
-    const filled = mountCard({ description: "My link" }).find("p.text-sm");
+    const filled = mountCard({ description: "My link" }).find(".md-content");
     expect(filled.classes()).not.toContain("hidden");
+  });
+
+  it("renders the description's Markdown", () => {
+    const wrapper = mountCard({ description: "**Fast** and `simple`" });
+    expect(wrapper.find(".md-content").html()).toContain("<strong>Fast</strong>");
+    expect(wrapper.find(".md-content code").text()).toBe("simple");
   });
 
   it("lets long titles and URLs shrink instead of overflowing the card", () => {

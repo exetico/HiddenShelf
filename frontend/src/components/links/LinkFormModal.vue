@@ -4,6 +4,7 @@ import BaseModal from "@/components/common/BaseModal.vue";
 import { linkVisitsApi } from "@/services/api/linkVisitsApi";
 import { linksApi } from "@/services/api/linksApi";
 import { useDialogStore } from "@/stores/dialog";
+import { renderMarkdown } from "@/lib/markdown";
 
 const props = defineProps({
   open: Boolean,
@@ -36,6 +37,9 @@ const visitCount = ref(null);
 const recentVisits = ref(null);
 const recentDays = ref(30);
 const loadingVisits = ref(false);
+
+// Description: Markdown with a preview toggle
+const showPreview = ref(false);
 
 // Warn when the URL is already on the shelf. Checked shortly after typing
 // stops, and once more on save in case the check hadn't come back yet.
@@ -94,6 +98,7 @@ watch(
     form.direct_redirect = Boolean(model?.direct_redirect);
     clearTimeout(duplicateTimer);
     duplicates.value = [];
+    showPreview.value = false;
 
     // Load visit stats for existing links
     visitCount.value = null;
@@ -219,11 +224,35 @@ async function submit() {
           >.
         </span>
       </p>
-      <textarea
-        v-model="form.description"
-        placeholder="Description"
-        class="w-full px-3 py-2 rounded-md border border-gray-300 dark:border-brand-700 dark:bg-brand-800"
-      />
+      <div>
+        <!-- renderMarkdown escapes all HTML, so v-html is safe here -->
+        <div
+          v-if="showPreview"
+          class="md-content min-h-16 w-full px-3 py-2 rounded-md border border-dashed border-gray-300 dark:border-brand-700 text-sm"
+          data-testid="description-preview"
+          v-html="renderMarkdown(form.description) || '<p>Nothing to preview</p>'"
+        ></div>
+        <textarea
+          v-else
+          v-model="form.description"
+          placeholder="Description"
+          rows="3"
+          class="w-full px-3 py-2 rounded-md border border-gray-300 dark:border-brand-700 dark:bg-brand-800"
+        />
+        <div
+          class="mt-0.5 flex items-center justify-between gap-2 text-xs text-gray-500 dark:text-brand-400"
+        >
+          <span>Markdown: **bold**, *italic*, `code`, - lists, [text](url)</span>
+          <button
+            type="button"
+            class="shrink-0 text-brand-600 dark:text-brand-300 hover:underline"
+            :title="showPreview ? 'Back to editing the description' : 'See how the description will look'"
+            @click="showPreview = !showPreview"
+          >
+            {{ showPreview ? "Edit" : "Preview" }}
+          </button>
+        </div>
+      </div>
       <div>
         <div class="flex items-center gap-2">
           <input

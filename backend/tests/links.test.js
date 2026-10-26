@@ -113,6 +113,50 @@ describe("Links API", () => {
 
   // ── GET /api/links (list) ──
 
+  describe("PUT /api/links/order", () => {
+    const reorder = (ids, who = cookie) =>
+      app.request("/api/links/order", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", Cookie: who },
+        body: JSON.stringify({ ids }),
+      });
+
+    it("saves the dragged order", async () => {
+      const a = (await createLink({ title: "A", url: "https://a.com" })).link;
+      const b = (await createLink({ title: "B", url: "https://b.com" })).link;
+      const c2 = (await createLink({ title: "C", url: "https://c.com" })).link;
+      const res = await reorder([c2.id, a.id, b.id]);
+      expect(res.status).toBe(200);
+      const list = await json(await app.request("/api/links", { headers: { Cookie: cookie } }));
+      expect(list.links.map((l) => l.title)).toEqual(["C", "A", "B"]);
+    });
+
+    it("refuses other people's links, repeats and junk", async () => {
+      const mine = (await createLink()).link;
+      const other = createAuthenticatedUser("other@example.com");
+      expect((await reorder([mine.id], other.cookie)).status).toBe(403);
+      expect((await reorder([mine.id, mine.id])).status).toBe(400);
+      expect((await reorder(["x"])).status).toBe(400);
+      expect((await reorder([])).status).toBe(400);
+    });
+  });
+
+  describe("random link", () => {
+    it("returns one of your links", async () => {
+      const { link } = await createLink({ title: "Only one" });
+      const data = await json(
+        await app.request("/api/links?random=1", { headers: { Cookie: cookie } }),
+      );
+      expect(data.link).toMatchObject({ id: link.id, title: "Only one" });
+    });
+
+    it("says so when the shelf is empty, and needs a login", async () => {
+      const res = await app.request("/api/links?random=1", { headers: { Cookie: cookie } });
+      expect(res.status).toBe(404);
+      expect((await app.request("/api/links?random=1")).status).toBe(401);
+    });
+  });
+
   describe("duplicate URL check", () => {
     const check = async (url, extra = "", who = cookie) =>
       json(

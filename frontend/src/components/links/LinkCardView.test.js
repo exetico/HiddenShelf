@@ -31,13 +31,13 @@ describe("LinkCardView", () => {
     });
   }
 
-  it("opens the menu after a long press and keeps the link from opening", async () => {
+  it("opens the details after a long press and keeps the link from opening", async () => {
     const wrapper = mountCard();
     await wrapper.trigger("touchstart");
     vi.advanceTimersByTime(500);
     await wrapper.trigger("touchend");
 
-    expect(wrapper.emitted("contextAction")[0][0].link).toEqual(link);
+    expect(wrapper.emitted("details")[0][0]).toEqual(link);
 
     const click = new MouseEvent("click", { cancelable: true, bubbles: true });
     wrapper.element.dispatchEvent(click);
@@ -51,7 +51,7 @@ describe("LinkCardView", () => {
     await wrapper.trigger("touchend");
     vi.advanceTimersByTime(500);
 
-    expect(wrapper.emitted("contextAction")).toBeUndefined();
+    expect(wrapper.emitted("details")).toBeUndefined();
     const click = new MouseEvent("click", { cancelable: true, bubbles: true });
     wrapper.element.dispatchEvent(click);
     expect(click.defaultPrevented).toBe(false);
@@ -62,7 +62,7 @@ describe("LinkCardView", () => {
     await wrapper.trigger("touchstart");
     await wrapper.trigger("touchmove");
     vi.advanceTimersByTime(600);
-    expect(wrapper.emitted("contextAction")).toBeUndefined();
+    expect(wrapper.emitted("details")).toBeUndefined();
   });
 
   it("filters by a tag when its chip is clicked", async () => {
@@ -94,6 +94,64 @@ describe("LinkCardView", () => {
       expect(mountCard().classes()).toEqual(
         expect.arrayContaining(["py-1", "sm:p-2"]),
       );
+    });
+  });
+
+  describe("descriptions and dragging", () => {
+    const withNote = { ...link, description: "Read *this*" };
+
+    it("shows a note icon that opens the details for links with a description", async () => {
+      const wrapper = mount(LinkCardView, {
+        props: { link: withNote },
+        global: { plugins: [pinia] },
+      });
+      const note = wrapper.find('[aria-label="Details for Grafana"]');
+      await note.trigger("click");
+      expect(wrapper.emitted("details")[0][0]).toEqual(withNote);
+      expect(wrapper.attributes("title")).toBe(link.url);
+      expect(mountCard().find('[aria-label="Details for Grafana"]').exists()).toBe(false);
+    });
+
+    it("has a drag handle only when it can be reordered", () => {
+      expect(mountCard().find(".drag-handle").exists()).toBe(false);
+      const wrapper = mount(LinkCardView, {
+        props: { link, reorderable: true, groupKey: 5 },
+        global: { plugins: [pinia] },
+      });
+      expect(wrapper.find(".drag-handle").attributes("title")).toBe("Drag to change the order");
+    });
+
+    it("emits a reorder when a link from the same category is dropped on it", async () => {
+      const make = (l) =>
+        mount(LinkCardView, {
+          props: { link: l, reorderable: true, groupKey: 5 },
+          global: { plugins: [pinia] },
+        });
+      const source = make({ ...link, id: 1 });
+      const target = make({ ...link, id: 2 });
+      const dataTransfer = { setData: vi.fn() };
+      await source.find(".drag-handle").trigger("mousedown");
+      await source.trigger("dragstart", { dataTransfer });
+      expect(dataTransfer.setData).toHaveBeenCalled();
+      target.element.getBoundingClientRect = () => ({ top: 0, height: 40 });
+      await target.trigger("dragover", { clientY: 30, dataTransfer });
+      await target.trigger("drop", { dataTransfer });
+      expect(target.emitted("reorder")[0][0]).toEqual({
+        draggedId: 1,
+        targetId: 2,
+        position: "after",
+        groupKey: 5,
+      });
+    });
+
+    it("a drag that didn't start at the handle is a normal URL drag", async () => {
+      const source = mount(LinkCardView, {
+        props: { link, reorderable: true, groupKey: 5 },
+        global: { plugins: [pinia] },
+      });
+      const dataTransfer = { setData: vi.fn() };
+      await source.trigger("dragstart", { dataTransfer });
+      expect(dataTransfer.setData).not.toHaveBeenCalled();
     });
   });
 });
