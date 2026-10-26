@@ -166,6 +166,16 @@ if (process.env.NODE_ENV !== "test") {
         "[server] WARNING: SMTP_HOST is not set, so login emails go to the public test service smtpbucket.com. Set SMTP_* in .env before going live.",
       );
     }
+    // example.com has no mail setup, so receivers treat this From as forged
+    if (
+      config.emailLoginEnabled &&
+      /@example\.com$/i.test(config.fromEmail) &&
+      !/\/\/(localhost|127\.0\.0\.1)(:|\/|$)/.test(config.siteUrl)
+    ) {
+      console.warn(
+        "[server] WARNING: FROM_EMAIL is still an example.com address, so login emails will likely be rejected or land in spam. Use an address on your own domain.",
+      );
+    }
   });
 }
 

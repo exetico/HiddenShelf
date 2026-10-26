@@ -9,6 +9,9 @@ import { linkVisitsApi } from "@/services/api/linkVisitsApi";
 import { useToastStore } from "@/stores/toast";
 import { useDialogStore } from "@/stores/dialog";
 
+// The links request running now, so later callers can wait for it
+let linksInFlight = null;
+
 export const useAppStore = defineStore("app", {
   state: () => ({
     loading: false,
@@ -117,35 +120,43 @@ export const useAppStore = defineStore("app", {
       set("--brand-950", r - 85, g - 85, b - 85);
     },
     async loadLinks({ reset = false } = {}) {
-      if (this._loadingLinks) return;
+      if (this._loadingLinks) return linksInFlight;
       this._loadingLinks = true;
-      try {
-        if (reset) {
-          this.page = 1;
-        }
-        const response = await linksApi.list({
-          page: this.page,
-          limit: this.settings.links_per_page,
-          categoryId:
-            this.filterCategory === "uncategorized" ? "" : this.filterCategory,
-          search: this.search,
-          tagId: this.filterTag,
-        });
-
-        this.links = reset
-          ? response.links
-          : [...this.links, ...response.links];
-        // A short page means the server has nothing more, even if the count
-        // changed in between (e.g. a link deleted elsewhere)
-        const lastPage =
-          response.links.length < response.pagination.limit ||
-          response.pagination.page >= response.pagination.pages;
-        this.total = lastPage ? this.links.length : response.pagination.total;
-      } finally {
+      linksInFlight = this._fetchLinks(reset).finally(() => {
         this._loadingLinks = false;
+        linksInFlight = null;
+      });
+      return linksInFlight;
+    },
+    async _fetchLinks(reset) {
+      if (reset) {
+        this.page = 1;
       }
+      const response = await linksApi.list({
+        page: this.page,
+        limit: this.settings.links_per_page,
+        categoryId:
+          this.filterCategory === "uncategorized" ? "" : this.filterCategory,
+        search: this.search,
+        tagId: this.filterTag,
+      });
+
+      this.links = reset
+        ? response.links
+        : [...this.links, ...response.links];
+      // A short page means the server has nothing more, even if the count
+      // changed in between (e.g. a link deleted elsewhere)
+      const lastPage =
+        response.links.length < response.pagination.limit ||
+        response.pagination.page >= response.pagination.pages;
+      this.total = lastPage ? this.links.length : response.pagination.total;
     },
     async loadMore() {
+      // Wait out a load already running (e.g. the first page on start-up)
+      // instead of dropping the request, or infinite scroll can stall
+      while (this._loadingLinks && linksInFlight) {
+        await linksInFlight.catch(() => {});
+      }
       if (!this.hasMore || this._loadingLinks) return;
       this.page += 1;
       await this.loadLinks();

@@ -1,5 +1,5 @@
 /**
- * Tests for the backup, restore and upgrade targets in the Makefile.
+ * Tests for the up, backup, restore and upgrade targets in the Makefile.
  *
  * The real Makefile runs in a temp folder with fake docker, sqlite3 and git
  * commands on PATH. The fake docker logs each call and runs the "sh -c"
@@ -47,16 +47,21 @@ new Database(file, { fileMustExist: true }).backup(target).catch((err) => {
 
 const FAKE_GIT = `#!/bin/sh
 echo "git $*" >> "$FAKE_LOG"
+case "$1" in
+  fetch) [ -z "$FAKE_OFFLINE" ] ;;
+  rev-list) echo "\${FAKE_BEHIND:-0}" ;;
+esac
 `;
 
 describe.skipIf(!hasMake)("Makefile data targets", () => {
   let dir, log, env;
 
-  function make(args, { running = false } = {}) {
+  function make(args, { running = false, input, extraEnv = {} } = {}) {
     const result = spawnSync("make", ["--no-print-directory", ...args], {
       cwd: dir,
-      env: { ...env, FAKE_RUNNING: running ? "1" : "" },
+      env: { ...env, FAKE_RUNNING: running ? "1" : "", ...extraEnv },
       encoding: "utf8",
+      input,
     });
     return { ...result, output: result.stdout + result.stderr };
   }
@@ -201,6 +206,63 @@ describe.skipIf(!hasMake)("Makefile data targets", () => {
       expect(res.output).toContain("db/backups/missing.sqlite not found");
       expect(calls()).toEqual([]);
       expect(titles("db/database.sqlite")).toEqual(["first"]);
+    });
+  });
+
+  describe("up", () => {
+    const pulled = () => calls().includes("git pull --ff-only");
+
+    it("never asks or pulls without a terminal (scripts, cron)", () => {
+      const res = make(["up"], { extraEnv: { FAKE_BEHIND: "3" } });
+      expect(res.status).toBe(0);
+      expect(res.output).not.toContain("[Y/n]");
+      expect(calls()).toEqual(["docker compose up -d --build web"]);
+    });
+
+    it("asks when there is new code, and updates on yes", () => {
+      // PULL=ask stands in for a terminal, which the test can't have
+      const res = make(["up", "PULL=ask"], { input: "y\n", extraEnv: { FAKE_BEHIND: "3" } });
+      expect(res.status).toBe(0);
+      expect(res.output).toContain("3 new commit(s) available. Back up and update before starting? [Y/n]");
+      expect(pulled()).toBe(true);
+      expect(calls().at(-1)).toBe("docker compose up -d --build web");
+    });
+
+    it("updates when Enter is pressed (yes is the default)", () => {
+      make(["up", "PULL=ask"], { input: "\n", extraEnv: { FAKE_BEHIND: "1" } });
+      expect(pulled()).toBe(true);
+    });
+
+    it("starts the current code on no", () => {
+      const res = make(["up", "PULL=ask"], { input: "n\n", extraEnv: { FAKE_BEHIND: "2" } });
+      expect(res.status).toBe(0);
+      expect(pulled()).toBe(false);
+      expect(calls().at(-1)).toBe("docker compose up -d --build web");
+    });
+
+    it("doesn't ask when the code is up to date", () => {
+      const res = make(["up", "PULL=ask"], { input: "y\n" });
+      expect(res.output).toContain("The code is up to date");
+      expect(res.output).not.toContain("[Y/n]");
+      expect(pulled()).toBe(false);
+    });
+
+    it("starts anyway when it can't check for updates", () => {
+      const res = make(["up", "PULL=ask"], { input: "y\n", extraEnv: { FAKE_OFFLINE: "1" } });
+      expect(res.status).toBe(0);
+      expect(res.output).toContain("Could not check for updates");
+      expect(pulled()).toBe(false);
+      expect(calls().at(-1)).toBe("docker compose up -d --build web");
+    });
+
+    it("PULL=yes updates without asking, PULL=no skips the check", () => {
+      make(["up", "PULL=yes"]);
+      expect(pulled()).toBe(true);
+      expect(calls()).not.toContain("git fetch --quiet");
+
+      fs.writeFileSync(log, "");
+      make(["up", "PULL=no"], { extraEnv: { FAKE_BEHIND: "5" } });
+      expect(calls()).toEqual(["docker compose up -d --build web"]);
     });
   });
 

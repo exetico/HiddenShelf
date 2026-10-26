@@ -4,7 +4,8 @@
 help:
 	@echo "Hidden Shelf - Available commands:"
 	@echo ""
-	@echo "  make up              - Build and start the app (production)"
+	@echo "  make up              - Build and start the app; offers to update the code first"
+	@echo "                         (PULL=yes updates without asking, PULL=no never asks)"
 	@echo "  make upgrade         - Back up the database, pull the latest code, rebuild"
 	@echo "  make backup          - Copy the database to db/backups/ (OUT=path also copies it there)"
 	@echo "  make restore FILE=.. - Replace the database with a backup from db/"
@@ -19,9 +20,36 @@ help:
 	@echo "  make clean           - Stop and remove volumes (your db/ folder is kept)"
 	@echo "  make install         - Install dependencies locally"
 
-# Build and start the app (the image includes the built frontend)
+# Build and start the app (the image includes the built frontend).
+# At a terminal it first checks for new code and asks before updating;
+# saying yes runs "make upgrade" (backup, git pull, rebuild). Scripts and
+# cron jobs have no terminal, so they are never asked and never pull.
+# PULL=yes updates without asking, PULL=no skips the check.
+PULL ?=
 up:
-	docker compose up -d --build web
+	@pull="$(PULL)"; \
+	if [ -z "$$pull" ]; then if [ -t 0 ]; then pull=ask; else pull=no; fi; fi; \
+	if [ "$$pull" = ask ] && git rev-parse --is-inside-work-tree >/dev/null 2>&1; then \
+		if ! git fetch --quiet 2>/dev/null; then \
+			echo "Could not check for updates (offline?), starting the current version"; \
+			pull=no; \
+		else \
+			behind=$$(git rev-list --count HEAD..@{upstream} 2>/dev/null || echo 0); \
+			if [ "$${behind:-0}" -gt 0 ]; then \
+				printf "%s new commit(s) available. Back up and update before starting? [Y/n] " "$$behind"; \
+				read answer || answer=n; \
+				case "$$answer" in [nN]*) pull=no ;; *) pull=yes ;; esac; \
+			else \
+				echo "The code is up to date"; \
+				pull=no; \
+			fi; \
+		fi; \
+	fi; \
+	if [ "$$pull" = yes ]; then \
+		$(MAKE) --no-print-directory upgrade; \
+	else \
+		docker compose up -d --build web; \
+	fi
 
 # Runs a shell command in the app container, running or not. Files go
 # through the container (as the app's user), so db/ ownership never matters.

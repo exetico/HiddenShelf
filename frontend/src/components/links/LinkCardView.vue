@@ -193,12 +193,15 @@ function onClick(event) {
            the link to copy and its QR code. On phones: the long-press sheet. -->
       <button
         v-if="link.is_public"
-        class="hidden md:inline text-gray-400 hover:text-green-600 dark:text-brand-500 dark:hover:text-green-400 text-sm shrink-0 opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity"
+        type="button"
+        class="hidden md:inline-flex items-center gap-0.5 px-1.5 rounded-full border border-green-300 text-green-700 bg-green-50 hover:bg-green-100 dark:border-green-700 dark:bg-green-900/30 dark:text-green-300 dark:hover:bg-green-900/60 text-xs shrink-0 opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity"
         title="Public link: copy it or show a QR code"
+        aria-label="Share the public link"
         data-testid="public-copy"
         @click.stop.prevent="publicShare.open(link)"
       >
-        <i class="mdi mdi-earth"></i>
+        <i class="mdi mdi-earth" aria-hidden="true"></i>
+        <i class="mdi mdi-qrcode" aria-hidden="true"></i>
       </button>
       <!-- Reorder arrows (desktop only) -->
       <div

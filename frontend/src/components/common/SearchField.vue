@@ -40,23 +40,31 @@ function onEscape(event) {
       type="search"
       :placeholder="placeholder"
       v-bind="$attrs"
-      class="search-field w-full pl-8 pr-9 py-1.5 rounded-md border border-gray-300 dark:border-brand-700 bg-white dark:bg-brand-800 text-sm"
+      class="search-field w-full pl-8 pr-14 md:pr-16 py-1.5 rounded-md border border-gray-300 dark:border-brand-700 bg-white dark:bg-brand-800 text-sm"
       @keydown.escape="onEscape"
     />
+    <!-- Drawn like the "/" hint so the two read as one family; the button
+         itself is larger than the chip so it stays easy to tap -->
     <button
       v-if="model"
       type="button"
-      class="absolute right-1.5 top-1/2 -translate-y-1/2 w-6 h-6 flex items-center justify-center rounded-full bg-gray-200 text-gray-700 hover:bg-gray-300 dark:bg-brand-600 dark:text-white dark:hover:bg-brand-500"
-      title="Clear the search"
+      class="group absolute right-1 top-1/2 -translate-y-1/2 p-1 flex items-center"
+      title="Clear the search (Esc)"
       aria-label="Clear the search"
       data-testid="search-clear"
       @click="clear"
     >
-      <i class="mdi mdi-close text-sm leading-none" aria-hidden="true"></i>
+      <span
+        class="flex items-center gap-0.5 px-1.5 rounded border border-gray-300 dark:border-brand-600 text-[10px] leading-4 font-sans text-gray-600 dark:text-brand-200 group-hover:bg-gray-100 group-hover:text-gray-900 dark:group-hover:bg-brand-700 dark:group-hover:text-white"
+        data-testid="search-clear-chip"
+      >
+        <i class="mdi mdi-close leading-none" aria-hidden="true"></i>
+        <span class="hidden md:inline">Esc</span>
+      </span>
     </button>
     <kbd
       v-else-if="hint"
-      class="absolute right-2 top-1/2 -translate-y-1/2 px-1.5 rounded border border-gray-300 dark:border-brand-600 text-[10px] text-gray-400 dark:text-brand-400 font-sans pointer-events-none"
+      class="absolute right-2 top-1/2 -translate-y-1/2 px-1.5 rounded border border-gray-300 dark:border-brand-600 text-[10px] leading-4 text-gray-400 dark:text-brand-400 font-sans pointer-events-none"
       aria-hidden="true"
       >{{ hint }}</kbd
     >

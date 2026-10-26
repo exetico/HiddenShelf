@@ -146,15 +146,19 @@ const iconColor = computed(() => {
           title="Direct redirect: the public link goes straight to the site"
           data-testid="redirect-indicator"
         ></i>
-        <!-- Public: the globe says so and opens the link to copy, with a QR code -->
+        <!-- Public: a labelled chip, so it reads as something to press.
+             It opens the link to copy, with a QR code -->
         <button
           v-if="link.is_public"
-          class="text-sm text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300"
+          type="button"
+          class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full border border-green-300 bg-green-50 text-green-700 hover:bg-green-100 dark:border-green-700 dark:bg-green-900/30 dark:text-green-300 dark:hover:bg-green-900/60"
           title="Public link: copy it or show a QR code"
           data-testid="public-indicator"
           @click="publicShare.open(link)"
         >
-          <i class="mdi mdi-earth"></i>
+          <i class="mdi mdi-earth" aria-hidden="true"></i>
+          <span>Share</span>
+          <i class="mdi mdi-qrcode" aria-hidden="true"></i>
         </button>
         <i
           v-else

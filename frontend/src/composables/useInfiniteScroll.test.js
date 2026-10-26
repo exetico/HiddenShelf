@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { defineComponent, h } from "vue";
+import { defineComponent, h, ref } from "vue";
 import { mount, flushPromises } from "@vue/test-utils";
 import { useInfiniteScroll } from "@/composables/useInfiniteScroll";
 
@@ -65,5 +65,41 @@ describe("useInfiniteScroll", () => {
     observerCallback([{ isIntersecting: true }]);
     await flushPromises();
     expect(loadMore).toHaveBeenCalledTimes(1);
+  });
+
+  it("carries on when the list grows while the bottom stays in view", async () => {
+    // The first page is still loading when the sentinel shows, so the first
+    // pull adds nothing. When that page lands, loading must go on by itself,
+    // because the observer will not fire again while nothing moves
+    const items = ref(0);
+    let firstPageDone = false;
+    const loadMore = vi.fn(async () => {
+      if (firstPageDone) items.value += 20;
+    });
+    mountWith({
+      hasMore: () => items.value < 60,
+      loadMore,
+      count: () => items.value,
+    });
+    observerCallback([{ isIntersecting: true }]);
+    await flushPromises();
+    expect(loadMore).toHaveBeenCalledTimes(1);
+
+    firstPageDone = true;
+    items.value = 20;
+    await flushPromises();
+    // 20 -> 40 -> 60
+    expect(items.value).toBe(60);
+    expect(loadMore).toHaveBeenCalledTimes(3);
+  });
+
+  it("does not load on list changes while the bottom is out of view", async () => {
+    const items = ref(20);
+    const loadMore = vi.fn(async () => {});
+    mountWith({ hasMore: () => true, loadMore, count: () => items.value });
+    observerCallback([{ isIntersecting: false }]);
+    items.value = 40;
+    await flushPromises();
+    expect(loadMore).not.toHaveBeenCalled();
   });
 });

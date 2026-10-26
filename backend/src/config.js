@@ -51,6 +51,12 @@ const config = {
   smtpEncryption: process.env.SMTP_ENCRYPTION || "", // 'tls' or 'ssl' or ''
   fromEmail: process.env.FROM_EMAIL || "noreply@example.com",
   fromName: process.env.FROM_NAME || "Hidden Shelf",
+  // Optional DKIM signing, for SMTP servers that don't sign mail themselves.
+  // The key is PEM text (\n for line breaks) or a file inside the container
+  dkimDomain: process.env.DKIM_DOMAIN || "",
+  dkimSelector: process.env.DKIM_SELECTOR || "",
+  dkimPrivateKey: process.env.DKIM_PRIVATE_KEY || "",
+  dkimPrivateKeyFile: process.env.DKIM_PRIVATE_KEY_FILE || "",
 
   // Magic link
   magicLinkExpiry: parseInt(

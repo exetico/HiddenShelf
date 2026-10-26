@@ -21,9 +21,8 @@ describe("SearchField", () => {
     expect(wrapper.find('[data-testid="search-clear"]').exists()).toBe(false);
     await wrapper.find("input").setValue("grafana");
     const clear = wrapper.find('[data-testid="search-clear"]');
-    expect(clear.attributes("title")).toBe("Clear the search");
-    // A solid chip, not the browser's faint little x
-    expect(clear.classes()).toEqual(expect.arrayContaining(["bg-gray-200", "dark:bg-brand-600"]));
+    expect(clear.attributes("title")).toBe("Clear the search (Esc)");
+    expect(clear.text()).toContain("Esc");
     await clear.trigger("click");
     expect(wrapper.emitted("update:modelValue").at(-1)).toEqual([""]);
     expect(document.activeElement).toBe(wrapper.find("input").element);
@@ -44,6 +43,18 @@ describe("SearchField", () => {
     expect(wrapper.find("kbd").text()).toBe("/");
     await wrapper.find("input").setValue("a");
     expect(wrapper.find("kbd").exists()).toBe(false);
+    wrapper.unmount();
+  });
+
+  it("draws the clear button in the same chip style as the hint", async () => {
+    const wrapper = mountField({ hint: "/" });
+    const hintClasses = wrapper.find("kbd").classes();
+    await wrapper.find("input").setValue("a");
+    const chip = wrapper.find('[data-testid="search-clear-chip"]').classes();
+    for (const cls of ["rounded", "border", "border-gray-300", "dark:border-brand-600", "px-1.5", "text-[10px]", "leading-4", "font-sans"]) {
+      expect(hintClasses).toContain(cls);
+      expect(chip).toContain(cls);
+    }
     wrapper.unmount();
   });
 });
