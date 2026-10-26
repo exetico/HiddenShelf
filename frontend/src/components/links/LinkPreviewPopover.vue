@@ -2,28 +2,31 @@
 import { computed } from "vue";
 import { useLinkPreviewStore } from "@/stores/linkPreview";
 import { renderMarkdown } from "@/lib/markdown";
+import { formatDate } from "@/lib/date";
 
 // Desktop hover card with a link's description; see stores/linkPreview.js
 const preview = useLinkPreviewStore();
 
-const WIDTH = 380;
+const WIDTH = 360;
+const MAX_HEIGHT = 288; // max-h-72
+const GAP = 8;
+
+// Beside the note icon (right, or left when there's no room), so the
+// links above and below stay visible. Kept on screen vertically.
 const style = computed(() => {
   const rect = preview.rect;
   if (!rect) return {};
-  const margin = 8;
-  const left = Math.max(
-    margin,
-    Math.min(rect.left + 28, window.innerWidth - WIDTH - margin),
-  );
-  // Below the link, or above it when it sits near the bottom of the screen
-  const below = rect.bottom + 220 < window.innerHeight;
-  return below
-    ? { left: `${left}px`, top: `${rect.bottom + 4}px`, width: `${WIDTH}px` }
-    : {
-        left: `${left}px`,
-        bottom: `${window.innerHeight - rect.top + 4}px`,
-        width: `${WIDTH}px`,
-      };
+  const vw = window.innerWidth;
+  const vh = window.innerHeight;
+  let left = rect.right + GAP;
+  if (left + WIDTH > vw - GAP) left = rect.left - WIDTH - GAP;
+  if (left < GAP) {
+    // Narrow window: fall back to just below the icon
+    left = Math.max(GAP, Math.min(rect.left, vw - WIDTH - GAP));
+    return { left: `${left}px`, top: `${rect.bottom + 4}px`, width: `${WIDTH}px` };
+  }
+  const top = Math.max(GAP, Math.min(rect.top - GAP, vh - MAX_HEIGHT - GAP));
+  return { left: `${left}px`, top: `${top}px`, width: `${WIDTH}px` };
 });
 </script>
 
@@ -51,6 +54,12 @@ const style = computed(() => {
           >#{{ tag.name }}</span
         >
       </div>
+      <p
+        v-if="preview.link.created_at"
+        class="mt-2 text-xs text-gray-400 dark:text-brand-500"
+      >
+        Added {{ formatDate(preview.link.created_at) }}
+      </p>
     </div>
   </Teleport>
 </template>

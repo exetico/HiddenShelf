@@ -1,14 +1,15 @@
 import { defineStore } from "pinia";
 
-const SHOW_DELAY = 450; // hovering past a link shouldn't flash a card
+const SHOW_DELAY = 250; // passing over the note icon shouldn't flash a card
 const HIDE_DELAY = 150; // time to move the pointer into the card
 
 let showTimer = null;
 let hideTimer = null;
 
 /**
- * The hover card on desktop that shows a link's description. Only links
- * with a description get one, so it never adds noise to the rest.
+ * The hover card on desktop that shows a link's description. It opens from
+ * the small note icon (not the whole row), so moving the mouse down the
+ * list never covers the next link. Only links with a description have one.
  */
 export const useLinkPreviewStore = defineStore("linkPreview", {
   state: () => ({

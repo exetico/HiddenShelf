@@ -13,6 +13,8 @@ export const useAppStore = defineStore("app", {
   state: () => ({
     loading: false,
     links: [],
+    // Every favorite link, whatever page of `links` it's on
+    favoriteLinks: [],
     categories: [],
     tags: [],
     sharedCategories: [],
@@ -63,7 +65,7 @@ export const useAppStore = defineStore("app", {
         this.loadSharedCategories(),
         this.loadAppConfig(),
       ]);
-      await this.loadLinks({ reset: true });
+      await Promise.all([this.loadLinks({ reset: true }), this.loadFavorites()]);
       await this.checkPendingShare();
     },
     async withLoading(fn) {
@@ -148,23 +150,63 @@ export const useAppStore = defineStore("app", {
       this.page += 1;
       await this.loadLinks();
     },
+    async loadFavorites() {
+      try {
+        this.favoriteLinks = await linksApi.favorites();
+      } catch {
+        // Favorites are a shortcut; the shelf works without them
+      }
+    },
+    async refreshLinks() {
+      await Promise.all([this.loadLinks({ reset: true }), this.loadFavorites()]);
+    },
     async createLink(payload) {
       await linksApi.create(payload);
-      await this.loadLinks({ reset: true });
+      await this.refreshLinks();
       const toastStore = useToastStore();
       toastStore.success("Link created");
     },
     async updateLink(id, payload) {
       await linksApi.update(id, payload);
-      await this.loadLinks({ reset: true });
+      await this.refreshLinks();
       const toastStore = useToastStore();
       toastStore.success("Link updated");
     },
+    /** Star or unstar a link; shown at once, put back if saving fails */
+    async toggleLinkFavorite(link) {
+      const value = link.is_favorite ? 0 : 1;
+      const setEverywhere = (v) => {
+        for (const l of this.links) if (l.id === link.id) l.is_favorite = v;
+        link.is_favorite = v;
+      };
+      const previousFavorites = this.favoriteLinks;
+      setEverywhere(value);
+      this.favoriteLinks = value
+        ? [...this.favoriteLinks, { ...link, is_favorite: 1 }].sort((a, b) =>
+            a.title.localeCompare(b.title, undefined, { sensitivity: "base" }),
+          )
+        : this.favoriteLinks.filter((l) => l.id !== link.id);
+      try {
+        await linksApi.update(link.id, { is_favorite: !!value });
+      } catch (error) {
+        setEverywhere(value ? 0 : 1);
+        this.favoriteLinks = previousFavorites;
+        useToastStore().error(error.message || "Couldn't save the favorite");
+      }
+    },
+    /** Moves the link to the trash; the toast can undo it */
     async deleteLink(id) {
       await linksApi.remove(id);
-      await this.loadLinks({ reset: true });
-      const toastStore = useToastStore();
-      toastStore.success("Link deleted");
+      await this.refreshLinks();
+      useToastStore().success("Moved to the trash", {
+        action: { label: "Undo", run: () => this.restoreLink(id) },
+        duration: 6000,
+      });
+    },
+    async restoreLink(id) {
+      await linksApi.restore(id);
+      await this.refreshLinks();
+      useToastStore().success("Link restored");
     },
     /** Save a dragged order; `ids` is one category's links, in order */
     async reorderLinks(ids) {

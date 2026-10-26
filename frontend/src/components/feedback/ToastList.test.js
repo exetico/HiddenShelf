@@ -87,4 +87,24 @@ describe("ToastList", () => {
     const wrapper = mountToastList();
     expect(wrapper.find("div.fixed").classes()).toContain("z-[1000]");
   });
+
+  it("shows an action button that runs and closes the toast", async () => {
+    const store = useToastStore();
+    const run = vi.fn();
+    store.success("Moved to the trash", { action: { label: "Undo", run }, duration: 6000 });
+    const wrapper = mountToastList();
+    const button = wrapper.find('button[title="Undo"]');
+    await button.trigger("click");
+    expect(run).toHaveBeenCalled();
+    expect(store.items).toHaveLength(0);
+  });
+
+  it("keeps a toast with an action up for its own duration", () => {
+    const store = useToastStore();
+    store.success("Moved", { action: { label: "Undo", run: vi.fn() }, duration: 6000 });
+    vi.advanceTimersByTime(4000);
+    expect(store.items).toHaveLength(1);
+    vi.advanceTimersByTime(2000);
+    expect(store.items).toHaveLength(0);
+  });
 });

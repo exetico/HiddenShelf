@@ -32,7 +32,7 @@ categories.get("/", requireAuth(), (c) => {
             (SELECT COUNT(*) FROM category_shares cs WHERE cs.category_id = c.id) as is_shared,
             (SELECT COUNT(*) FROM category_share_members csm WHERE csm.category_id = c.id) as member_count
      FROM categories c
-     LEFT JOIN links l ON c.id = l.category_id
+     LEFT JOIN links l ON c.id = l.category_id AND l.deleted_at IS NULL
      WHERE c.user_id = ?
      GROUP BY c.id
      ORDER BY c.position ASC, c.created_at DESC`,

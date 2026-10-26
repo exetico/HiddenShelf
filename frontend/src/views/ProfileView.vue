@@ -86,6 +86,8 @@ onMounted(async () => {
     await nextTick();
     sharingSection.value?.scrollIntoView({ behavior: "smooth", block: "start" });
   }
+  // ...and its Import / export button with ?section=data
+  if (route.query.section === "data") showImportExport.value = true;
   await loadOwnedShares();
 });
 

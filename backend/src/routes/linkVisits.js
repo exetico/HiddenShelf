@@ -54,7 +54,7 @@ linkVisits.post("/", async (c) => {
   if (!hash) return errorResponse(c, "Link hash required");
 
   const link = db
-    .prepare("SELECT id FROM links WHERE hash = ? AND is_public = 1")
+    .prepare("SELECT id FROM links WHERE hash = ? AND is_public = 1 AND deleted_at IS NULL")
     .get(hash);
   if (!link) return errorResponse(c, "Link not found or is private", 404);
 
@@ -151,7 +151,7 @@ linkVisits.get("/", requireAuth(), (c) => {
       `SELECT l.id, l.title, l.hash, COUNT(lv.id) as visit_count
      FROM links l
      LEFT JOIN link_visits lv ON l.id = lv.link_id AND lv.visited_at >= datetime('now', '-' || ? || ' days')
-     WHERE l.user_id = ? AND l.is_public = 1
+     WHERE l.user_id = ? AND l.is_public = 1 AND l.deleted_at IS NULL
      GROUP BY l.id
      ORDER BY visit_count DESC`,
     )

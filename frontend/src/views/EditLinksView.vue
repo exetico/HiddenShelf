@@ -3,12 +3,12 @@ import { onMounted, onUnmounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useAppStore } from "@/stores/app";
 import { useToastStore } from "@/stores/toast";
-import { useDialogStore } from "@/stores/dialog";
 import { appUrl } from "@/lib/appUrl";
 import LinkCardEdit from "@/components/links/LinkCardEdit.vue";
 import LinkFormModal from "@/components/links/LinkFormModal.vue";
 import CategoryManager from "@/components/categories/CategoryManager.vue";
 import TagManager from "@/components/tags/TagManager.vue";
+import TrashModal from "@/components/links/TrashModal.vue";
 import ActiveTagFilter from "@/components/tags/ActiveTagFilter.vue";
 
 const route = useRoute();
@@ -19,6 +19,7 @@ const toastStore = useToastStore();
 const showLinkModal = ref(false);
 const showCategoryModal = ref(false);
 const showTagModal = ref(false);
+const showTrash = ref(false);
 const activeLink = ref(null);
 
 // Search + filter
@@ -36,6 +37,14 @@ watch(localSearch, (val) => {
 onUnmounted(() => {
   clearTimeout(searchTimeout);
 });
+
+// The top bar's search (desktop) sets the store directly
+watch(
+  () => appStore.search,
+  (val) => {
+    if (val !== localSearch.value) localSearch.value = val;
+  },
+);
 
 watch(localFilterCategory, (val) => {
   appStore.filterCategory = val;
@@ -59,7 +68,18 @@ onMounted(async () => {
   if (route.query.editId) {
     openEditById(route.query.editId);
   }
+  if (route.query.new) openCreateFromRoute();
 });
+
+// "Add link" in the top bar comes here with ?new=1
+function openCreateFromRoute() {
+  openCreate();
+  router.replace({ name: "edit" });
+}
+watch(
+  () => route.query.new,
+  (isNew) => isNew && openCreateFromRoute(),
+);
 
 watch(
   () => route.query.editId,
@@ -97,12 +117,13 @@ async function handleSave(payload) {
   showLinkModal.value = false;
 }
 
+// Goes to the trash; the toast has Undo
 async function handleDelete(id) {
-  const link = appStore.links.find((l) => l.id === id);
-  const ok = await useDialogStore().confirmDelete({
-    title: `Delete "${link?.title || "this link"}"?`,
-  });
-  if (ok) await appStore.deleteLink(id);
+  try {
+    await appStore.deleteLink(id);
+  } catch (error) {
+    toastStore.error(error.message || "Couldn't delete the link");
+  }
 }
 
 async function copyPublic(hash) {
@@ -114,9 +135,10 @@ async function copyPublic(hash) {
 <template>
   <section class="space-y-3 sm:space-y-4">
     <div class="flex flex-wrap gap-2">
+      <!-- From md up, "Add link" is in the top bar -->
       <button
         title="Add a new link"
-        class="px-3 py-1.5 sm:px-4 sm:py-2 text-sm sm:text-base rounded-md bg-brand-600 text-white hover:bg-brand-700"
+        class="md:hidden px-3 py-1.5 sm:px-4 sm:py-2 text-sm sm:text-base rounded-md bg-brand-600 text-white hover:bg-brand-700"
         @click="openCreate"
       >
         + Add link
@@ -135,6 +157,15 @@ async function copyPublic(hash) {
       >
         Tags
       </button>
+      <button
+        title="Deleted links: restore them or delete them for good"
+        class="ml-auto px-3 py-1.5 sm:px-4 sm:py-2 text-sm sm:text-base rounded-md border border-gray-300 dark:border-brand-700 text-gray-700 dark:text-brand-200 hover:bg-gray-100 dark:hover:bg-brand-800"
+        data-testid="open-trash"
+        @click="showTrash = true"
+      >
+        <i class="mdi mdi-delete-outline" aria-hidden="true"></i>
+        <span class="max-sm:sr-only"> Trash</span>
+      </button>
     </div>
 
     <!-- Search and category filter -->
@@ -145,11 +176,12 @@ async function copyPublic(hash) {
         v-model="localSearch"
         type="search"
         placeholder="Search links..."
-        class="flex-1 min-w-0 sm:min-w-[200px] px-3 py-1.5 sm:py-2 rounded-md border border-gray-300 dark:border-brand-700 dark:bg-brand-800"
+        class="md:hidden flex-1 min-w-0 sm:min-w-[200px] px-3 py-1.5 sm:py-2 rounded-md border border-gray-300 dark:border-brand-700 dark:bg-brand-800"
+        data-testid="page-search"
       />
       <select
         v-model="localFilterCategory"
-        class="max-w-[40%] sm:max-w-none px-2 sm:px-3 py-1.5 sm:py-2 rounded-md border border-gray-300 dark:border-brand-700 dark:bg-brand-800"
+        class="max-w-[40%] sm:max-w-none md:max-w-xs px-2 sm:px-3 py-1.5 sm:py-2 rounded-md border border-gray-300 dark:border-brand-700 dark:bg-brand-800"
       >
         <option value="">All Categories</option>
         <option
@@ -217,6 +249,8 @@ async function copyPublic(hash) {
       @update="(id, payload) => appStore.updateCategory(id, payload)"
       @remove="appStore.deleteCategory"
     />
+
+    <TrashModal :open="showTrash" @close="showTrash = false" />
 
     <TagManager
       :open="showTagModal"

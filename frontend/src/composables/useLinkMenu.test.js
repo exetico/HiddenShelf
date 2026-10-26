@@ -42,10 +42,11 @@ describe("useLinkMenu", () => {
       "Copy public link",
       "—",
       "Edit",
+      "Add to favorites",
       "Set position…",
       "Reset position",
       "—",
-      "Delete",
+      "Move to trash",
     ]);
   });
 
@@ -64,14 +65,21 @@ describe("useLinkMenu", () => {
     );
   });
 
-  it("asks before it deletes", async () => {
+  it("moves a link to the trash without asking (the toast can undo)", async () => {
     const { items } = useLinkMenu();
-    items(link()).find((i) => i.label === "Delete").action();
-    const dialog = useDialogStore();
-    expect(dialog.current).toMatchObject({ title: 'Delete "Docs"?', danger: true });
-    dialog.close(true);
+    items(link()).find((i) => i.label === "Move to trash").action();
     await flushPromises();
+    expect(useDialogStore().current).toBeFalsy();
     expect(appStore.deleteLink).toHaveBeenCalledWith(3);
+  });
+
+  it("stars and unstars a link", () => {
+    appStore.toggleLinkFavorite = vi.fn();
+    const { items } = useLinkMenu();
+    items(link()).find((i) => i.label === "Add to favorites").action();
+    expect(appStore.toggleLinkFavorite).toHaveBeenCalledWith(expect.objectContaining({ id: 3 }));
+    const starred = items(link({ is_favorite: 1 })).find((i) => i.icon === "mdi-star-off-outline");
+    expect(starred.label).toBe("Remove from favorites");
   });
 
   it("sets a position through the prompt", async () => {

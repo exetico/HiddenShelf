@@ -6,6 +6,8 @@ import { useLinkDetailsStore } from "@/stores/linkDetails";
 import { useLinkMenu } from "@/composables/useLinkMenu";
 import { renderMarkdown } from "@/lib/markdown";
 import { appUrl } from "@/lib/appUrl";
+import { formatDate } from "@/lib/date";
+import LinkQrCode from "@/components/links/LinkQrCode.vue";
 
 // Everything about one link, with previous/next (buttons, swipe or arrow
 // keys) through the links on screen. See stores/linkDetails.js.
@@ -25,15 +27,18 @@ const category = computed(() => {
   );
 });
 
-const addedOn = computed(() => {
-  const value = link.value?.created_at;
-  if (!value) return "";
-  return new Date(value.replace(" ", "T")).toLocaleDateString(undefined, {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  });
-});
+const addedOn = computed(() => formatDate(link.value?.created_at));
+// Links in a category someone shared with you are read-only
+const own = computed(() => !link.value?.is_from_shared_category);
+const publicUrl = computed(() =>
+  link.value?.is_public && link.value?.hash ? appUrl(`/h/${link.value.hash}`) : "",
+);
+
+const showQr = ref(false);
+watch(
+  () => link.value?.id,
+  () => (showQr.value = false),
+);
 
 function go(step) {
   direction.value = step > 0 ? "next" : "prev";
@@ -50,11 +55,14 @@ async function copy(text, message) {
   }
 }
 
-// The menu's actions (edit, move, delete) change the list, so the sheet
-// steps aside first
-function openMenu(event, current) {
+// Editing and deleting change the list, so the sheet steps aside first
+function edit(current) {
   details.close();
-  linkMenu.open(event, current);
+  linkMenu.edit(current);
+}
+function trash(current) {
+  details.close();
+  linkMenu.remove(current);
 }
 
 function showTag(tag) {
@@ -137,6 +145,32 @@ onUnmounted(() => window.removeEventListener("keydown", onKeydown));
             <i class="mdi mdi-chevron-right text-xl leading-none"></i>
           </button>
           <span class="flex-1"></span>
+          <button
+            v-if="own"
+            type="button"
+            class="p-2 rounded-md hover:bg-gray-100 dark:hover:bg-brand-800"
+            :class="link.is_favorite ? 'text-amber-500' : ''"
+            :title="link.is_favorite ? 'Remove from favorites' : 'Add to favorites'"
+            :aria-label="link.is_favorite ? 'Remove from favorites' : 'Add to favorites'"
+            :aria-pressed="Boolean(link.is_favorite)"
+            data-testid="details-favorite"
+            @click="appStore.toggleLinkFavorite(link)"
+          >
+            <i
+              class="mdi text-xl leading-none"
+              :class="link.is_favorite ? 'mdi-star' : 'mdi-star-outline'"
+            ></i>
+          </button>
+          <button
+            v-if="own"
+            type="button"
+            class="p-2 rounded-md hover:bg-gray-100 dark:hover:bg-brand-800 hover:text-red-600 dark:hover:text-red-400"
+            title="Move to the trash (you can undo it)"
+            aria-label="Move to trash"
+            @click="trash(link)"
+          >
+            <i class="mdi mdi-delete-outline text-xl leading-none"></i>
+          </button>
           <button
             type="button"
             class="p-2 rounded-md hover:bg-gray-100 dark:hover:bg-brand-800"
@@ -227,6 +261,8 @@ onUnmounted(() => window.removeEventListener("keydown", onKeydown));
               </span>
               <span v-if="addedOn">Added {{ addedOn }}</span>
             </p>
+
+            <LinkQrCode v-if="showQr && publicUrl" :url="publicUrl" :name="link.title" />
           </section>
         </Transition>
 
@@ -251,22 +287,33 @@ onUnmounted(() => window.removeEventListener("keydown", onKeydown));
             <i class="mdi mdi-content-copy" aria-hidden="true"></i> Copy
           </button>
           <button
-            v-if="link.is_public && link.hash"
+            v-if="publicUrl"
             type="button"
             class="px-3 py-2 rounded-md border border-gray-300 dark:border-brand-700 text-sm"
             title="Copy the public short link"
-            @click="copy(appUrl(`/h/${link.hash}`), 'Public link copied')"
+            @click="copy(publicUrl, 'Public link copied')"
           >
-            <i class="mdi mdi-link-variant" aria-hidden="true"></i> Public link
+            <i class="mdi mdi-earth" aria-hidden="true"></i> Public link
           </button>
           <button
+            v-if="publicUrl"
             type="button"
             class="px-3 py-2 rounded-md border border-gray-300 dark:border-brand-700 text-sm"
-            title="More actions: edit, move, delete"
-            aria-label="More actions"
-            @click="openMenu($event, link)"
+            :class="showQr ? 'bg-gray-100 dark:bg-brand-800' : ''"
+            :title="showQr ? 'Hide the QR code' : 'Show a QR code for the public link'"
+            :aria-pressed="showQr"
+            @click="showQr = !showQr"
           >
-            <i class="mdi mdi-dots-horizontal" aria-hidden="true"></i>
+            <i class="mdi mdi-qrcode" aria-hidden="true"></i> QR
+          </button>
+          <button
+            v-if="own"
+            type="button"
+            class="px-3 py-2 rounded-md border border-gray-300 dark:border-brand-700 text-sm"
+            title="Edit this link"
+            @click="edit(link)"
+          >
+            <i class="mdi mdi-pencil-outline" aria-hidden="true"></i> Edit
           </button>
         </footer>
       </div>

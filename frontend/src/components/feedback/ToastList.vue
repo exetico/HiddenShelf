@@ -21,7 +21,18 @@ const toastStore = useToastStore();
         }"
         @click="toastStore.remove(item.id)"
       >
-        {{ item.message }}
+        <span class="flex items-center justify-between gap-3">
+          <span>{{ item.message }}</span>
+          <button
+            v-if="item.action"
+            type="button"
+            class="shrink-0 font-semibold underline underline-offset-2 hover:no-underline"
+            :title="item.action.label"
+            @click.stop="toastStore.runAction(item)"
+          >
+            {{ item.action.label }}
+          </button>
+        </span>
         <div
           class="absolute bottom-0 left-0 h-0.5 bg-white/40 toast-progress"
           :style="{ animationDuration: item.duration + 'ms' }"

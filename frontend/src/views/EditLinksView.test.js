@@ -12,7 +12,14 @@ vi.mock("@/components/links/LinkCardEdit.vue", () => ({
   },
 }));
 vi.mock("@/components/links/LinkFormModal.vue", () => ({
-  default: { template: "<div></div>", props: ["open", "model", "categories"] },
+  default: {
+    name: "LinkFormModal",
+    template: "<div></div>",
+    props: ["open", "model", "categories"],
+  },
+}));
+vi.mock("@/components/links/TrashModal.vue", () => ({
+  default: { name: "TrashModal", template: "<div></div>", props: ["open"] },
 }));
 vi.mock("@/components/categories/CategoryManager.vue", () => ({
   default: { template: "<div></div>", props: ["open", "categories"] },
@@ -157,5 +164,29 @@ describe("EditLinksView", () => {
     await select.setValue(1);
 
     expect(appStore.filterCategory).toBe(1);
+  });
+
+  it("opens the new-link form when sent here by the top bar's Add link", async () => {
+    mockRoute.query = { new: "1" };
+    const wrapper = mountEdit();
+    await flushPromises();
+    const form = wrapper.findComponent({ name: "LinkFormModal" });
+    expect(form.props("open")).toBe(true);
+    expect(form.props("model")).toBeNull();
+    mockRoute.query = {};
+  });
+
+  it("follows the top bar's search", async () => {
+    const appStore = useAppStore();
+    const wrapper = mountEdit();
+    appStore.search = "beta";
+    await flushPromises();
+    expect(wrapper.find('[data-testid="page-search"]').element.value).toBe("beta");
+  });
+
+  it("opens the trash", async () => {
+    const wrapper = mountEdit();
+    await wrapper.find('[data-testid="open-trash"]').trigger("click");
+    expect(wrapper.findComponent({ name: "TrashModal" }).props("open")).toBe(true);
   });
 });

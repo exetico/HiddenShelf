@@ -1,9 +1,17 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createPinia, setActivePinia } from "pinia";
 import { useAppStore } from "@/stores/app";
+import { useToastStore } from "@/stores/toast";
 
 vi.mock("@/services/api/linksApi", () => ({
-  linksApi: { list: vi.fn(), reorder: vi.fn() },
+  linksApi: {
+    list: vi.fn(),
+    reorder: vi.fn(),
+    update: vi.fn(),
+    remove: vi.fn(),
+    restore: vi.fn(),
+    favorites: vi.fn(),
+  },
 }));
 vi.mock("@/services/api/categoriesApi", () => ({
   categoriesApi: { update: vi.fn(), reorder: vi.fn() },
@@ -168,5 +176,55 @@ describe("app store link order", () => {
     linksApi.reorder.mockClear();
     await store.moveLink({ id: 4, category_id: 5 }, "down");
     expect(linksApi.reorder).not.toHaveBeenCalled();
+  });
+});
+
+describe("app store favorites and trash", () => {
+  let store;
+  beforeEach(() => {
+    setActivePinia(createPinia());
+    vi.clearAllMocks();
+    serveLinks(0);
+    linksApi.favorites.mockResolvedValue([]);
+    store = useAppStore();
+    store.links = [
+      { id: 1, title: "Beta", is_favorite: 0 },
+      { id: 2, title: "alpha", is_favorite: 1 },
+    ];
+    store.favoriteLinks = [{ id: 2, title: "alpha", is_favorite: 1 }];
+  });
+
+  it("stars a link at once, sorted into the favorites", async () => {
+    linksApi.update.mockResolvedValue({});
+    await store.toggleLinkFavorite(store.links[0]);
+    expect(store.links[0].is_favorite).toBe(1);
+    expect(store.favoriteLinks.map((l) => l.title)).toEqual(["alpha", "Beta"]);
+    expect(linksApi.update).toHaveBeenCalledWith(1, { is_favorite: true });
+  });
+
+  it("puts the star back when saving fails", async () => {
+    linksApi.update.mockRejectedValue(new Error("offline"));
+    await store.toggleLinkFavorite(store.links[1]);
+    expect(store.links[1].is_favorite).toBe(1);
+    expect(store.favoriteLinks.map((l) => l.id)).toEqual([2]);
+  });
+
+  it("moves a link to the trash with an Undo on the toast", async () => {
+    linksApi.remove.mockResolvedValue({});
+    linksApi.restore.mockResolvedValue({});
+    await store.deleteLink(1);
+    expect(linksApi.remove).toHaveBeenCalledWith(1);
+    const toast = useToastStore();
+    const item = toast.items.find((t) => t.message === "Moved to the trash");
+    expect(item.action.label).toBe("Undo");
+    await toast.runAction(item);
+    expect(linksApi.restore).toHaveBeenCalledWith(1);
+    expect(toast.items.find((t) => t.id === item.id)).toBeUndefined();
+  });
+
+  it("loads favorites alongside the links", async () => {
+    linksApi.favorites.mockResolvedValue([{ id: 9, title: "Fav" }]);
+    await store.refreshLinks();
+    expect(store.favoriteLinks).toEqual([{ id: 9, title: "Fav" }]);
   });
 });

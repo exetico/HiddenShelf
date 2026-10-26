@@ -2,6 +2,7 @@ import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import { mount } from "@vue/test-utils";
 import { createPinia, setActivePinia } from "pinia";
 import { useAppStore } from "@/stores/app";
+import { useLinkPreviewStore } from "@/stores/linkPreview";
 import LinkCardView from "@/components/links/LinkCardView.vue";
 
 const link = {
@@ -110,6 +111,37 @@ describe("LinkCardView", () => {
       expect(wrapper.emitted("details")[0][0]).toEqual(withNote);
       expect(wrapper.attributes("title")).toBe(link.url);
       expect(mountCard().find('[aria-label="Details for Grafana"]').exists()).toBe(false);
+    });
+
+    it("opens the hover card from the note icon only, not the whole row", async () => {
+      window.matchMedia = vi.fn().mockReturnValue({ matches: true });
+      const wrapper = mount(LinkCardView, {
+        props: { link: { ...link, description: "Notes" } },
+        global: { plugins: [pinia] },
+      });
+      const preview = useLinkPreviewStore();
+      await wrapper.trigger("mouseenter");
+      vi.advanceTimersByTime(1000);
+      expect(preview.link).toBeNull();
+
+      await wrapper.find('[data-testid="note-icon"]').trigger("mouseenter");
+      vi.advanceTimersByTime(300);
+      expect(preview.link.id).toBe(3);
+      delete window.matchMedia;
+    });
+
+    it("shows a star on favorites and a quiet globe on public links", () => {
+      const wrapper = mount(LinkCardView, {
+        props: { link: { ...link, is_favorite: 1, is_public: 1, hash: "h1" } },
+        global: { plugins: [pinia] },
+      });
+      expect(wrapper.find('[data-testid="favorite-mark"]').exists()).toBe(true);
+      const globe = wrapper.find('[data-testid="public-copy"]');
+      expect(globe.classes()).toEqual(
+        expect.arrayContaining(["hidden", "md:inline", "opacity-0", "group-hover:opacity-100"]),
+      );
+      expect(mountCard().find('[data-testid="public-copy"]').exists()).toBe(false);
+      expect(mountCard().find('[data-testid="favorite-mark"]').exists()).toBe(false);
     });
 
     it("has a drag handle only when it can be reordered", () => {
