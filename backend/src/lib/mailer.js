@@ -63,7 +63,7 @@ export async function sendMagicLink(email, token, redirectOrigin = null) {
   if (config.debugMode) {
     let logMsg = `[mailer] Magic link for ${email}: ${magicLink}`;
     if (redirectOrigin) {
-      logMsg += ` (will redirect to: ${redirectOrigin}/#/dashboard)`;
+      logMsg += ` (will redirect to: ${redirectOrigin}/dashboard)`;
     }
     console.log(logMsg);
     return true;

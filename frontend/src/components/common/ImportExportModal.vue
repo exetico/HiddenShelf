@@ -329,6 +329,7 @@ function resetImport() {
           Download all your links, categories, and tags as JSON.
         </p>
         <button
+          title="Download all your data as a JSON file"
           class="px-4 py-2 rounded-md bg-brand-600 text-white hover:bg-brand-700"
           @click="exportData"
         >
@@ -356,6 +357,7 @@ function resetImport() {
 
         <div class="flex gap-2 mt-2">
           <button
+            title="Check the file before importing"
             class="px-4 py-2 rounded-md bg-brand-600 text-white hover:bg-brand-700"
             :disabled="!importJson.trim()"
             @click="validateImport"
@@ -363,6 +365,7 @@ function resetImport() {
             Validate
           </button>
           <button
+            title="Import the checked file"
             v-if="importPreview"
             class="px-4 py-2 rounded-md bg-green-600 text-white hover:bg-green-700"
             :disabled="
@@ -442,12 +445,14 @@ function resetImport() {
             </p>
             <div class="flex justify-end gap-2">
               <button
+                title="Cancel the import"
                 class="px-4 py-2 rounded-md border border-gray-300 dark:border-brand-700"
                 @click="showImportConfirmModal = false"
               >
                 Cancel
               </button>
               <button
+                title="Import now"
                 class="px-4 py-2 rounded-md bg-green-600 text-white hover:bg-green-700"
                 @click="executeImport"
               >

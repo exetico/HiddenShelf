@@ -20,7 +20,8 @@ export default defineConfig({
         target: apiProxyTarget,
         changeOrigin: true,
       },
-      "/h": {
+      // Only /h/<hash>, so app routes starting with "h" never hit the proxy
+      "^/h/": {
         target: apiProxyTarget,
         changeOrigin: true,
       },

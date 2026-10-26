@@ -7,6 +7,7 @@ import { settingsApi } from "@/services/api/settingsApi";
 import { configApi } from "@/services/api/configApi";
 import { linkVisitsApi } from "@/services/api/linkVisitsApi";
 import { useToastStore } from "@/stores/toast";
+import { useDialogStore } from "@/stores/dialog";
 
 export const useAppStore = defineStore("app", {
   state: () => ({
@@ -212,6 +213,20 @@ export const useAppStore = defineStore("app", {
         category.is_favorite = isFavorite ? 0 : 1;
         useToastStore().error(error.message);
       }
+    },
+    /** Ask first, then toggle. Used where a stray tap is easy (View). */
+    async confirmToggleFavorite(category) {
+      const adding = !category.is_favorite;
+      const ok = await useDialogStore().confirm({
+        title: adding ? "Add to favorites?" : "Remove from favorites?",
+        message: adding
+          ? `"${category.name}" will be pinned above your links.`
+          : `"${category.name}" will no longer be pinned above your links.`,
+        confirmText: adding ? "Add" : "Remove",
+        icon: adding ? "mdi-star" : "mdi-star-off-outline",
+      });
+      if (ok) await this.toggleFavorite(category);
+      return ok;
     },
     async moveCategory(category, direction) {
       const list = [...this.categories];

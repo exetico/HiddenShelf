@@ -160,6 +160,7 @@ function submit() {
           />
           <i :class="normalizedIcon" class="mdi text-2xl text-brand-600"></i>
           <a
+            title="Find icon names on pictogrammers.com (opens in a new tab)"
             href="https://pictogrammers.com/library/mdi/"
             target="_blank"
             class="text-xs text-brand-600 dark:text-brand-400 hover:underline whitespace-nowrap"
@@ -204,6 +205,7 @@ function submit() {
           >
             {{ tag }}
             <button
+              :title="`Remove tag ${tag}`" :aria-label="`Remove tag ${tag}`"
               type="button"
               class="text-brand-400 hover:text-brand-700 dark:hover:text-white leading-none"
               @click.stop="removeTag(index)"
@@ -251,6 +253,7 @@ function submit() {
 
       <div class="flex justify-end gap-2 pt-2">
         <button
+          title="Close without saving"
           type="button"
           class="px-3 py-2 rounded-md border border-gray-300 dark:border-brand-700"
           @click="emit('close')"
@@ -258,6 +261,7 @@ function submit() {
           Cancel
         </button>
         <button
+          title="Save the link"
           type="submit"
           class="px-3 py-2 rounded-md bg-brand-600 text-white hover:bg-brand-700"
         >

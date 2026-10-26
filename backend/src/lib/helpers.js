@@ -245,6 +245,20 @@ export function getClientIp(c) {
 }
 
 /**
+ * Absolute URL of a destination after login. Accepts what safeReturnTo
+ * returns: an app route in the old hash form ("#/edit") or a site path
+ * ("/h/abc"). App routes are clean paths now: "#/edit" → {site}{base}/edit.
+ * With a dev redirect origin (the Vite server) the app route goes there.
+ */
+export function returnToUrl(returnTo, redirectOrigin = null) {
+  const route = returnTo.startsWith("#") ? returnTo.slice(1) : null;
+  if (redirectOrigin) return `${redirectOrigin}${route || "/dashboard"}`;
+  return route
+    ? `${config.siteUrl}${baseUrl(route)}`
+    : `${config.siteUrl}${returnTo}`;
+}
+
+/**
  * Construct a URL with the configured base path.
  */
 export function baseUrl(pathStr = "") {

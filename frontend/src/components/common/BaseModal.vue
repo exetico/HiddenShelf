@@ -62,6 +62,7 @@ onUnmounted(() => {
             {{ title }}
           </h2>
           <button
+            title="Close" aria-label="Close"
             class="text-gray-500 hover:text-gray-900 dark:text-brand-300 dark:hover:text-white"
             @click="$emit('close')"
           >

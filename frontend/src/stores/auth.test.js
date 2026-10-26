@@ -17,7 +17,7 @@ describe("auth store", () => {
     setActivePinia(createPinia());
     // Mock window.location.hash to prevent redirect loops in tests
     delete window.location;
-    window.location = { hash: "" };
+    window.location = { hash: "", assign: vi.fn() };
   });
 
   it("sets user when bootstrap succeeds", async () => {
@@ -83,7 +83,7 @@ describe("auth store", () => {
     await store.logout();
 
     expect(store.user).toBeNull();
-    expect(window.location.hash).toBe("#/login");
+    expect(window.location.assign).toHaveBeenCalledWith("/login");
     expect(authApi.logout).toHaveBeenCalled();
   });
 });

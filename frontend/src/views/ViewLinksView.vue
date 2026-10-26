@@ -124,6 +124,7 @@ function toggleCategory(key) {
       class="sm:hidden flex gap-1.5 overflow-x-auto scrollbar-hide -mt-1"
     >
       <button
+        :title="`Show links in ${category.name}`"
         v-for="category in appStore.favoriteCategories"
         :key="category.id"
         class="flex items-center gap-1 px-2.5 py-1 rounded-full text-xs whitespace-nowrap shrink-0"
@@ -160,6 +161,7 @@ function toggleCategory(key) {
     <section v-if="groupedCategories.length" class="space-y-3 sm:space-y-6">
       <article v-for="group in groupedCategories" :key="group.key">
         <button
+          :title="collapsedCategories[group.key] ? 'Expand' : 'Collapse'"
           class="flex items-center gap-2 mb-1 sm:mb-2 w-full text-left group"
           @click="toggleCategory(group.key)"
         >
@@ -218,6 +220,7 @@ function toggleCategory(key) {
 
     <div v-if="appStore.hasMore" class="text-center">
       <button
+        title="Load more links"
         class="px-4 py-2 rounded-md bg-brand-600 text-white hover:bg-brand-700"
         @click="appStore.loadMore()"
       >

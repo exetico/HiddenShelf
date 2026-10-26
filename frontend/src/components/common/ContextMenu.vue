@@ -149,6 +149,7 @@ watch(
             <!-- Navigation Options -->
             <div class="flex gap-2">
               <button
+                title="Open the link here"
                 class="flex-1 px-4 py-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
                 @click="openInCurrentTab"
               >
@@ -157,6 +158,7 @@ watch(
               </button>
 
               <button
+                title="Open the link in a new tab"
                 class="flex-1 px-4 py-3 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors flex items-center justify-center gap-2"
                 @click="openInNewTab"
               >
@@ -166,6 +168,7 @@ watch(
             </div>
 
             <button
+              title="Edit this link"
               v-if="!link.is_from_shared_category"
               class="w-full px-4 py-3 bg-brand-600 text-white rounded-md hover:bg-brand-700 transition-colors flex items-center justify-center gap-2"
               @click="editLink"
@@ -176,6 +179,7 @@ watch(
 
             <div v-if="!link.is_from_shared_category" class="flex gap-2">
               <button
+                title="Choose where this link sits in its category"
                 class="flex-1 px-4 py-3 bg-gray-600 dark:bg-brand-700 text-white rounded-md hover:bg-gray-700 dark:hover:bg-brand-600 transition-colors flex items-center justify-center gap-2"
                 @click="setPosition"
               >
@@ -183,6 +187,7 @@ watch(
                 <span>Set Position</span>
               </button>
               <button
+                title="Go back to the default order"
                 class="flex-1 px-4 py-3 bg-gray-500 dark:bg-brand-800 text-white rounded-md hover:bg-gray-600 dark:hover:bg-brand-700 transition-colors flex items-center justify-center gap-2"
                 @click="resetPosition"
               >
@@ -192,6 +197,7 @@ watch(
             </div>
 
             <button
+              title="Delete this link"
               v-if="!link.is_from_shared_category"
               class="w-full px-4 py-3 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors flex items-center justify-center gap-2"
               @click="deleteLink"
@@ -201,6 +207,7 @@ watch(
             </button>
 
             <button
+              title="Close the menu"
               class="w-full px-4 py-3 bg-gray-200 dark:bg-brand-800 text-gray-700 dark:text-white rounded-md hover:bg-gray-300 dark:hover:bg-brand-700 transition-colors mt-2"
               @click="close"
             >
@@ -235,12 +242,14 @@ watch(
         />
         <div class="flex justify-end gap-2">
           <button
+            title="Cancel"
             class="px-4 py-2 rounded-md border border-gray-300 dark:border-brand-700"
             @click="showPositionModal = false"
           >
             Cancel
           </button>
           <button
+            title="Save the position"
             class="px-4 py-2 rounded-md bg-brand-600 text-white hover:bg-brand-700"
             @click="savePosition"
           >
@@ -273,12 +282,14 @@ watch(
         </p>
         <div class="flex justify-end gap-2">
           <button
+            title="Keep the link"
             class="px-4 py-2 rounded-md border border-gray-300 dark:border-brand-700"
             @click="showDeleteModal = false"
           >
             Cancel
           </button>
           <button
+            title="Delete the link"
             class="px-4 py-2 rounded-md bg-red-600 text-white hover:bg-red-700"
             @click="confirmDelete"
           >

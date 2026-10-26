@@ -39,7 +39,7 @@ You need to read the copilot-instructions, and if you introduce features, you mu
 - **Framework:** Vue 3 with Composition API
 - **Build Tool:** Vite
 - **State Management:** Pinia
-- **Routing:** Vue Router (hash-based: `#/dashboard`, `#/edit`, etc.)
+- **Routing:** Vue Router with clean URLs (`/dashboard`, `/edit`, etc.)
 - **Styling:** Tailwind CSS
 - **Icons:** MDI (Material Design Icons) via `@mdi/font` CDN (`<i class="mdi mdi-*">` syntax)
 - **Testing:** Vitest + Vue Testing Library
@@ -56,9 +56,11 @@ You need to read the copilot-instructions, and if you introduce features, you mu
    - Reusable UI components in `components/common/`
    - View components for each route in `views/`
 
-3. **Hash-Based Routing**
-   - Uses `#/` routes to avoid conflicts with server routing
-   - Hono serves the Vue app at `/public/app/index.html`
+3. **Clean URL Routing**
+   - Vue Router history mode: `/dashboard`, `/view`, `/edit`, `/profile`, `/login`
+   - Hono serves the app's index.html for exactly those routes (`backend/src/routes/appShell.js`), so `/api`, `/h`, `/assets` and `/public` keep their own handlers
+   - Old `/public/app/index.html#/route` URLs still work: the app rewrites them to the clean URL on load (`frontend/src/lib/appUrl.js`)
+   - Subpath deploys: set `BASE_PATH` (backend) and `VITE_BASE_PATH` (build)
 
 4. **Docker-First Development**
    - `make dev` - Start backend + Vue HMR dev server
@@ -116,10 +118,10 @@ You need to read the copilot-instructions, and if you introduce features, you mu
 
 ### URL Structure
 
-- **Vue App:** `/public/app/index.html` (built output)
+- **Vue App:** `/dashboard` etc. (built output lives in `public/app/`)
 - **Dev Server:** `http://localhost:5173` (Vite HMR)
 - **Backend Server:** `http://localhost:3000` (Hono, serves built app + APIs)
-- **Routes:** `#/dashboard`, `#/view`, `#/edit`, `#/profile`, `#/login`
+- **Routes:** `/dashboard`, `/view`, `/edit`, `/profile`, `/login`
 - **Public Links:** `/h/{hash}` (old `/public/view.html?hash={hash}` URLs redirect there)
 - **Public Links (no redirect):** `/h/{hash}?stay` shows the page even for direct-redirect links
 
@@ -165,11 +167,11 @@ You need to read the copilot-instructions, and if you introduce features, you mu
 
 1. **Don't hardcode API URLs** - Use the API service layer
 2. **Test redirect loops** - Auth guard can cause infinite redirects if misconfigured
-3. **Hash routing** - Always use `#/route`, not `/route`
+3. **App routes** - A new top-level route must also be added to `APP_ROUTES` in `backend/src/routes/appShell.js`
 4. **Docker HMR** - File changes should trigger hot reload; if not, check `CHOKIDAR_USEPOLLING`
 5. **Legacy files** - Don't edit `public/index.html` or `public/login.html` (use Vue app)
 6. **Magic links in logs** - Check `docker compose logs -f web` for login links in dev
-7. **Google OAuth** - Callback redirects to `#/login?error=...` on failure
+7. **Google OAuth** - Callback redirects to `/login?error=...` on failure
 8. **Document new features** - When introducing new logic or features, update this file, `features.instructions.md`, and `README.md` to keep documentation current
 9. **Dev vs Prod** - Magic link and OAuth redirects use `redirect_origin` in dev mode to handle port differences (5173 vs 3000)
 10. **Modals must use Teleport** - Always wrap modal/overlay markup in `<Teleport to="body">` to avoid inheriting parent layout styles

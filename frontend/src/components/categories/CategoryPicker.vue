@@ -47,6 +47,7 @@ function rowClass(active) {
 
 <template>
   <button
+    :title="`Category: ${current.name}. Tap to choose another`"
     type="button"
     class="sm:hidden flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-gray-300 dark:border-brand-700 dark:bg-brand-800 text-sm max-w-[45%] shrink-0"
     aria-haspopup="dialog"
@@ -78,6 +79,7 @@ function rowClass(active) {
         >
           <h2 class="font-semibold">Categories</h2>
           <button
+            title="Close"
             class="p-1 text-gray-500 dark:text-brand-300"
             aria-label="Close"
             @click="open = false"
@@ -89,6 +91,7 @@ function rowClass(active) {
         <ul class="p-2">
           <li>
             <button
+              title="Show links from all categories"
               :class="rowClass(!appStore.filterCategory)"
               @click="select('')"
             >
@@ -99,6 +102,7 @@ function rowClass(active) {
           </li>
           <li v-if="uncategorizedCount > 0">
             <button
+              title="Show links without a category"
               :class="rowClass(isActive('uncategorized'))"
               @click="select('uncategorized')"
             >
@@ -127,6 +131,7 @@ function rowClass(active) {
               class="flex items-center"
             >
               <button
+                :title="`Show links in ${category.name}`"
                 :class="rowClass(isActive(category.id))"
                 @click="select(String(category.id))"
               >
@@ -141,6 +146,7 @@ function rowClass(active) {
                 }}</span>
               </button>
               <button
+                :title="category.is_favorite ? 'Remove from favorites' : 'Add to favorites'"
                 class="p-2 shrink-0"
                 :class="
                   category.is_favorite
@@ -152,7 +158,7 @@ function rowClass(active) {
                     ? `Remove ${category.name} from favorites`
                     : `Add ${category.name} to favorites`
                 "
-                @click="appStore.toggleFavorite(category)"
+                @click="appStore.confirmToggleFavorite(category)"
               >
                 <i
                   class="mdi text-lg"
@@ -173,6 +179,7 @@ function rowClass(active) {
               :key="'shared-' + category.id"
             >
               <button
+                :title="`Show links in ${category.name}, shared by ${category.owner_email}`"
                 :class="rowClass(isActive(category.id))"
                 @click="select(String(category.id))"
               >

@@ -68,7 +68,7 @@ This document provides a comprehensive overview of all features, functionality, 
 
 - **Backend Abstraction Layer** — All API calls go through `frontend/src/services/api/` modules. No hardcoded endpoints in components.
 - **Component-Based Architecture** — Components organized by feature domain with reusable common components.
-- **Hash-Based Routing** — Uses `#/` routes (e.g. `#/dashboard`, `#/edit`) to avoid conflicts with server routing. A catch-all route (`/:pathMatch(.*)*`) redirects unknown URLs to `#/dashboard` and shows a toast notification.
+- **Clean URLs** — Routes are plain paths (`/dashboard`, `/edit`). The backend serves the app for those paths only. Old `#/route` links are rewritten to the clean URL on load. A catch-all route (`/:pathMatch(.*)*`) redirects unknown in-app URLs to `/dashboard` and shows a toast notification.
 - **Teleport Pattern for Modals** — All modals/overlays use `<Teleport to="body">` to escape parent layout styles.
 - **Docker-First Development** — `make dev` for HMR, `make build-frontend` for production, `make test` for all tests.
 
@@ -116,10 +116,10 @@ This document provides a comprehensive overview of all features, functionality, 
 #### Dashboard (`DashboardView.vue`)
 
 - Welcome message with user greeting
-- **Clickable statistics grid**: Cards for total links, categories, and tags — click any card to navigate to `#/edit`
+- **Clickable statistics grid**: Cards for total links, categories, and tags — click any card to navigate to `/edit`
 - **`totalCategories` includes shared categories**: The getter sums own categories + shared categories from `sharedCategories` state
 - **Visit stats section**: Shows total visits and top 5 most-visited links for the last 30 days (loaded via `appStore.loadVisitStats()` on mount); section is hidden when no visits have occurred
-- **4 quick action buttons**: View links → `#/view`, Edit links → `#/edit`, Profile → `#/profile`, Import Data → `#/profile`
+- **4 quick action buttons**: View links → `/view`, Edit links → `/edit`, Profile → `/profile`, Import Data → `/profile`
 - **Theme toggle section**: Shows current mode label ("Light mode" / "Dark mode") with sun/moon icon toggle button
 
 #### View Mode (`ViewLinksView.vue`)

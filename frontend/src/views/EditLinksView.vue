@@ -119,18 +119,21 @@ async function copyPublic(hash) {
   <section class="space-y-3 sm:space-y-4">
     <div class="flex flex-wrap gap-2">
       <button
+        title="Add a new link"
         class="px-3 py-1.5 sm:px-4 sm:py-2 text-sm sm:text-base rounded-md bg-brand-600 text-white hover:bg-brand-700"
         @click="openCreate"
       >
         + Add link
       </button>
       <button
+        title="Create, edit, order and share categories"
         class="px-3 py-1.5 sm:px-4 sm:py-2 text-sm sm:text-base rounded-md bg-brand-600 text-white hover:bg-brand-700"
         @click="showCategoryModal = true"
       >
         Categories
       </button>
       <button
+        title="Create and delete tags"
         class="px-3 py-1.5 sm:px-4 sm:py-2 text-sm sm:text-base rounded-md bg-brand-600 text-white hover:bg-brand-700"
         @click="showTagModal = true"
       >
@@ -194,6 +197,7 @@ async function copyPublic(hash) {
 
     <div v-if="appStore.hasMore" class="text-center">
       <button
+        title="Load more links"
         class="px-4 py-2 rounded-md bg-brand-600 text-white hover:bg-brand-700"
         @click="appStore.loadMore()"
       >
@@ -248,12 +252,14 @@ async function copyPublic(hash) {
           </p>
           <div class="flex justify-end gap-2">
             <button
+              title="Keep the link"
               class="px-4 py-2 rounded-md border border-gray-300 dark:border-brand-700"
               @click="showDeleteModal = false"
             >
               Cancel
             </button>
             <button
+              title="Delete the link"
               class="px-4 py-2 rounded-md bg-red-600 text-white hover:bg-red-700"
               @click="confirmDelete"
             >

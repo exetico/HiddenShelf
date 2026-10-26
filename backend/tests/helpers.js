@@ -23,9 +23,13 @@ import linkVisitsRoutes from "../src/routes/linkVisits.js";
 import configRoutes from "../src/routes/config.js";
 import accountRoutes from "../src/routes/account.js";
 import { publicLinkRoutes } from "../src/routes/publicLink.js";
+import { appShellRoutes } from "../src/routes/appShell.js";
 
 const linkTemplatePath = fileURLToPath(
   new URL("./fixtures/link.html", import.meta.url),
+);
+const appIndexPath = fileURLToPath(
+  new URL("./fixtures/app-index.html", import.meta.url),
 );
 
 /**
@@ -64,6 +68,7 @@ export function createTestApp() {
   app.route("/api/config", configRoutes);
   app.route("/api/account", accountRoutes);
   app.route("/", publicLinkRoutes({ templatePath: linkTemplatePath }));
+  app.route("/", appShellRoutes({ indexPath: appIndexPath }));
 
   return app;
 }

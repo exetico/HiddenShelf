@@ -23,6 +23,7 @@ import {
   isAllowedRedirectOrigin,
   getClientIp,
   safeReturnTo,
+  returnToUrl,
 } from "../lib/helpers.js";
 import { requireAuth } from "../middleware/auth.js";
 import config from "../config.js";
@@ -120,13 +121,13 @@ auth.post("/login", async (c) => {
 auth.get("/verify", async (c) => {
   if (!config.emailLoginEnabled) {
     return c.redirect(
-      `${config.siteUrl}${baseUrl("/public/app/index.html")}#/login?error=email_login_disabled`,
+      `${config.siteUrl}${baseUrl("/login")}?error=email_login_disabled`,
     );
   }
   const token = c.req.query("token") || "";
   if (!token) {
     return c.redirect(
-      `${config.siteUrl}${baseUrl("/public/app/index.html")}#/login?error=Token+is+required`,
+      `${config.siteUrl}${baseUrl("/login")}?error=Token+is+required`,
     );
   }
 
@@ -137,7 +138,7 @@ auth.get("/verify", async (c) => {
 
   if (!tokenData) {
     return c.redirect(
-      `${config.siteUrl}${baseUrl("/public/app/index.html")}#/login?error=Invalid+or+already+used+token`,
+      `${config.siteUrl}${baseUrl("/login")}?error=Invalid+or+already+used+token`,
     );
   }
 
@@ -145,7 +146,7 @@ auth.get("/verify", async (c) => {
   const expiresAt = new Date(tokenData.expires_at.replace(" ", "T") + "Z");
   if (expiresAt < new Date()) {
     return c.redirect(
-      `${config.siteUrl}${baseUrl("/public/app/index.html")}#/login?error=Token+has+expired`,
+      `${config.siteUrl}${baseUrl("/login")}?error=Token+has+expired`,
     );
   }
 
@@ -160,7 +161,7 @@ auth.get("/verify", async (c) => {
   if (!user) {
     if (!config.signupEnabled) {
       return c.redirect(
-        `${config.siteUrl}${baseUrl("/public/app/index.html")}#/login?error=signup_disabled`,
+        `${config.siteUrl}${baseUrl("/login")}?error=signup_disabled`,
       );
     }
     const result = db
@@ -183,14 +184,9 @@ auth.get("/verify", async (c) => {
 
   const redirectOrigin = tokenData.redirect_origin;
   if (redirectOrigin && isAllowedRedirectOrigin(redirectOrigin)) {
-    const hashPart = returnTo.startsWith("#") ? returnTo : "#/dashboard";
-    return c.redirect(`${redirectOrigin}/${hashPart}`);
+    return c.redirect(returnToUrl(returnTo, redirectOrigin));
   }
-
-  const dest = returnTo.startsWith("#")
-    ? `${config.siteUrl}${baseUrl("/public/app/index.html")}${returnTo}`
-    : `${config.siteUrl}${returnTo}`;
-  return c.redirect(dest);
+  return c.redirect(returnToUrl(returnTo));
 });
 
 // ─── POST /logout ────────────────────────────────────────────────
@@ -248,20 +244,20 @@ auth.get("/google", (c) => {
 // ─── GET /google/callback — Google OAuth callback ────────────────
 
 auth.get("/google/callback", async (c) => {
-  const appUrl = `${config.siteUrl}${baseUrl("/public/app/index.html")}`;
+  const loginUrl = `${config.siteUrl}${baseUrl("/login")}`;
 
   if (!config.googleClientId || !config.googleClientSecret) {
-    return c.redirect(`${appUrl}#/login?error=oauth_not_configured`);
+    return c.redirect(`${loginUrl}?error=oauth_not_configured`);
   }
 
   if (c.req.query("error")) {
-    return c.redirect(`${appUrl}#/login?error=oauth_denied`);
+    return c.redirect(`${loginUrl}?error=oauth_denied`);
   }
 
   const state = c.req.query("state");
   const savedState = c.session.get("oauth2state");
   if (!state || state !== savedState) {
-    return c.redirect(`${appUrl}#/login?error=invalid_state`);
+    return c.redirect(`${loginUrl}?error=invalid_state`);
   }
   c.session.delete("oauth2state");
 
@@ -281,7 +277,7 @@ auth.get("/google/callback", async (c) => {
     const tokenData = await tokenRes.json();
 
     if (!tokenData.access_token) {
-      return c.redirect(`${appUrl}#/login?error=oauth_failed`);
+      return c.redirect(`${loginUrl}?error=oauth_failed`);
     }
 
     // Get user info
@@ -315,7 +311,7 @@ auth.get("/google/callback", async (c) => {
       } else {
         // New user
         if (!config.signupEnabled) {
-          return c.redirect(`${appUrl}#/login?error=signup_disabled`);
+          return c.redirect(`${loginUrl}?error=signup_disabled`);
         }
         const result = db
           .prepare(
@@ -337,16 +333,16 @@ auth.get("/google/callback", async (c) => {
     const redirectOrigin = c.session.get("oauth_redirect_origin");
     c.session.delete("oauth_redirect_origin");
 
-    const returnPath = c.session.get("return_to") || "/dashboard";
+    const returnTo = safeReturnTo(c.session.get("return_to"));
     c.session.delete("return_to");
 
     if (redirectOrigin && isAllowedRedirectOrigin(redirectOrigin)) {
-      return c.redirect(`${redirectOrigin}/#${returnPath}`);
+      return c.redirect(returnToUrl(returnTo, redirectOrigin));
     }
-    return c.redirect(`${appUrl}#${returnPath}`);
+    return c.redirect(returnToUrl(returnTo));
   } catch (err) {
     console.error("[oauth] Google OAuth error:", err.message);
-    return c.redirect(`${appUrl}#/login?error=oauth_failed`);
+    return c.redirect(`${loginUrl}?error=oauth_failed`);
   }
 });
 
