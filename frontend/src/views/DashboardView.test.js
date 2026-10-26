@@ -4,6 +4,7 @@ import { createPinia, setActivePinia } from "pinia";
 import { ref } from "vue";
 import { useAppStore } from "@/stores/app";
 import DashboardView from "@/views/DashboardView.vue";
+import { useContextMenuStore } from "@/stores/contextMenu";
 
 // Mock useTheme composable — isDark must be a real ref for template reactivity
 const mockIsDark = ref(false);
@@ -287,5 +288,28 @@ describe("DashboardView", () => {
       .filter((b) => !b.attributes("title"))
       .map((b) => b.text());
     expect(missing).toEqual([]);
+  });
+
+  it("draws tile art without blurred blobs", () => {
+    const tile = mountDashboard().find('[data-testid="stat-links"]');
+    expect(tile.find(".blur-md").exists()).toBe(false);
+    expect(tile.classes()).toEqual(
+      expect.arrayContaining(["bg-linear-to-br", "to-sky-500/15"]),
+    );
+  });
+
+  it("opens a menu when you right-click a tag", async () => {
+    const appStore = useAppStore();
+    appStore.tags = [{ id: 4, name: "infra", usage_count: 3 }];
+    const wrapper = mountDashboard();
+    const tag = wrapper.findAll("button").find((b) => b.text().includes("#infra"));
+    await tag.trigger("contextmenu", { clientX: 10, clientY: 20 });
+    const menu = useContextMenuStore();
+    expect(menu.open).toBe(true);
+    expect(menu.title).toBe("#infra");
+    expect(menu.items.map((i) => i.label).filter(Boolean)).toEqual([
+      "Show its links",
+      "Delete tag",
+    ]);
   });
 });

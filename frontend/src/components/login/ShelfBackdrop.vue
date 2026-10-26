@@ -1,6 +1,8 @@
 <script setup>
-// Welcome page art: slow brand-colored light at the top and a shelf of
-// book spines along the bottom. Pure CSS, decorative only.
+// Welcome page art: drifting brand-colored light, floating dust and a
+// shelf of book spines along the bottom where now and then a book is
+// pulled out and pushed back. Pure CSS, decorative only, and still for
+// people who ask their system for reduced motion.
 //
 // The "random" book sizes come from a fixed formula, so the shelf looks
 // the same on every visit and in every test.
@@ -17,6 +19,16 @@ const books = Array.from({ length: 64 }, (_, i) => ({
   tone: TONES[Math.floor(noise(i, 3) * TONES.length)],
   tilt: noise(i, 4) > 0.93 ? (noise(i, 5) > 0.5 ? 7 : -7) : 0,
   bands: noise(i, 6) > 0.55,
+  pull: noise(i, 7) > 0.84,
+  delay: Math.round(noise(i, 8) * 140) / 10,
+}));
+
+const motes = Array.from({ length: 18 }, (_, i) => ({
+  left: Math.round(noise(i, 11) * 100),
+  top: 15 + Math.round(noise(i, 12) * 80),
+  size: 2 + Math.round(noise(i, 13) * 4),
+  duration: 14 + Math.round(noise(i, 14) * 16),
+  delay: -Math.round(noise(i, 15) * 30),
 }));
 </script>
 
@@ -26,17 +38,31 @@ const books = Array.from({ length: 64 }, (_, i) => ({
     <div class="glow glow-2"></div>
     <div class="glow glow-3"></div>
     <div class="grain"></div>
+    <span
+      v-for="(mote, i) in motes"
+      :key="'mote-' + i"
+      class="mote"
+      :style="{
+        left: `${mote.left}%`,
+        top: `${mote.top}%`,
+        width: `${mote.size}px`,
+        height: `${mote.size}px`,
+        animationDuration: `${mote.duration}s`,
+        animationDelay: `${mote.delay}s`,
+      }"
+    ></span>
     <div class="shelf">
       <div class="books">
         <span
           v-for="(book, i) in books"
           :key="i"
           class="book"
-          :class="[book.tone, { bands: book.bands }]"
+          :class="[book.tone, { bands: book.bands, pull: book.pull }]"
           :style="{
             width: `${book.width}px`,
             height: `${book.height}%`,
             transform: book.tilt ? `rotate(${book.tilt}deg)` : undefined,
+            animationDelay: book.pull ? `${book.delay}s` : undefined,
           }"
         ></span>
       </div>
@@ -62,7 +88,7 @@ const books = Array.from({ length: 64 }, (_, i) => ({
   border-radius: 9999px;
   filter: blur(60px);
   opacity: 0.55;
-  animation: drift 26s ease-in-out infinite alternate;
+  animation: drift 16s ease-in-out infinite alternate;
 }
 .glow-1 {
   width: 60vmax;
@@ -77,8 +103,8 @@ const books = Array.from({ length: 64 }, (_, i) => ({
   right: -18vmax;
   top: -12vmax;
   background: radial-gradient(circle, rgb(245 158 11 / 0.35), transparent 65%);
-  animation-duration: 32s;
-  animation-delay: -8s;
+  animation-duration: 19s;
+  animation-delay: -6s;
 }
 .glow-3 {
   width: 50vmax;
@@ -86,8 +112,8 @@ const books = Array.from({ length: 64 }, (_, i) => ({
   left: 20vw;
   bottom: -35vmax;
   background: radial-gradient(circle, rgb(var(--brand-500) / 0.5), transparent 65%);
-  animation-duration: 38s;
-  animation-delay: -16s;
+  animation-duration: 23s;
+  animation-delay: -12s;
 }
 html.dark .glow {
   opacity: 0.35;
@@ -145,11 +171,41 @@ html.dark .shelf {
   background: linear-gradient(to bottom, rgb(var(--brand-600)), rgb(var(--brand-800)));
 }
 
+/* Dust in the light */
+.mote {
+  position: absolute;
+  border-radius: 9999px;
+  background: rgb(var(--brand-400) / 0.7);
+  box-shadow: 0 0 6px rgb(var(--brand-300) / 0.8);
+  opacity: 0;
+  animation: float 20s linear infinite;
+}
+html.dark .mote {
+  background: rgb(var(--brand-200) / 0.5);
+}
+
+/* A book is pulled out a little, then pushed back */
+.book.pull {
+  animation: pull 14s ease-in-out infinite;
+}
+
 @keyframes drift {
   from { transform: translate3d(0, 0, 0) scale(1); }
-  to { transform: translate3d(6vw, 4vh, 0) scale(1.12); }
+  to { transform: translate3d(12vw, 8vh, 0) scale(1.2); }
+}
+@keyframes float {
+  0% { opacity: 0; translate: 0 0; }
+  15% { opacity: 1; }
+  85% { opacity: 0.8; }
+  100% { opacity: 0; translate: 3vw -45vh; }
+}
+@keyframes pull {
+  0%, 70%, 100% { translate: 0 0; }
+  76%, 88% { translate: 0 -14%; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .glow { animation: none; }
+  .glow,
+  .book.pull { animation: none; }
+  .mote { display: none; }
 }
 </style>

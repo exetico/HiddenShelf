@@ -3,6 +3,7 @@ import { mount, flushPromises } from "@vue/test-utils";
 import { createPinia, setActivePinia } from "pinia";
 import { useAppStore } from "@/stores/app";
 import { useDialogStore } from "@/stores/dialog";
+import { useContextMenuStore } from "@/stores/contextMenu";
 import CategoryPicker from "@/components/categories/CategoryPicker.vue";
 import CategoryFilterBar from "@/components/categories/CategoryFilterBar.vue";
 
@@ -110,5 +111,23 @@ describe("CategoryPicker", () => {
     expect(notFav.classes()).toEqual(
       expect.arrayContaining(["opacity-0", "group-hover:opacity-70"]),
     );
+  });
+
+  it("desktop bar opens a category menu on right-click", async () => {
+    const wrapper = mount(CategoryFilterBar, { global: { plugins: [pinia] } });
+    const work = wrapper
+      .findAll("div.group")
+      .find((d) => d.text().includes("Work"));
+    await work.trigger("contextmenu", { clientX: 1, clientY: 1 });
+    const menu = useContextMenuStore();
+    expect(menu.title).toBe("Work");
+    expect(menu.items.map((i) => i.label).filter(Boolean)).toEqual([
+      "Show its links",
+      "Add to favorites",
+      "Move later", // Work is first, so it can't move earlier
+    ]);
+    // Chosen from a menu, so no extra question
+    await menu.run(menu.items.find((i) => i.label === "Add to favorites"));
+    expect(categoriesApi.update).toHaveBeenCalledWith(1, { is_favorite: true });
   });
 });

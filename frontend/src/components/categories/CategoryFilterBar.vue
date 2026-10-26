@@ -1,8 +1,47 @@
 <script setup>
 import { ref, computed } from "vue";
 import { useAppStore } from "@/stores/app";
+import { useContextMenuStore } from "@/stores/contextMenu";
 
 const appStore = useAppStore();
+const menu = useContextMenuStore();
+
+// Right-click on a category
+function openCategoryMenu(event, category) {
+  const index = appStore.categories.findIndex((c) => c.id === category.id);
+  const active = String(appStore.filterCategory) === String(category.id);
+  menu.show(event, {
+    title: category.name,
+    items: [
+      {
+        label: active ? "Show all links" : "Show its links",
+        icon: active ? "mdi-view-grid" : "mdi-filter-outline",
+        action: () => {
+          appStore.filterCategory = active ? "" : String(category.id);
+        },
+      },
+      {
+        label: category.is_favorite ? "Remove from favorites" : "Add to favorites",
+        icon: category.is_favorite ? "mdi-star-off-outline" : "mdi-star-outline",
+        // A deliberate menu choice, so no extra "are you sure?"
+        action: () => appStore.toggleFavorite(category),
+      },
+      { divider: true },
+      {
+        label: "Move earlier",
+        icon: "mdi-arrow-left",
+        hidden: index <= 0,
+        action: () => appStore.moveCategory(category, "up"),
+      },
+      {
+        label: "Move later",
+        icon: "mdi-arrow-right",
+        hidden: index < 0 || index >= appStore.categories.length - 1,
+        action: () => appStore.moveCategory(category, "down"),
+      },
+    ],
+  });
+}
 
 // Drag-to-scroll state
 const scrollContainer = ref(null);
@@ -110,6 +149,7 @@ function stopDrag() {
             : 'bg-gray-100 dark:bg-brand-800 text-gray-700 dark:text-brand-300 hover:bg-gray-200 dark:hover:bg-brand-700'
         "
         class="group relative flex items-center rounded-lg transition-colors whitespace-nowrap shrink-0"
+        @contextmenu="openCategoryMenu($event, category)"
       >
         <button
           :title="`Show links in ${category.name}`"

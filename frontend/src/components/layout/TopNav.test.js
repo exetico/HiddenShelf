@@ -92,4 +92,22 @@ describe("TopNav", () => {
     const buttons = mountNav().findAll("button");
     expect(buttons.filter((b) => !b.attributes("title"))).toEqual([]);
   });
+
+  it("flips to the other mode when you tap the one you're on", async () => {
+    mockRoute.name = "edit";
+    const wrapper = mountNav();
+    const [view, edit] = wrapper.findAll('[role="group"] button');
+    expect(edit.attributes("title")).toBe("Switch to View");
+    await edit.trigger("click");
+    expect(mockPush).toHaveBeenCalledWith({ name: "view" });
+    mockPush.mockClear();
+    await view.trigger("click");
+    expect(mockPush).toHaveBeenCalledWith({ name: "view" });
+  });
+
+  it("stays at the top while you scroll", () => {
+    expect(mountNav().find("header").classes()).toEqual(
+      expect.arrayContaining(["sticky", "top-0", "z-30"]),
+    );
+  });
 });

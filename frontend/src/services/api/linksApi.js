@@ -32,5 +32,12 @@ export const linksApi = {
     });
     return response.link;
   },
+  // Own links with the same URL (ignores http/https, www., trailing slash)
+  findDuplicates: async (url, excludeId = null) => {
+    const params = new URLSearchParams({ duplicate_of: url });
+    if (excludeId) params.set("exclude_id", String(excludeId));
+    const response = await request(`/api/links?${params.toString()}`);
+    return response.matches || [];
+  },
   remove: async (id) => request(`/api/links?id=${id}`, { method: "DELETE" }),
 };

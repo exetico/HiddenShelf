@@ -1,6 +1,7 @@
 <script setup>
 import { computed } from "vue";
 import { useAppStore } from "@/stores/app";
+import { useLinkMenu } from "@/composables/useLinkMenu";
 
 const props = defineProps({
   link: {
@@ -9,9 +10,11 @@ const props = defineProps({
   },
 });
 
-defineEmits(["edit", "delete", "copyPublic"]);
+const emit = defineEmits(["edit", "delete", "copyPublic"]);
 
 const appStore = useAppStore();
+// Right-click menu; its Edit opens the same editor as the Edit button
+const linkMenu = useLinkMenu({ onEdit: (link) => emit("edit", link) });
 
 const iconColor = computed(() => {
   if (!props.link.category_id) return "#3B82F6";
@@ -23,6 +26,7 @@ const iconColor = computed(() => {
 <template>
   <article
     class="bg-white dark:bg-brand-900 border border-gray-200 dark:border-brand-800 rounded-lg p-3 sm:p-4 min-w-0"
+    @contextmenu="linkMenu.open($event, link)"
   >
     <div class="flex items-start justify-between gap-3">
       <div class="flex items-start gap-2 min-w-0 flex-1">

@@ -6,14 +6,13 @@ import LinkCardView from "@/components/links/LinkCardView.vue";
 import CategoryFilterBar from "@/components/categories/CategoryFilterBar.vue";
 import CategoryPicker from "@/components/categories/CategoryPicker.vue";
 import ActiveTagFilter from "@/components/tags/ActiveTagFilter.vue";
-import ContextMenu from "@/components/common/ContextMenu.vue";
+import { useLinkMenu } from "@/composables/useLinkMenu";
+import { appUrl } from "@/lib/appUrl";
 
 const appStore = useAppStore();
 const toastStore = useToastStore();
 
-// Context menu state
-const contextLink = ref(null);
-const showContextMenu = ref(false);
+const linkMenu = useLinkMenu();
 
 // Collapse state
 const collapsedCategories = ref({});
@@ -66,8 +65,7 @@ const groupedCategories = computed(() => {
 });
 
 async function copyPublic(hash) {
-  const url = `${window.location.origin}/h/${hash}`;
-  await navigator.clipboard.writeText(url);
+  await navigator.clipboard.writeText(appUrl(`/h/${hash}`));
   toastStore.success("Public URL copied");
 }
 
@@ -80,14 +78,8 @@ function handleContextAction({ link, event, action }) {
     appStore.moveLink(link, "down");
     return;
   }
-  // Right-click context menu
-  contextLink.value = link;
-  showContextMenu.value = true;
-}
-
-function closeContextMenu() {
-  showContextMenu.value = false;
-  contextLink.value = null;
+  // Right-click / long press
+  linkMenu.open(event, link);
 }
 
 function toggleFilter(id) {
@@ -227,12 +219,5 @@ function toggleCategory(key) {
         Load more
       </button>
     </div>
-
-    <!-- Right-click context menu -->
-    <ContextMenu
-      :open="showContextMenu"
-      :link="contextLink"
-      @close="closeContextMenu"
-    />
   </section>
 </template>

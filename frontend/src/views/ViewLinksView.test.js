@@ -22,9 +22,7 @@ vi.mock("@/services/api/linksApi", () => ({
     }),
   },
 }));
-vi.mock("@/components/common/ContextMenu.vue", () => ({
-  default: { template: "<div></div>", props: ["open", "link"] },
-}));
+vi.mock("vue-router", () => ({ useRouter: () => ({ push: vi.fn() }) }));
 
 describe("ViewLinksView", () => {
   let pinia;

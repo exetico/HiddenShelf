@@ -5,6 +5,7 @@ import BaseModal from "@/components/common/BaseModal.vue";
 import { sharesApi } from "@/services/api/sharesApi";
 import { useToastStore } from "@/stores/toast";
 import { useAppStore } from "@/stores/app";
+import { useDialogStore } from "@/stores/dialog";
 
 const props = defineProps({
   open: Boolean,
@@ -41,9 +42,6 @@ const shareData = ref(null);
 const shareMembers = ref([]);
 const shareLoading = ref(false);
 
-// Delete confirmation state
-const showDeleteModal = ref(false);
-const deleteTarget = ref(null);
 
 function createCategory() {
   if (!name.value.trim()) return;
@@ -82,14 +80,24 @@ function saveEdit(id) {
   editingId.value = null;
 }
 
-function promptDelete(category) {
-  deleteTarget.value = { id: category.id, name: category.name };
-  showDeleteModal.value = true;
+async function promptDelete(category) {
+  const ok = await useDialogStore().confirmDelete({
+    title: `Delete category "${category.name}"?`,
+    message:
+      "Its links stay on your shelf as uncategorized. This can't be undone.",
+  });
+  if (ok) emit("remove", category.id);
 }
 
-function confirmDelete() {
-  emit("remove", deleteTarget.value.id);
-  showDeleteModal.value = false;
+async function leaveShared(category) {
+  const ok = await useDialogStore().confirm({
+    title: `Leave "${category.name}"?`,
+    message: "Its links disappear from your shelf until you join again.",
+    confirmText: "Leave",
+    danger: true,
+    icon: "mdi-exit-run",
+  });
+  if (ok) await appStore.leaveSharedCategory(category.id);
 }
 
 async function openShare(category) {
@@ -138,8 +146,6 @@ async function copyShareCode() {
   toastStore.success("Share code copied");
 }
 
-const showRemoveSharingConfirm = ref(false);
-
 async function removeMember(memberId) {
   if (!shareCategory.value) return;
   try {
@@ -153,11 +159,18 @@ async function removeMember(memberId) {
 
 async function removeSharing() {
   if (!shareCategory.value) return;
+  const ok = await useDialogStore().confirm({
+    title: `Stop sharing "${shareCategory.value.name}"?`,
+    message: "Everyone who joined loses access, and the share link stops working.",
+    confirmText: "Stop sharing",
+    danger: true,
+    icon: "mdi-link-variant-off",
+  });
+  if (!ok) return;
   try {
     await sharesApi.removeSharing(shareCategory.value.id);
     shareData.value = null;
     shareMembers.value = [];
-    showRemoveSharingConfirm.value = false;
     toastStore.success("Sharing removed");
   } catch (e) {
     toastStore.error(e.message || "Failed to remove sharing");
@@ -421,7 +434,7 @@ async function removeSharing() {
           <button
             :title="`Leave ${category.name}; you will no longer see its links`"
             class="text-red-600 dark:text-red-400 text-sm hover:text-red-800"
-            @click="appStore.leaveSharedCategory(category.id)"
+            @click="leaveShared(category)"
           >
             Leave
           </button>
@@ -516,35 +529,14 @@ async function removeSharing() {
           </div>
 
           <!-- Remove sharing -->
-          <div v-if="!showRemoveSharingConfirm" class="mb-2">
+          <div class="mb-2">
             <button
               title="Stop sharing this category"
               class="w-full px-4 py-2 rounded-md border border-red-400 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950 text-sm"
-              @click="showRemoveSharingConfirm = true"
+              @click="removeSharing"
             >
               Remove Sharing
             </button>
-          </div>
-          <div v-else class="mb-2 space-y-2">
-            <p class="text-sm text-red-600 dark:text-red-400">
-              This will revoke access for all members. Are you sure?
-            </p>
-            <div class="flex gap-2">
-              <button
-                title="Stop sharing; people who joined lose access"
-                class="px-4 py-2 rounded-md bg-red-600 text-white hover:bg-red-700 text-sm"
-                @click="removeSharing"
-              >
-                Yes, remove sharing
-              </button>
-              <button
-                title="Keep sharing"
-                class="px-4 py-2 rounded-md border border-gray-300 dark:border-brand-700 text-sm"
-                @click="showRemoveSharingConfirm = false"
-              >
-                Cancel
-              </button>
-            </div>
           </div>
         </div>
 
@@ -569,46 +561,6 @@ async function removeSharing() {
             @click="showShareModal = false"
           >
             Close
-          </button>
-        </div>
-      </div>
-    </div>
-  </Teleport>
-
-  <!-- Delete Confirmation Modal -->
-  <Teleport to="body">
-    <div
-      v-if="showDeleteModal && deleteTarget"
-      class="fixed inset-0 bg-black/50 flex items-center justify-center z-70 p-4"
-      @click.self="showDeleteModal = false"
-    >
-      <div
-        class="bg-white dark:bg-brand-900 rounded-lg shadow-xl max-w-sm w-full p-6"
-      >
-        <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-          Delete Category
-        </h3>
-        <p class="text-gray-600 dark:text-brand-300 mb-4">
-          Are you sure you want to delete
-          <strong class="text-gray-900 dark:text-white">{{
-            deleteTarget.name
-          }}</strong
-          >? Links in this category will become uncategorized.
-        </p>
-        <div class="flex justify-end gap-2">
-          <button
-            title="Keep the category"
-            class="px-4 py-2 rounded-md border border-gray-300 dark:border-brand-700"
-            @click="showDeleteModal = false"
-          >
-            Cancel
-          </button>
-          <button
-            title="Delete the category"
-            class="px-4 py-2 rounded-md bg-red-600 text-white hover:bg-red-700"
-            @click="confirmDelete"
-          >
-            Delete
           </button>
         </div>
       </div>

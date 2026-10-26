@@ -6,6 +6,7 @@ import { useAppStore } from "@/stores/app";
 import AppShell from "@/components/layout/AppShell.vue";
 import ToastList from "@/components/feedback/ToastList.vue";
 import ConfirmDialog from "@/components/common/ConfirmDialog.vue";
+import ContextMenuPopover from "@/components/common/ContextMenuPopover.vue";
 
 const route = useRoute();
 const authStore = useAuthStore();
@@ -26,6 +27,7 @@ onMounted(async () => {
     <router-view />
   </AppShell>
   <router-view v-else />
+  <ContextMenuPopover />
   <ConfirmDialog />
   <ToastList />
 </template>

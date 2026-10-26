@@ -5,24 +5,35 @@ import { useDialogStore } from "@/stores/dialog";
 // Renders the dialog from the dialog store; see stores/dialog.js
 const dialog = useDialogStore();
 const confirmButton = ref(null);
+const input = ref(null);
 
+// Escape closes only this dialog, not a modal open underneath it
 function handleKeydown(e) {
-  if (e.key === "Escape") dialog.close(false);
+  if (e.key !== "Escape") return;
+  e.stopImmediatePropagation();
+  dialog.close(false);
 }
 
 watch(
   () => dialog.current,
   async (current) => {
-    document.removeEventListener("keydown", handleKeydown);
+    window.removeEventListener("keydown", handleKeydown, true);
     if (current) {
-      document.addEventListener("keydown", handleKeydown);
+      window.addEventListener("keydown", handleKeydown, true);
       await nextTick();
-      confirmButton.value?.focus();
+      if (current.kind === "prompt") {
+        input.value?.focus();
+        input.value?.select();
+      } else {
+        confirmButton.value?.focus();
+      }
     }
   },
 );
 
-onUnmounted(() => document.removeEventListener("keydown", handleKeydown));
+onUnmounted(() =>
+  window.removeEventListener("keydown", handleKeydown, true),
+);
 </script>
 
 <template>
@@ -49,7 +60,7 @@ onUnmounted(() => document.removeEventListener("keydown", handleKeydown));
             class="mdi text-2xl leading-none mt-0.5"
             aria-hidden="true"
           ></i>
-          <div class="min-w-0">
+          <div class="min-w-0 flex-1">
             <h2
               id="confirm-dialog-title"
               class="font-semibold text-gray-900 dark:text-white"
@@ -62,11 +73,21 @@ onUnmounted(() => document.removeEventListener("keydown", handleKeydown));
             >
               {{ dialog.current.message }}
             </p>
+            <input
+              v-if="dialog.current.kind === 'prompt'"
+              ref="input"
+              v-model="dialog.current.value"
+              :type="dialog.current.inputType"
+              :placeholder="dialog.current.placeholder"
+              :aria-label="dialog.current.title"
+              class="mt-3 w-full px-3 py-2 rounded-md border border-gray-300 dark:border-brand-700 bg-white dark:bg-brand-800"
+              @keydown.enter.prevent="dialog.close(true)"
+            />
           </div>
         </div>
         <div class="mt-5 flex gap-2 justify-end">
           <button
-            v-if="dialog.current.kind === 'confirm'"
+            v-if="dialog.current.kind !== 'alert'"
             type="button"
             class="flex-1 sm:flex-none px-4 py-2 rounded-md border border-gray-300 dark:border-brand-700 text-sm"
             :title="dialog.current.cancelText"
