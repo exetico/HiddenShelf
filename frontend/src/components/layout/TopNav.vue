@@ -1,12 +1,14 @@
 <script setup>
-import { computed, ref, watch } from "vue";
+import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useAuthStore } from "@/stores/auth";
+import { useAppStore } from "@/stores/app";
 import { useTheme } from "@/composables/useTheme";
 
 const route = useRoute();
 const router = useRouter();
 const authStore = useAuthStore();
+const appStore = useAppStore();
 const { mode: theme, toggleTheme } = useTheme();
 
 // The View/Edit switch always shows one side selected. Off those pages
@@ -41,6 +43,33 @@ function goTo(name) {
   router.push({ name });
 }
 
+// Desktop: search and "Add link" live in the bar, so they're on every page.
+// Searching from the dashboard or profile jumps to View with the results.
+const searchInput = ref(null);
+const searchText = computed({
+  get: () => appStore.search,
+  set: (value) => {
+    appStore.search = value;
+    if (value && route.name !== "view" && route.name !== "edit") goTo("view");
+  },
+});
+
+function addLink() {
+  router.push({ name: "edit", query: { new: "1" } });
+}
+
+// "/" jumps to the search box, unless you're already typing somewhere
+function onKeydown(event) {
+  if (event.key !== "/" || event.ctrlKey || event.metaKey || event.altKey) return;
+  const target = event.target;
+  if (target?.closest?.("input, textarea, select, [contenteditable='true']")) return;
+  if (!searchInput.value || !searchInput.value.offsetParent) return; // hidden (phone)
+  event.preventDefault();
+  searchInput.value.focus();
+}
+onMounted(() => window.addEventListener("keydown", onKeydown));
+onUnmounted(() => window.removeEventListener("keydown", onKeydown));
+
 // It is a toggle: tapping the side you are already on flips to the other
 function pickMode(name) {
   if (route.name === name) {
@@ -66,6 +95,42 @@ function pickMode(name) {
       >
         <i class="mdi mdi-bookshelf text-3xl sm:text-4xl leading-none"></i>
       </button>
+
+      <!-- Desktop only: search and add, the two things you do most -->
+      <div class="hidden md:flex flex-1 max-w-lg items-center gap-2" data-testid="nav-tools">
+        <label class="relative flex-1">
+          <span class="sr-only">Search links</span>
+          <i
+            class="mdi mdi-magnify absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 dark:text-brand-500"
+            aria-hidden="true"
+          ></i>
+          <input
+            ref="searchInput"
+            v-model="searchText"
+            type="search"
+            placeholder="Search links"
+            title="Search titles, descriptions, URLs and tags (press / to jump here)"
+            class="w-full pl-8 pr-8 py-1.5 rounded-md border border-gray-300 dark:border-brand-700 bg-white dark:bg-brand-800 text-sm"
+            data-testid="nav-search"
+            @keydown.escape="searchText = ''; $event.target.blur()"
+          />
+          <kbd
+            v-if="!searchText"
+            class="absolute right-2 top-1/2 -translate-y-1/2 px-1.5 rounded border border-gray-300 dark:border-brand-600 text-[10px] text-gray-400 dark:text-brand-400 font-sans"
+            aria-hidden="true"
+            >/</kbd
+          >
+        </label>
+        <button
+          type="button"
+          class="shrink-0 px-3 py-1.5 rounded-md bg-brand-600 text-white text-sm hover:bg-brand-700"
+          title="Add a new link"
+          data-testid="nav-add"
+          @click="addLink"
+        >
+          <i class="mdi mdi-plus" aria-hidden="true"></i> Add link
+        </button>
+      </div>
 
       <div class="flex items-center gap-2 sm:gap-3">
         <div

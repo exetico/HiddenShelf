@@ -11,7 +11,7 @@ describe("LinkPreviewPopover", () => {
     setActivePinia(pinia);
   });
 
-  it("shows the description as Markdown with the tags, under the link", async () => {
+  it("shows the description as Markdown with the tags, beside the icon", async () => {
     const wrapper = mount(LinkPreviewPopover, {
       global: { plugins: [pinia], stubs: { Teleport: true } },
     });
@@ -22,11 +22,32 @@ describe("LinkPreviewPopover", () => {
       description: "- one\n- two",
       tags: [{ id: 2, name: "infra" }],
     };
-    preview.rect = { top: 100, bottom: 120, left: 50 };
+    window.innerWidth = 1400;
+    window.innerHeight = 900;
+    preview.rect = { top: 100, bottom: 116, left: 50, right: 66 };
     await flushPromises();
     const card = wrapper.find('[data-testid="link-preview"]');
     expect(card.findAll("li").map((li) => li.text())).toEqual(["one", "two"]);
     expect(card.text()).toContain("#infra");
-    expect(card.attributes("style")).toContain("top: 124px");
+    // To the right of the icon, level with it: the rows below stay visible
+    expect(card.attributes("style")).toContain("left: 74px");
+    expect(card.attributes("style")).toContain("top: 92px");
+  });
+
+  it("goes left of the icon near the right edge, and shows the date", async () => {
+    const wrapper = mount(LinkPreviewPopover, {
+      global: { plugins: [pinia], stubs: { Teleport: true } },
+    });
+    window.innerWidth = 1400;
+    window.innerHeight = 900;
+    const preview = useLinkPreviewStore();
+    preview.link = { id: 1, description: "x", created_at: "2025-10-03 12:00:00" };
+    preview.rect = { top: 880, bottom: 896, left: 1300, right: 1316 };
+    await flushPromises();
+    const style = wrapper.find('[data-testid="link-preview"]').attributes("style");
+    expect(style).toContain("left: 932px");
+    // Kept on screen at the bottom
+    expect(style).toContain("top: 604px");
+    expect(wrapper.text()).toContain("Added");
   });
 });

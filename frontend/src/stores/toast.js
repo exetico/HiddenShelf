@@ -8,22 +8,28 @@ export const useToastStore = defineStore("toast", {
     items: [],
   }),
   actions: {
-    push(type, message) {
+    // `action` adds a button to the toast, like { label: "Undo", run }
+    push(type, message, { action = null, duration = TOAST_DURATION } = {}) {
       const id = nextId++;
       this.items.push({
         id,
         type,
         message,
-        duration: TOAST_DURATION,
+        action,
+        duration,
         createdAt: Date.now(),
       });
-      window.setTimeout(() => this.remove(id), TOAST_DURATION);
+      window.setTimeout(() => this.remove(id), duration);
+    },
+    async runAction(item) {
+      this.remove(item.id);
+      await item.action?.run();
     },
     remove(id) {
       this.items = this.items.filter((item) => item.id !== id);
     },
-    success(message) {
-      this.push("success", message);
+    success(message, options) {
+      this.push("success", message, options);
     },
     error(message) {
       this.push("error", message);

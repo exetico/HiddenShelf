@@ -3,10 +3,13 @@ import { mount, flushPromises } from "@vue/test-utils";
 import { createPinia, setActivePinia } from "pinia";
 import { useAppStore } from "@/stores/app";
 import { useLinkDetailsStore } from "@/stores/linkDetails";
-import { useContextMenuStore } from "@/stores/contextMenu";
 import LinkDetailsSheet from "@/components/links/LinkDetailsSheet.vue";
 
-vi.mock("vue-router", () => ({ useRouter: () => ({ push: vi.fn() }) }));
+const push = vi.fn();
+vi.mock("vue-router", () => ({ useRouter: () => ({ push }) }));
+vi.mock("qrcode", () => ({
+  default: { toDataURL: vi.fn().mockResolvedValue("data:image/png;base64,QR") },
+}));
 
 const links = [
   {
@@ -82,10 +85,56 @@ describe("LinkDetailsSheet", () => {
     wrapper.unmount();
   });
 
-  it("hands over to the link menu for edit, move and delete", async () => {
-    await wrapper.find('[aria-label="More actions"]').trigger("click");
+  it("has real actions instead of a menu: edit goes to the editor", async () => {
+    expect(wrapper.find('[aria-label="More actions"]').exists()).toBe(false);
+    await wrapper.find('[title="Edit this link"]').trigger("click");
     expect(details.current).toBeNull();
-    expect(useContextMenuStore().title).toBe("Grafana");
+    expect(push).toHaveBeenCalledWith({ name: "edit", query: { editId: 1 } });
+    wrapper.unmount();
+  });
+
+  it("moves the link to the trash and closes", async () => {
+    const appStore = useAppStore();
+    appStore.deleteLink = vi.fn().mockResolvedValue();
+    await wrapper.find('[aria-label="Move to trash"]').trigger("click");
+    expect(appStore.deleteLink).toHaveBeenCalledWith(1);
+    expect(details.current).toBeNull();
+    wrapper.unmount();
+  });
+
+  it("stars the link", async () => {
+    const appStore = useAppStore();
+    appStore.toggleLinkFavorite = vi.fn();
+    const star = wrapper.find('[data-testid="details-favorite"]');
+    expect(star.attributes("title")).toBe("Add to favorites");
+    await star.trigger("click");
+    expect(appStore.toggleLinkFavorite).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 1 }),
+    );
+    wrapper.unmount();
+  });
+
+  it("shows a QR code for a public link", async () => {
+    expect(wrapper.find('[data-testid="link-qr"]').exists()).toBe(false);
+    await wrapper.find('[title="Show a QR code for the public link"]').trigger("click");
+    await flushPromises();
+    const img = wrapper.find('[data-testid="link-qr"] img');
+    expect(img.attributes("src")).toBe("data:image/png;base64,QR");
+    expect(wrapper.find('[data-testid="link-qr"] a').attributes("download")).toBe(
+      "grafana-qr.png",
+    );
+    wrapper.unmount();
+  });
+
+  it("offers no QR, edit or trash where they don't apply", async () => {
+    details.open([{ id: 9, title: "Theirs", url: "https://x.com", is_from_shared_category: 1 }], {
+      id: 9,
+    });
+    await flushPromises();
+    expect(wrapper.find('[title="Show a QR code for the public link"]').exists()).toBe(false);
+    expect(wrapper.find('[title="Edit this link"]').exists()).toBe(false);
+    expect(wrapper.find('[aria-label="Move to trash"]').exists()).toBe(false);
+    expect(wrapper.find('[data-testid="details-favorite"]').exists()).toBe(false);
     wrapper.unmount();
   });
 

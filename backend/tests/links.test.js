@@ -433,30 +433,171 @@ describe("Links API", () => {
 
   // ── DELETE /api/links?id= ──
 
-  describe("DELETE /api/links?id=", () => {
-    it("deletes a link", async () => {
-      const created = await createLink();
-      const res = await app.request(`/api/links?id=${created.link.id}`, {
+  describe("DELETE /api/links?id= (trash)", () => {
+    const del = (id, query = "") =>
+      app.request(`/api/links?id=${id}${query}`, {
         method: "DELETE",
         headers: { Cookie: cookie },
       });
-      const data = await json(res);
-      expect(data.success).toBe(true);
+    const get = (query) =>
+      app.request(`/api/links${query}`, { headers: { Cookie: cookie } }).then(json);
 
-      // Verify deleted
-      const db = getDb();
-      const link = db
-        .prepare("SELECT * FROM links WHERE id = ?")
+    it("moves a link to the trash instead of deleting it", async () => {
+      const created = await createLink({ is_public: true });
+      const data = await json(await del(created.link.id));
+      expect(data.success).toBe(true);
+      expect(data.message).toContain("trash");
+
+      const row = getDb()
+        .prepare("SELECT deleted_at FROM links WHERE id = ?")
         .get(created.link.id);
-      expect(link).toBeUndefined();
+      expect(row.deleted_at).toBeTruthy();
+
+      // Gone from the shelf, the public page, random and single fetch
+      expect((await get("")).links).toHaveLength(0);
+      expect((await get(`?id=${created.link.id}`)).error).toBe("Link not found");
+      const hashRes = await app.request(`/api/links?hash=${created.link.hash}`);
+      expect(hashRes.status).toBe(404);
+      const pageRes = await app.request(`/h/${created.link.hash}`);
+      expect(pageRes.status).toBe(404);
+      const random = await app.request("/api/links?random=1", { headers: { Cookie: cookie } });
+      expect(random.status).toBe(404);
+
+      // But listed in the trash
+      const trash = await get("?trash=1");
+      expect(trash.links.map((l) => l.id)).toEqual([created.link.id]);
+      expect(trash.days).toBe(30);
     });
 
-    it("returns 404 for already-deleted link", async () => {
-      const res = await app.request("/api/links?id=9999", {
-        method: "DELETE",
+    it("restores a link from the trash", async () => {
+      const created = await createLink();
+      await del(created.link.id);
+      const res = await app.request(`/api/links/restore?id=${created.link.id}`, {
+        method: "POST",
+        headers: { Cookie: cookie },
+      });
+      expect((await json(res)).success).toBe(true);
+      expect((await get("")).links).toHaveLength(1);
+      expect((await get("?trash=1")).links).toHaveLength(0);
+    });
+
+    it("won't restore a link that isn't in the trash, or someone else's", async () => {
+      const created = await createLink();
+      const res = await app.request(`/api/links/restore?id=${created.link.id}`, {
+        method: "POST",
         headers: { Cookie: cookie },
       });
       expect(res.status).toBe(404);
+
+      await del(created.link.id);
+      const other = createAuthenticatedUser("other-trash@example.com");
+      const theirs = await app.request(`/api/links/restore?id=${created.link.id}`, {
+        method: "POST",
+        headers: { Cookie: other.cookie },
+      });
+      expect(theirs.status).toBe(404);
+    });
+
+    it("deletes for good only from the trash", async () => {
+      const created = await createLink();
+      const early = await del(created.link.id, "&permanent=1");
+      expect(early.status).toBe(400);
+
+      await del(created.link.id);
+      const res = await del(created.link.id, "&permanent=1");
+      expect((await json(res)).success).toBe(true);
+      const row = getDb().prepare("SELECT * FROM links WHERE id = ?").get(created.link.id);
+      expect(row).toBeUndefined();
+    });
+
+    it("empties the trash, leaving the shelf alone", async () => {
+      const keep = await createLink({ title: "Keep" });
+      const a = await createLink({ title: "A", url: "https://a.com" });
+      const b = await createLink({ title: "B", url: "https://b.com" });
+      await del(a.link.id);
+      await del(b.link.id);
+      const res = await app.request("/api/links/trash", {
+        method: "DELETE",
+        headers: { Cookie: cookie },
+      });
+      expect((await json(res)).deleted).toBe(2);
+      expect((await get("")).links.map((l) => l.id)).toEqual([keep.link.id]);
+    });
+
+    it("clears links older than 30 days out of the trash", async () => {
+      const old = await createLink({ title: "Old" });
+      const recent = await createLink({ title: "Recent", url: "https://r.com" });
+      getDb()
+        .prepare("UPDATE links SET deleted_at = datetime('now', '-31 days') WHERE id = ?")
+        .run(old.link.id);
+      await del(recent.link.id);
+      const trash = await get("?trash=1");
+      expect(trash.links.map((l) => l.id)).toEqual([recent.link.id]);
+      const row = getDb().prepare("SELECT * FROM links WHERE id = ?").get(old.link.id);
+      expect(row).toBeUndefined();
+    });
+
+    it("leaves trashed links out of tag and category counts", async () => {
+      const cat = getDb()
+        .prepare("INSERT INTO categories (user_id, name) VALUES (?, ?)")
+        .run(userId, "Counted").lastInsertRowid;
+      const created = await createLink({ category_id: cat, tags: ["counted"] });
+      await del(created.link.id);
+      const tags = await app
+        .request("/api/tags", { headers: { Cookie: cookie } })
+        .then(json);
+      expect(tags.tags.find((t) => t.name === "counted").usage_count).toBe(0);
+      const cats = await app
+        .request("/api/categories", { headers: { Cookie: cookie } })
+        .then(json);
+      expect(cats.categories.find((c) => c.id === cat).link_count).toBe(0);
+    });
+
+    it("returns 404 for a link that doesn't exist", async () => {
+      expect((await del(9999)).status).toBe(404);
+    });
+  });
+
+  describe("Favorite links", () => {
+    it("marks a link as a favorite and lists all favorites", async () => {
+      const a = await createLink({ title: "Zeta", url: "https://z.com" });
+      const b = await createLink({ title: "alpha", url: "https://a.com" });
+      await createLink({ title: "Plain", url: "https://p.com" });
+      for (const link of [a.link, b.link]) {
+        await app.request(`/api/links?id=${link.id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json", Cookie: cookie },
+          body: JSON.stringify({ is_favorite: true }),
+        });
+      }
+      const res = await app
+        .request("/api/links?favorites=1", { headers: { Cookie: cookie } })
+        .then(json);
+      expect(res.links.map((l) => l.title)).toEqual(["alpha", "Zeta"]);
+      expect(res.links[0].tags).toEqual([]);
+
+      // Other fields stay as they were
+      const one = await app
+        .request(`/api/links?id=${a.link.id}`, { headers: { Cookie: cookie } })
+        .then(json);
+      expect(one.link).toMatchObject({ is_favorite: 1, title: "Zeta" });
+    });
+
+    it("leaves trashed favorites out", async () => {
+      const a = await createLink();
+      await app.request(`/api/links?id=${a.link.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", Cookie: cookie },
+        body: JSON.stringify({ is_favorite: true }),
+      });
+      await app.request(`/api/links?id=${a.link.id}`, {
+        method: "DELETE",
+        headers: { Cookie: cookie },
+      });
+      const res = await app
+        .request("/api/links?favorites=1", { headers: { Cookie: cookie } })
+        .then(json);
+      expect(res.links).toEqual([]);
     });
   });
 

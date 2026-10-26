@@ -3,6 +3,7 @@ import { computed } from "vue";
 import { useAppStore } from "@/stores/app";
 import { useLinkMenu } from "@/composables/useLinkMenu";
 import { renderMarkdown } from "@/lib/markdown";
+import { formatDate } from "@/lib/date";
 
 const props = defineProps({
   link: {
@@ -16,6 +17,8 @@ const emit = defineEmits(["edit", "delete", "copyPublic"]);
 const appStore = useAppStore();
 // Right-click menu; its Edit opens the same editor as the Edit button
 const linkMenu = useLinkMenu({ onEdit: (link) => emit("edit", link) });
+
+const addedOn = computed(() => formatDate(props.link.created_at));
 
 const iconColor = computed(() => {
   if (!props.link.category_id) return "#3B82F6";
@@ -51,7 +54,21 @@ const iconColor = computed(() => {
           </p>
         </div>
       </div>
-      <div class="flex gap-3 text-sm shrink-0">
+      <div class="flex items-center gap-3 text-sm shrink-0">
+        <button
+          class="-my-1 text-base leading-none"
+          :class="
+            link.is_favorite
+              ? 'text-amber-500'
+              : 'text-gray-300 hover:text-amber-500 dark:text-brand-600'
+          "
+          :title="link.is_favorite ? 'Remove from favorites' : 'Add to favorites'"
+          :aria-pressed="Boolean(link.is_favorite)"
+          data-testid="favorite-toggle"
+          @click="appStore.toggleLinkFavorite(link)"
+        >
+          <i class="mdi" :class="link.is_favorite ? 'mdi-star' : 'mdi-star-outline'"></i>
+        </button>
         <button
           class="text-brand-600 dark:text-brand-400"
           :title="`Edit ${link.title}`"
@@ -61,7 +78,7 @@ const iconColor = computed(() => {
         </button>
         <button
           class="text-red-600 dark:text-red-400"
-          :title="`Delete ${link.title}`"
+          :title="`Move ${link.title} to the trash`"
           @click="$emit('delete', link.id)"
         >
           Delete
@@ -110,37 +127,39 @@ const iconColor = computed(() => {
           >+{{ link.tags.length - 3 }}</span
         >
       </div>
-      <div class="flex items-center gap-2 flex-wrap justify-end">
-        <!-- Direct redirect indicator -->
-        <span
-          v-if="link.direct_redirect"
-          class="text-xs px-1.5 py-0.5 rounded-sm bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400"
-          title="Direct redirect enabled"
-        >
-          <i class="mdi mdi-lightning-bolt"></i> redirect
-        </span>
-        <!-- Visit count for public links -->
+      <!-- Quiet status icons; hover any of them for what it means -->
+      <div
+        class="flex items-center gap-2.5 justify-end text-xs text-gray-400 dark:text-brand-500 shrink-0"
+      >
+        <span v-if="addedOn" :title="`Added ${addedOn}`">{{ addedOn }}</span>
         <span
           v-if="link.is_public && link.total_visits > 0"
-          class="text-xs text-gray-400 dark:text-brand-500"
           :title="`${link.total_visits} ${link.total_visits === 1 ? 'visit' : 'visits'} in total`"
         >
           <i class="mdi mdi-eye-outline"></i> {{ link.total_visits }}
         </span>
-        <span
-          class="text-xs text-gray-400 dark:text-brand-500"
-          :title="link.is_public ? 'Public link' : 'Private link'"
-        >
-          {{ link.is_public ? "🔓" : "🔒" }}
-        </span>
+        <i
+          v-if="link.is_public && link.direct_redirect"
+          class="mdi mdi-lightning-bolt text-sm"
+          title="Direct redirect: the public link goes straight to the site"
+          data-testid="redirect-indicator"
+        ></i>
+        <!-- Public: the globe says so and copies the public link -->
         <button
           v-if="link.is_public"
-          class="text-xs text-green-600 dark:text-green-400"
-          title="Copy the public link to the clipboard"
+          class="text-sm text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300"
+          title="Public: copy the public link"
+          data-testid="public-indicator"
           @click="$emit('copyPublic', link.hash)"
         >
-          Copy public URL
+          <i class="mdi mdi-earth"></i>
         </button>
+        <i
+          v-else
+          class="mdi mdi-lock-outline text-sm"
+          title="Private: only you can see it"
+          data-testid="private-indicator"
+        ></i>
       </div>
     </div>
   </article>

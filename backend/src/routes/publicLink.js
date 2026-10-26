@@ -77,7 +77,7 @@ export function publicLinkRoutes({ templatePath }) {
     const db = getDb();
     const link = db
       .prepare(
-        "SELECT id, url, title, description, direct_redirect FROM links WHERE hash = ? AND is_public = 1",
+        "SELECT id, url, title, description, direct_redirect FROM links WHERE hash = ? AND is_public = 1 AND deleted_at IS NULL",
       )
       .get(hash);
 

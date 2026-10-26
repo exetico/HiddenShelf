@@ -48,5 +48,16 @@ export const linksApi = {
     const response = await request("/api/links?random=1");
     return response.link;
   },
+  // Moves the link to the trash
   remove: async (id) => request(`/api/links?id=${id}`, { method: "DELETE" }),
+  favorites: async () => {
+    const response = await request("/api/links?favorites=1");
+    return response.links || [];
+  },
+  trash: async () => request("/api/links?trash=1"),
+  restore: async (id) =>
+    request(`/api/links/restore?id=${id}`, { method: "POST" }),
+  deleteForever: async (id) =>
+    request(`/api/links?id=${id}&permanent=1`, { method: "DELETE" }),
+  emptyTrash: async () => request("/api/links/trash", { method: "DELETE" }),
 };

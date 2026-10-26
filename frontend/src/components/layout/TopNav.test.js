@@ -2,6 +2,7 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 import { mount } from "@vue/test-utils";
 import { createPinia, setActivePinia } from "pinia";
 import { useAuthStore } from "@/stores/auth";
+import { useAppStore } from "@/stores/app";
 import TopNav from "@/components/layout/TopNav.vue";
 
 const mockPush = vi.fn();
@@ -109,5 +110,59 @@ describe("TopNav", () => {
     expect(mountNav().find("header").classes()).toEqual(
       expect.arrayContaining(["sticky", "top-0", "z-30"]),
     );
+  });
+
+  describe("desktop tools", () => {
+    it("are only in the bar from md up", () => {
+      const tools = mountNav().find('[data-testid="nav-tools"]');
+      expect(tools.classes()).toEqual(expect.arrayContaining(["hidden", "md:flex"]));
+    });
+
+    it("searches in place on View", async () => {
+      const wrapper = mountNav();
+      await wrapper.find('[data-testid="nav-search"]').setValue("grafana");
+      expect(useAppStore().search).toBe("grafana");
+      expect(mockPush).not.toHaveBeenCalled();
+    });
+
+    it("jumps to View when you search from the dashboard", async () => {
+      mockRoute.name = "dashboard";
+      const wrapper = mountNav();
+      await wrapper.find('[data-testid="nav-search"]').setValue("docs");
+      expect(useAppStore().search).toBe("docs");
+      expect(mockPush).toHaveBeenCalledWith({ name: "view" });
+    });
+
+    it("clears the search on Escape", async () => {
+      const wrapper = mountNav();
+      const input = wrapper.find('[data-testid="nav-search"]');
+      await input.setValue("x");
+      await input.trigger("keydown", { key: "Escape" });
+      expect(useAppStore().search).toBe("");
+    });
+
+    it("opens the new-link form from Add link", async () => {
+      const wrapper = mountNav();
+      await wrapper.find('[data-testid="nav-add"]').trigger("click");
+      expect(mockPush).toHaveBeenCalledWith({ name: "edit", query: { new: "1" } });
+    });
+
+    it("focuses the search on / unless you're typing", async () => {
+      const wrapper = mountNav();
+      const input = wrapper.find('[data-testid="nav-search"]').element;
+      // jsdom has no layout, so pretend the box is visible
+      Object.defineProperty(input, "offsetParent", { value: document.body });
+      const event = new KeyboardEvent("keydown", { key: "/", cancelable: true });
+      window.dispatchEvent(event);
+      expect(event.defaultPrevented).toBe(true);
+
+      const other = document.createElement("textarea");
+      document.body.appendChild(other);
+      const typing = new KeyboardEvent("keydown", { key: "/", cancelable: true, bubbles: true });
+      other.dispatchEvent(typing);
+      expect(typing.defaultPrevented).toBe(false);
+      other.remove();
+      wrapper.unmount();
+    });
   });
 });

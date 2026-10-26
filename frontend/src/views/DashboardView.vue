@@ -145,6 +145,31 @@ async function openTag(tag) {
   router.push({ name: "view" });
 }
 
+// Bottom row: look, account and data
+const settingsRow = computed(() => [
+  {
+    key: "theme",
+    label: isDark.value ? "Light mode" : "Dark mode",
+    icon: isDark.value ? "mdi-weather-sunny" : "mdi-weather-night",
+    title: isDark.value ? "Switch to light mode" : "Switch to dark mode",
+    action: () => toggleTheme(),
+  },
+  {
+    key: "profile",
+    label: "Profile",
+    icon: "mdi-account-outline",
+    title: "Settings and account",
+    action: () => router.push({ name: "profile" }),
+  },
+  {
+    key: "data",
+    label: "Import / export",
+    icon: "mdi-swap-horizontal",
+    title: "Import or export your links and categories",
+    action: () => router.push({ name: "profile", query: { section: "data" } }),
+  },
+]);
+
 const topVisitedLinks = computed(() =>
   appStore.visitStats.summary.slice(0, 5),
 );
@@ -152,11 +177,14 @@ const topVisitedLinks = computed(() =>
 
 <template>
   <section class="space-y-4 sm:space-y-6">
-    <header>
-      <h1 class="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">
+    <!-- One line: a greeting, not a banner -->
+    <header class="flex flex-wrap items-baseline gap-x-3" data-testid="welcome">
+      <h1 class="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">
         Welcome back
       </h1>
-      <p class="text-gray-600 dark:text-brand-300">Overview of your shelf</p>
+      <p class="text-sm text-gray-500 dark:text-brand-400">
+        Here's your shelf at a glance
+      </p>
     </header>
 
     <div class="grid grid-cols-3 gap-2 sm:gap-4">
@@ -188,7 +216,7 @@ const topVisitedLinks = computed(() =>
       </button>
     </div>
 
-    <div class="grid grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-3">
+    <div class="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3">
       <button
         class="p-3 sm:p-4 rounded-lg bg-white dark:bg-brand-900 border border-gray-200 dark:border-brand-800 text-left hover:border-brand-500"
         title="Browse your links"
@@ -214,7 +242,7 @@ const topVisitedLinks = computed(() =>
         </p>
       </button>
       <button
-        class="p-3 sm:p-4 rounded-lg bg-white dark:bg-brand-900 border border-gray-200 dark:border-brand-800 text-left hover:border-brand-500"
+        class="max-sm:col-span-2 p-3 sm:p-4 rounded-lg bg-white dark:bg-brand-900 border border-gray-200 dark:border-brand-800 text-left hover:border-brand-500"
         title="See what you share and what is shared with you"
         @click="router.push({ name: 'profile', query: { section: 'sharing' } })"
       >
@@ -224,30 +252,6 @@ const topVisitedLinks = computed(() =>
         <p class="text-xs sm:text-sm text-gray-600 dark:text-brand-300">
           {{ ownSharedCount }} shared by you ·
           {{ appStore.sharedCategories.length }} shared with you
-        </p>
-      </button>
-      <button
-        class="p-3 sm:p-4 rounded-lg bg-white dark:bg-brand-900 border border-gray-200 dark:border-brand-800 text-left hover:border-brand-500"
-        title="Settings and account"
-        @click="router.push({ name: 'profile' })"
-      >
-        <h2 class="font-semibold">
-          <i class="mdi mdi-account-outline mr-1"></i>Profile
-        </h2>
-        <p class="hidden sm:block text-sm text-gray-600 dark:text-brand-300">
-          Settings and account actions
-        </p>
-      </button>
-      <button
-        class="p-3 sm:p-4 rounded-lg bg-white dark:bg-brand-900 border border-gray-200 dark:border-brand-800 text-left hover:border-brand-500"
-        title="Import or export your links and categories"
-        @click="router.push({ name: 'profile' })"
-      >
-        <h2 class="font-semibold">
-          <i class="mdi mdi-swap-horizontal mr-1"></i>Import Data
-        </h2>
-        <p class="hidden sm:block text-sm text-gray-600 dark:text-brand-300">
-          Import or export your links and categories
         </p>
       </button>
     </div>
@@ -328,30 +332,21 @@ const topVisitedLinks = computed(() =>
       </ul>
     </article>
 
-    <!-- Theme Toggle -->
-    <article
-      class="bg-white dark:bg-brand-900 rounded-lg border border-gray-200 dark:border-brand-800 p-4 sm:p-5"
-    >
-      <div class="flex items-center justify-between">
-        <div>
-          <h2 class="font-semibold text-gray-900 dark:text-white">Theme</h2>
-          <p class="text-sm text-gray-600 dark:text-brand-300">
-            {{ isDark ? "Dark mode" : "Light mode" }}
-          </p>
-        </div>
-        <button
-          class="p-2 rounded-md hover:bg-gray-100 dark:hover:bg-brand-800 transition-colors"
-          @click="toggleTheme()"
-          :title="isDark ? 'Switch to light mode' : 'Switch to dark mode'"
-          :aria-label="isDark ? 'Switch to light mode' : 'Switch to dark mode'"
-        >
-          <i
-            class="mdi text-xl"
-            :class="isDark ? 'mdi-weather-sunny' : 'mdi-weather-night'"
-          ></i>
-        </button>
-      </div>
-    </article>
+    <!-- Settings row: the whole button is the target -->
+    <div class="grid grid-cols-3 gap-2 sm:gap-3" data-testid="settings-row">
+      <button
+        v-for="item in settingsRow"
+        :key="item.key"
+        type="button"
+        class="flex flex-col sm:flex-row items-center justify-center sm:justify-start gap-1 sm:gap-2 p-2.5 sm:p-3 rounded-lg bg-white dark:bg-brand-900 border border-gray-200 dark:border-brand-800 hover:border-brand-500 text-xs sm:text-sm text-gray-700 dark:text-brand-200 text-center sm:text-left"
+        :title="item.title"
+        :data-testid="`settings-${item.key}`"
+        @click="item.action()"
+      >
+        <i class="mdi text-lg leading-none" :class="item.icon" aria-hidden="true"></i>
+        <span>{{ item.label }}</span>
+      </button>
+    </div>
 
     <!-- Easter egg -->
     <p class="text-center pt-2 pb-4">

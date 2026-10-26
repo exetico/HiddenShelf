@@ -361,4 +361,15 @@ describe("ProfileView", () => {
     mockRoute.query = {};
     wrapper.unmount();
   });
+
+  it("opens import/export straight away when sent from the dashboard", async () => {
+    mockRoute.query = { section: "data" };
+    const wrapper = mountProfile();
+    await flushPromises();
+    expect(
+      wrapper.findComponent({ name: "ImportExportModal" }).props("open"),
+    ).toBe(true);
+    mockRoute.query = {};
+    wrapper.unmount();
+  });
 });

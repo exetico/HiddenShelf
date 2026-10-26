@@ -41,6 +41,14 @@ describe("renderMarkdown", () => {
     );
   });
 
+  it("renders headings, kept small", () => {
+    expect(renderMarkdown("# Setup\nRun it\n## Notes\n#### Deep **one**")).toBe(
+      "<h3>Setup</h3><p>Run it</p><h4>Notes</h4><h5>Deep <strong>one</strong></h5>",
+    );
+    // Needs the space, like everywhere else
+    expect(renderMarkdown("#hashtag")).toBe("<p>#hashtag</p>");
+  });
+
   it("returns nothing for an empty description", () => {
     expect(renderMarkdown("")).toBe("");
     expect(renderMarkdown(null)).toBe("");

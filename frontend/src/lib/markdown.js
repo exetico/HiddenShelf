@@ -65,6 +65,7 @@ export function renderMarkdown(source) {
     const bullet = line.match(/^\s*[-*+]\s+(.*)$/);
     const numbered = line.match(/^\s*\d+[.)]\s+(.*)$/);
     const item = bullet || numbered;
+    const heading = line.match(/^(#{1,6})\s+(.*)$/);
     if (item) {
       flushParagraph();
       const type = bullet ? "ul" : "ol";
@@ -77,11 +78,15 @@ export function renderMarkdown(source) {
     } else if (!line.trim()) {
       flushParagraph();
       closeList();
+    } else if (heading) {
+      // Kept small: # is h3, ## is h4, ### and deeper are h5
+      flushParagraph();
+      closeList();
+      const level = Math.min(heading[1].length + 2, 5);
+      html.push(`<h${level}>${inline(heading[2])}</h${level}>`);
     } else {
       closeList();
-      // "# Heading" reads fine as a bold line in a short note
-      const heading = line.match(/^#{1,6}\s+(.*)$/);
-      paragraph.push(heading ? `<strong>${heading[1]}</strong>` : line);
+      paragraph.push(line);
     }
   }
   flushParagraph();

@@ -50,7 +50,7 @@ shares.get("/", optionalAuth(), (c) => {
     if (!share) return errorResponse(c, "This share link has been used or replaced. Ask the owner for a new one.", 404);
 
     const linkCount = db
-      .prepare("SELECT COUNT(*) as count FROM links WHERE category_id = ?")
+      .prepare("SELECT COUNT(*) as count FROM links WHERE category_id = ? AND deleted_at IS NULL")
       .get(share.category_id);
 
     return successResponse(c, {
@@ -130,7 +130,7 @@ shares.get("/", optionalAuth(), (c) => {
     const placeholders = sharedCategories.map(() => "?").join(",");
     const counts = db
       .prepare(
-        `SELECT category_id, COUNT(*) as count FROM links WHERE category_id IN (${placeholders}) GROUP BY category_id`,
+        `SELECT category_id, COUNT(*) as count FROM links WHERE category_id IN (${placeholders}) AND deleted_at IS NULL GROUP BY category_id`,
       )
       .all(...sharedCategories.map((c) => c.id));
     const countMap = Object.fromEntries(

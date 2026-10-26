@@ -44,9 +44,9 @@ describe("link preview store", () => {
   it("shows a description after a short hover and hides after leaving", () => {
     const preview = useLinkPreviewStore();
     preview.hoverStart({ id: 1, description: "Notes" }, element);
-    vi.advanceTimersByTime(300);
+    vi.advanceTimersByTime(150);
     expect(preview.link).toBeNull();
-    vi.advanceTimersByTime(200);
+    vi.advanceTimersByTime(150);
     expect(preview.link.id).toBe(1);
     preview.hoverEnd();
     preview.keep(); // pointer moved onto the card

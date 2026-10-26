@@ -28,6 +28,7 @@ tags.get("/", requireAuth(), (c) => {
       `SELECT t.*, COUNT(lt.link_id) as usage_count
      FROM tags t
      LEFT JOIN link_tags lt ON t.id = lt.tag_id
+       AND lt.link_id IN (SELECT id FROM links WHERE deleted_at IS NULL)
      WHERE t.user_id = ?
      GROUP BY t.id
      ORDER BY usage_count DESC, t.name ASC`,

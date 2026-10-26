@@ -51,9 +51,18 @@ export function useLinkMenu({ onEdit, onDetails } = {}) {
     await save(link, { display_order: value === "" ? null : Number(value) });
   }
 
+  // No "are you sure?": the link goes to the trash and the toast can undo it
   async function remove(link) {
-    const ok = await dialog.confirmDelete({ title: `Delete "${link.title}"?` });
-    if (ok) await appStore.deleteLink(link.id);
+    try {
+      await appStore.deleteLink(link.id);
+    } catch (error) {
+      toast.error(error.message || "Couldn't delete the link");
+    }
+  }
+
+  function edit(link) {
+    if (onEdit) onEdit(link);
+    else router.push({ name: "edit", query: { editId: link.id } });
   }
 
   function items(link) {
@@ -89,10 +98,13 @@ export function useLinkMenu({ onEdit, onDetails } = {}) {
         label: "Edit",
         icon: "mdi-pencil-outline",
         hidden: !own,
-        action: () =>
-          onEdit
-            ? onEdit(link)
-            : router.push({ name: "edit", query: { editId: link.id } }),
+        action: () => edit(link),
+      },
+      {
+        label: link.is_favorite ? "Remove from favorites" : "Add to favorites",
+        icon: link.is_favorite ? "mdi-star-off-outline" : "mdi-star-outline",
+        hidden: !own,
+        action: () => appStore.toggleLinkFavorite(link),
       },
       {
         label: "Move up",
@@ -120,7 +132,7 @@ export function useLinkMenu({ onEdit, onDetails } = {}) {
       },
       { divider: true },
       {
-        label: "Delete",
+        label: "Move to trash",
         icon: "mdi-delete-outline",
         danger: true,
         hidden: !own,
@@ -133,5 +145,5 @@ export function useLinkMenu({ onEdit, onDetails } = {}) {
     menu.show(event, { title: link.title, items: items(link) });
   }
 
-  return { open, items };
+  return { open, items, edit, remove };
 }

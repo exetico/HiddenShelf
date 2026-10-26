@@ -37,39 +37,26 @@ describe("LinkCardEdit", () => {
     const wrapper = mountCard();
 
     expect(wrapper.text()).toContain("Example");
-    await wrapper.find("button").trigger("click");
+    await wrapper.find('[title="Edit Example"]').trigger("click");
     expect(wrapper.emitted("edit")).toHaveLength(1);
   });
 
-  it("shows 🔓 emoji for public links", () => {
-    const wrapper = mountCard({ is_public: 1 });
-    expect(wrapper.text()).toContain("🔓");
-    expect(wrapper.text()).not.toContain("🔒");
-  });
-
-  it("shows 🔒 emoji for private links", () => {
-    const wrapper = mountCard({ is_public: 0 });
-    expect(wrapper.text()).toContain("🔒");
-    expect(wrapper.text()).not.toContain("🔓");
-  });
-
-  it("shows Copy public URL button for public links", () => {
-    const wrapper = mountCard({ is_public: 1 });
-    expect(wrapper.text()).toContain("Copy public URL");
-  });
-
-  it("hides Copy public URL button for private links", () => {
-    const wrapper = mountCard({ is_public: 0 });
-    expect(wrapper.text()).not.toContain("Copy public URL");
-  });
-
-  it("emits copyPublic with hash when Copy public URL is clicked", async () => {
+  it("shows a globe for public links that copies the public link", async () => {
     const wrapper = mountCard({ is_public: 1, hash: "xyz123" });
-    const copyBtn = wrapper
-      .findAll("button")
-      .find((b) => b.text().includes("Copy public URL"));
-    await copyBtn.trigger("click");
+    const globe = wrapper.find('[data-testid="public-indicator"]');
+    expect(globe.attributes("title")).toBe("Public: copy the public link");
+    expect(wrapper.find('[data-testid="private-indicator"]').exists()).toBe(false);
+    await globe.trigger("click");
     expect(wrapper.emitted("copyPublic")[0]).toEqual(["xyz123"]);
+  });
+
+  it("shows a lock for private links, with nothing to copy", () => {
+    const wrapper = mountCard({ is_public: 0 });
+    expect(wrapper.find('[data-testid="private-indicator"]').attributes("title")).toBe(
+      "Private: only you can see it",
+    );
+    expect(wrapper.find('[data-testid="public-indicator"]').exists()).toBe(false);
+    expect(wrapper.text()).not.toMatch(/🔓|🔒|Copy public URL/);
   });
 
   it("emits delete with id when Delete is clicked", async () => {
@@ -120,14 +107,43 @@ describe("LinkCardEdit", () => {
     expect(wrapper.find("h3").classes()).toContain("truncate");
   });
 
-  it("shows direct redirect indicator when direct_redirect is set", () => {
-    const wrapper = mountCard({ direct_redirect: 1 });
-    expect(wrapper.text()).toContain("redirect");
+  it("marks a direct redirect with an icon only, for public links", () => {
+    const wrapper = mountCard({ direct_redirect: 1, is_public: 1 });
+    const bolt = wrapper.find('[data-testid="redirect-indicator"]');
+    expect(bolt.attributes("title")).toContain("Direct redirect");
+    expect(wrapper.text()).not.toContain("redirect");
+    // It only matters for the public link
+    expect(
+      mountCard({ direct_redirect: 1, is_public: 0 })
+        .find('[data-testid="redirect-indicator"]')
+        .exists(),
+    ).toBe(false);
   });
 
   it("hides direct redirect indicator when not set", () => {
     const wrapper = mountCard({ direct_redirect: 0 });
-    expect(wrapper.text()).not.toContain("redirect");
+    expect(wrapper.find('[data-testid="redirect-indicator"]').exists()).toBe(false);
+  });
+
+  it("shows when the link was added", () => {
+    const wrapper = mountCard({ created_at: "2025-10-03 12:00:00" });
+    const expected = new Date("2025-10-03T12:00:00Z").toLocaleDateString(undefined, {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    });
+    expect(wrapper.find(`[title="Added ${expected}"]`).text()).toBe(expected);
+  });
+
+  it("stars the link", async () => {
+    const wrapper = mountCard();
+    const appStore = useAppStore();
+    appStore.toggleLinkFavorite = vi.fn();
+    const star = wrapper.find('[data-testid="favorite-toggle"]');
+    expect(star.attributes("title")).toBe("Add to favorites");
+    await star.trigger("click");
+    expect(appStore.toggleLinkFavorite).toHaveBeenCalledWith(expect.objectContaining({ id: 1 }));
+    expect(mountCard({ is_favorite: 1 }).find(".mdi-star").exists()).toBe(true);
   });
 
   it("shows visit count for public links with visits", () => {
@@ -172,9 +188,10 @@ describe("LinkCardEdit", () => {
     const wrapper = mountCard();
     const titles = wrapper.findAll("button").map((b) => b.attributes("title"));
     expect(titles).toEqual([
+      "Add to favorites",
       "Edit Example",
-      "Delete Example",
-      "Copy the public link to the clipboard",
+      "Move Example to the trash",
+      "Public: copy the public link",
     ]);
   });
 

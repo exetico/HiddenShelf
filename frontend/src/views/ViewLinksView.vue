@@ -20,11 +20,13 @@ const details = useLinkDetailsStore();
 const linkMenu = useLinkMenu({ onDetails: openDetails });
 
 // Details sheet: previous/next walk through the links in the order shown,
-// skipping collapsed categories
+// skipping collapsed categories (and favorites listed twice)
 function openDetails(link) {
+  const seen = new Set();
   const visible = groupedCategories.value
     .filter((group) => !collapsedCategories.value[group.key])
-    .flatMap((group) => group.links);
+    .flatMap((group) => group.links)
+    .filter((l) => !seen.has(l.id) && seen.add(l.id));
   details.open(visible, link);
 }
 
@@ -47,8 +49,24 @@ watch(
   },
 );
 
+const filtering = computed(
+  () => Boolean(appStore.search || appStore.filterCategory || appStore.filterTag),
+);
+
 const groupedCategories = computed(() => {
   const result = [];
+
+  // Favorites first, from every category; hidden while searching or filtering
+  if (!filtering.value && appStore.favoriteLinks.length) {
+    result.push({
+      key: "favorites",
+      name: "Favorites",
+      icon: "mdi-star",
+      color: "#F59E0B",
+      fixedOrder: true,
+      links: appStore.favoriteLinks,
+    });
+  }
 
   const uncategorized = appStore.linksByCategory.get("uncategorized") || [];
   if (!appStore.filterCategory || appStore.filterCategory === "uncategorized") {
@@ -120,9 +138,10 @@ function toggleCategory(key) {
     <!-- Category Filter Bar (sm+; on mobile the picker sits beside search) -->
     <CategoryFilterBar class="hidden sm:block" />
 
-    <!-- Search bar -->
+    <!-- Search bar (from md up, the search in the top bar does this) -->
     <div
-      class="bg-white dark:bg-brand-900 rounded-lg border border-gray-200 dark:border-brand-800 p-2 sm:p-3 flex gap-2"
+      class="md:hidden bg-white dark:bg-brand-900 rounded-lg border border-gray-200 dark:border-brand-800 p-2 sm:p-3 flex gap-2"
+      data-testid="page-search"
     >
       <CategoryPicker />
       <input
@@ -232,7 +251,9 @@ function toggleCategory(key) {
               :key="link.id"
               :link="link"
               :group-key="group.key"
-              :reorderable="!group.owner && group.links.length > 1"
+              :reorderable="
+                !group.owner && !group.fixedOrder && group.links.length > 1
+              "
               @copy-public="copyPublic"
               @context-action="handleContextAction"
               @details="openDetails"

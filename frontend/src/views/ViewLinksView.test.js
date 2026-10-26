@@ -221,4 +221,38 @@ describe("ViewLinksView", () => {
     const cards = mountView().findAllComponents({ name: "LinkCardView" });
     expect(cards.every((c) => c.props("reorderable") === false)).toBe(true);
   });
+
+  describe("favorites", () => {
+    const favs = () => [
+      { id: 2, title: "Link B", category_id: 1, url: "https://b.com", is_favorite: 1 },
+      { id: 3, title: "Link C", category_id: null, url: "https://c.com", is_favorite: 1 },
+    ];
+
+    it("lists favorites first, in a group you can't drag in", () => {
+      const appStore = useAppStore();
+      appStore.favoriteLinks = favs();
+      const wrapper = mountView();
+      expect(wrapper.findAll("h2").map((h) => h.text())[0]).toBe("Favorites");
+      const cards = wrapper.findAllComponents({ name: "LinkCardView" });
+      const favCards = cards.filter((c) => c.props("groupKey") === "favorites");
+      expect(favCards.map((c) => c.props("link").title)).toEqual(["Link B", "Link C"]);
+      expect(favCards.every((c) => c.props("reorderable") === false)).toBe(true);
+    });
+
+    it("hides the favorites group while searching or filtering", () => {
+      const appStore = useAppStore();
+      appStore.favoriteLinks = favs();
+      appStore.search = "link";
+      expect(mountView().findAll("h2").map((h) => h.text())).not.toContain("Favorites");
+    });
+
+    it("doesn't count a favorite twice in previous/next", async () => {
+      const appStore = useAppStore();
+      appStore.favoriteLinks = favs();
+      const wrapper = mountView();
+      await wrapper.findAll(".link-card")[0].trigger("click");
+      const details = useLinkDetailsStore();
+      expect(details.links.map((l) => l.id)).toEqual([2, 3, 1]);
+    });
+  });
 });

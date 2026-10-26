@@ -99,12 +99,17 @@ describe("DashboardView", () => {
     expect(wrapper.text()).toContain("3"); // totalCategories = 3
   });
 
-  it("renders 4 quick action buttons", () => {
+  it("renders the quick action buttons", () => {
     const wrapper = mountDashboard();
     expect(wrapper.text()).toContain("View links");
     expect(wrapper.text()).toContain("Edit links");
-    expect(wrapper.text()).toContain("Profile");
-    expect(wrapper.text()).toContain("Import Data");
+    expect(wrapper.text()).toContain("Sharing");
+  });
+
+  it("keeps the welcome to one short line", () => {
+    const header = mountDashboard().find('[data-testid="welcome"]');
+    expect(header.find("h1").classes()).toContain("text-xl");
+    expect(header.classes()).toContain("flex");
   });
 
   it("navigates to view links on click", async () => {
@@ -125,13 +130,18 @@ describe("DashboardView", () => {
     expect(mockPush).toHaveBeenCalledWith({ name: "edit" });
   });
 
-  it("navigates to profile on Import Data click", async () => {
+  it("has theme, profile and import/export in one row at the bottom", async () => {
     const wrapper = mountDashboard();
-    const importBtn = wrapper
-      .findAll("button")
-      .find((b) => b.text().includes("Import Data"));
-    await importBtn.trigger("click");
+    const row = wrapper.find('[data-testid="settings-row"]');
+    expect(row.findAll("button").map((b) => b.text())).toEqual([
+      "Dark mode",
+      "Profile",
+      "Import / export",
+    ]);
+    await wrapper.find('[data-testid="settings-profile"]').trigger("click");
     expect(mockPush).toHaveBeenCalledWith({ name: "profile" });
+    await wrapper.find('[data-testid="settings-data"]').trigger("click");
+    expect(mockPush).toHaveBeenCalledWith({ name: "profile", query: { section: "data" } });
   });
 
   it("shows visit stats section when total_visits > 0", async () => {
@@ -151,16 +161,16 @@ describe("DashboardView", () => {
     expect(wrapper.text()).not.toContain("total visits");
   });
 
-  it("shows theme toggle section", () => {
+  it("toggles the theme from anywhere on its button", async () => {
     const wrapper = mountDashboard();
-    expect(wrapper.text()).toContain("Theme");
-    expect(wrapper.text()).toContain("Light mode");
-  });
-
-  it("shows theme toggle button", () => {
-    const wrapper = mountDashboard();
-    const themeBtn = wrapper.find('button[title="Switch to dark mode"]');
-    expect(themeBtn.exists()).toBe(true);
+    const themeBtn = wrapper.find('[data-testid="settings-theme"]');
+    expect(themeBtn.attributes("title")).toBe("Switch to dark mode");
+    await themeBtn.find("span").trigger("click");
+    expect(mockToggleTheme).toHaveBeenCalledTimes(1);
+    mockIsDark.value = true;
+    await wrapper.vm.$nextTick();
+    expect(themeBtn.text()).toBe("Light mode");
+    expect(themeBtn.attributes("title")).toBe("Switch to light mode");
   });
 
   describe("Tags", () => {

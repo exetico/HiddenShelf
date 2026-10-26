@@ -7,10 +7,18 @@
  *   GET    /api/links?hash=          → public link by hash
  *   GET    /api/links?duplicate_of=  → own links with the same URL (auth)
  *   GET    /api/links?random=1       → one random own link (auth)
+ *   GET    /api/links?favorites=1    → all own favorite links (auth)
+ *   GET    /api/links?trash=1        → own links in the trash (auth)
  *   POST   /api/links                → create
- *   PUT    /api/links?id=            → update
+ *   POST   /api/links/restore?id=    → take a link out of the trash
+ *   PUT    /api/links?id=            → update (incl. is_favorite)
  *   PUT    /api/links/order          → set the order of some links {ids: [...]}
- *   DELETE /api/links?id=            → delete
+ *   DELETE /api/links?id=            → move to the trash
+ *   DELETE /api/links?id=&permanent=1 → delete a link in the trash for good
+ *   DELETE /api/links/trash          → empty the trash
+ *
+ * Deleted links wait in the trash for TRASH_DAYS days, then go for good.
+ * Every query for links on the shelf filters on deleted_at IS NULL.
  */
 
 import { Hono } from "hono";
@@ -27,6 +35,49 @@ import { requireAuth, optionalAuth } from "../middleware/auth.js";
 import config from "../config.js";
 
 const links = new Hono();
+
+export const TRASH_DAYS = 30;
+
+// Remove links that have been in the trash longer than TRASH_DAYS
+function purgeOldTrash(db, userId) {
+  db.prepare(
+    `DELETE FROM links WHERE user_id = ? AND deleted_at IS NOT NULL
+       AND deleted_at < datetime('now', '-' || ? || ' days')`,
+  ).run(userId, TRASH_DAYS);
+}
+
+// Attach tags and visit counts to a list of links (one query each)
+function attachTagsAndVisits(db, rows) {
+  if (!rows.length) return;
+  const linkIds = rows.map((l) => l.id);
+  const placeholders = linkIds.map(() => "?").join(",");
+
+  const tagRows = db
+    .prepare(
+      `SELECT lt.link_id, t.* FROM tags t
+       JOIN link_tags lt ON t.id = lt.tag_id
+       WHERE lt.link_id IN (${placeholders})`,
+    )
+    .all(...linkIds);
+  const tagsByLink = new Map();
+  for (const row of tagRows) {
+    if (!tagsByLink.has(row.link_id)) tagsByLink.set(row.link_id, []);
+    tagsByLink.get(row.link_id).push(row);
+  }
+
+  const visitRows = db
+    .prepare(
+      `SELECT link_id, COUNT(*) as visit_count FROM link_visits
+       WHERE link_id IN (${placeholders}) GROUP BY link_id`,
+    )
+    .all(...linkIds);
+  const visitsByLink = new Map(visitRows.map((r) => [r.link_id, r.visit_count]));
+
+  for (const link of rows) {
+    link.tags = tagsByLink.get(link.id) || [];
+    link.total_visits = visitsByLink.get(link.id) || 0;
+  }
+}
 
 /**
  * Compare URLs the way people think of them: ignore http vs https, a
@@ -94,7 +145,7 @@ links.get("/", optionalAuth(), (c) => {
         `SELECT l.id, l.hash, l.url, l.title, l.description, l.icon,
               l.direct_redirect, l.created_at, l.updated_at
        FROM links l
-       WHERE l.hash = ? AND l.is_public = 1`,
+       WHERE l.hash = ? AND l.is_public = 1 AND l.deleted_at IS NULL`,
       )
       .get(hash);
 
@@ -110,11 +161,41 @@ links.get("/", optionalAuth(), (c) => {
   if (c.req.query("random") !== undefined) {
     const link = db
       .prepare(
-        "SELECT id, title, url FROM links WHERE user_id = ? ORDER BY RANDOM() LIMIT 1",
+        "SELECT id, title, url FROM links WHERE user_id = ? AND deleted_at IS NULL ORDER BY RANDOM() LIMIT 1",
       )
       .get(c.userId);
     if (!link) return errorResponse(c, "Your shelf is empty", 404);
     return successResponse(c, { link });
+  }
+
+  // ── Favorites: all of them, whatever page they're on ──
+  if (c.req.query("favorites") !== undefined) {
+    const rows = db
+      .prepare(
+        `SELECT l.*, c.name as category_name, 0 as is_from_shared_category
+       FROM links l
+       LEFT JOIN categories c ON l.category_id = c.id
+       WHERE l.user_id = ? AND l.is_favorite = 1 AND l.deleted_at IS NULL
+       ORDER BY l.title COLLATE NOCASE ASC`,
+      )
+      .all(c.userId);
+    attachTagsAndVisits(db, rows);
+    return successResponse(c, { links: rows });
+  }
+
+  // ── Trash, newest deletion first ──
+  if (c.req.query("trash") !== undefined) {
+    purgeOldTrash(db, c.userId);
+    const rows = db
+      .prepare(
+        `SELECT l.id, l.title, l.url, l.icon, l.deleted_at, c.name as category_name
+       FROM links l
+       LEFT JOIN categories c ON l.category_id = c.id
+       WHERE l.user_id = ? AND l.deleted_at IS NOT NULL
+       ORDER BY l.deleted_at DESC, l.id DESC`,
+      )
+      .all(c.userId);
+    return successResponse(c, { links: rows, days: TRASH_DAYS });
   }
 
   // ── Duplicate check: is this URL already on the shelf? ──
@@ -128,7 +209,7 @@ links.get("/", optionalAuth(), (c) => {
         `SELECT l.id, l.title, l.url, c.name as category_name
        FROM links l
        LEFT JOIN categories c ON l.category_id = c.id
-       WHERE l.user_id = ? AND l.id != ?`,
+       WHERE l.user_id = ? AND l.id != ? AND l.deleted_at IS NULL`,
       )
       .all(c.userId, excludeId)
       .filter((link) => normalizeUrl(link.url) === wanted);
@@ -142,7 +223,7 @@ links.get("/", optionalAuth(), (c) => {
         `SELECT l.*, c.name as category_name
        FROM links l
        LEFT JOIN categories c ON l.category_id = c.id
-       WHERE l.id = ? AND l.user_id = ?`,
+       WHERE l.id = ? AND l.user_id = ? AND l.deleted_at IS NULL`,
       )
       .get(id, c.userId);
 
@@ -163,7 +244,7 @@ links.get("/", optionalAuth(), (c) => {
   const tagId = c.req.query("tag_id") || null;
   const includeShared = c.req.query("include_shared") !== "0";
 
-  const where = [];
+  const where = ["l.deleted_at IS NULL"];
   const params = [];
 
   if (includeShared) {
@@ -230,43 +311,7 @@ links.get("/", optionalAuth(), (c) => {
     .all(c.userId, ...params, limit, offset);
 
   // Batch-fetch tags and visit counts for all links (avoids N+1)
-  if (linksRows.length > 0) {
-    const linkIds = linksRows.map((l) => l.id);
-    const placeholders = linkIds.map(() => "?").join(",");
-
-    const tagRows = db
-      .prepare(
-        `SELECT lt.link_id, t.* FROM tags t
-         JOIN link_tags lt ON t.id = lt.tag_id
-         WHERE lt.link_id IN (${placeholders})`,
-      )
-      .all(...linkIds);
-
-    const tagsByLink = new Map();
-    for (const row of tagRows) {
-      if (!tagsByLink.has(row.link_id)) tagsByLink.set(row.link_id, []);
-      tagsByLink.get(row.link_id).push(row);
-    }
-
-    const visitRows = db
-      .prepare(
-        `SELECT link_id, COUNT(*) as visit_count FROM link_visits
-         WHERE link_id IN (${placeholders}) GROUP BY link_id`,
-      )
-      .all(...linkIds);
-
-    const visitsByLink = new Map(visitRows.map((r) => [r.link_id, r.visit_count]));
-
-    for (const link of linksRows) {
-      link.tags = tagsByLink.get(link.id) || [];
-      link.total_visits = visitsByLink.get(link.id) || 0;
-    }
-  } else {
-    for (const link of linksRows) {
-      link.tags = [];
-      link.total_visits = 0;
-    }
-  }
+  attachTagsAndVisits(db, linksRows);
 
   return successResponse(c, {
     links: linksRows,
@@ -390,7 +435,7 @@ links.put("/order", requireAuth(), async (c) => {
   const placeholders = ids.map(() => "?").join(",");
   const ownCount = db
     .prepare(
-      `SELECT COUNT(*) as n FROM links WHERE user_id = ? AND id IN (${placeholders})`,
+      `SELECT COUNT(*) as n FROM links WHERE user_id = ? AND deleted_at IS NULL AND id IN (${placeholders})`,
     )
     .get(c.userId, ...ids).n;
   if (ownCount !== ids.length)
@@ -412,7 +457,9 @@ links.put("/", requireAuth(), async (c) => {
   if (!id) return errorResponse(c, "Link ID is required");
 
   const existing = db
-    .prepare("SELECT * FROM links WHERE id = ? AND user_id = ?")
+    .prepare(
+      "SELECT * FROM links WHERE id = ? AND user_id = ? AND deleted_at IS NULL",
+    )
     .get(id, c.userId);
   if (!existing) return errorResponse(c, "Link not found", 404);
 
@@ -443,6 +490,12 @@ links.put("/", requireAuth(), async (c) => {
         ? 1
         : 0
       : existing.direct_redirect || 0;
+  const isFavorite =
+    input.is_favorite !== undefined
+      ? input.is_favorite
+        ? 1
+        : 0
+      : existing.is_favorite || 0;
 
   if (!url || !isValidUrl(url))
     return errorResponse(c, "Valid URL is required");
@@ -482,7 +535,8 @@ links.put("/", requireAuth(), async (c) => {
   db.prepare(
     `UPDATE links
      SET url = ?, title = ?, description = ?, icon = ?, is_public = ?,
-         category_id = ?, display_order = ?, direct_redirect = ?, updated_at = CURRENT_TIMESTAMP
+         category_id = ?, display_order = ?, direct_redirect = ?, is_favorite = ?,
+         updated_at = CURRENT_TIMESTAMP
      WHERE id = ?`,
   ).run(
     url,
@@ -493,6 +547,7 @@ links.put("/", requireAuth(), async (c) => {
     categoryId,
     displayOrder,
     directRedirect,
+    isFavorite,
     id,
   );
 
@@ -504,7 +559,37 @@ links.put("/", requireAuth(), async (c) => {
   return successResponse(c, { link }, "Link updated successfully");
 });
 
+// ─── POST /api/links/restore?id= ────────────────────────────────
+
+links.post("/restore", requireAuth(), (c) => {
+  const db = getDb();
+  const id = c.req.query("id");
+  if (!id) return errorResponse(c, "Link ID is required");
+
+  const info = db
+    .prepare(
+      "UPDATE links SET deleted_at = NULL WHERE id = ? AND user_id = ? AND deleted_at IS NOT NULL",
+    )
+    .run(id, c.userId);
+  if (!info.changes) return errorResponse(c, "Link not found in the trash", 404);
+
+  const link = db.prepare("SELECT * FROM links WHERE id = ?").get(id);
+  return successResponse(c, { link }, "Link restored");
+});
+
+// ─── DELETE /api/links/trash ────────────────────────────────────
+
+links.delete("/trash", requireAuth(), (c) => {
+  const db = getDb();
+  const info = db
+    .prepare("DELETE FROM links WHERE user_id = ? AND deleted_at IS NOT NULL")
+    .run(c.userId);
+  return successResponse(c, { deleted: info.changes }, "Trash emptied");
+});
+
 // ─── DELETE /api/links?id= ──────────────────────────────────────
+// Moves the link to the trash; with &permanent=1 a link already in the
+// trash is deleted for good.
 
 links.delete("/", requireAuth(), (c) => {
   const db = getDb();
@@ -516,8 +601,18 @@ links.delete("/", requireAuth(), (c) => {
     .get(id, c.userId);
   if (!existing) return errorResponse(c, "Link not found", 404);
 
-  db.prepare("DELETE FROM links WHERE id = ?").run(id);
-  return successResponse(c, {}, "Link deleted successfully");
+  if (c.req.query("permanent") !== undefined) {
+    if (!existing.deleted_at)
+      return errorResponse(c, "Move the link to the trash first");
+    db.prepare("DELETE FROM links WHERE id = ?").run(id);
+    return successResponse(c, {}, "Link deleted for good");
+  }
+
+  if (existing.deleted_at) return errorResponse(c, "Link not found", 404);
+  db.prepare(
+    "UPDATE links SET deleted_at = CURRENT_TIMESTAMP WHERE id = ?",
+  ).run(id);
+  return successResponse(c, {}, "Link moved to the trash");
 });
 
 export default links;

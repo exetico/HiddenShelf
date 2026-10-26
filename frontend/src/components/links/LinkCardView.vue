@@ -27,12 +27,13 @@ const appStore = useAppStore();
 const preview = useLinkPreviewStore();
 const drag = useLinkDrag();
 
-// Hover card with the description, on devices that can hover
+// Hover card with the description, from the note icon, on devices that
+// can hover
 const canHover =
   typeof window !== "undefined" &&
   window.matchMedia?.("(hover: hover)").matches;
 
-function onMouseEnter(event) {
+function onNoteEnter(event) {
   if (canHover && !drag.state.draggingId) {
     preview.hoverStart(props.link, event.currentTarget);
   }
@@ -106,8 +107,6 @@ function onClick(event) {
     style="-webkit-touch-callout: none"
     :data-link-id="link.id"
     @contextmenu="onContextMenu"
-    @mouseenter="onMouseEnter"
-    @mouseleave="preview.hoverEnd()"
     @dragstart="onDragStart"
     @dragover="drag.over($event, link, groupKey)"
     @dragleave="drag.leave(link)"
@@ -143,6 +142,12 @@ function onClick(event) {
       <div
         class="font-medium text-gray-900 dark:text-brand-100 group-hover:text-brand-600 dark:group-hover:text-brand-400 text-sm truncate shrink-0 max-w-[70%] sm:max-w-none sm:whitespace-normal sm:overflow-visible"
       >
+        <i
+          v-if="link.is_favorite"
+          class="mdi mdi-star text-amber-500 text-xs align-middle"
+          title="Favorite"
+          data-testid="favorite-mark"
+        ></i>
         {{ link.title }}
         <button
           v-if="link.description"
@@ -150,7 +155,10 @@ function onClick(event) {
           class="ml-0.5 align-middle text-gray-400 hover:text-brand-600 dark:text-brand-500 dark:hover:text-brand-300"
           title="Show the description and details"
           :aria-label="`Details for ${link.title}`"
-          @click.stop.prevent="emit('details', link)"
+          data-testid="note-icon"
+          @mouseenter="onNoteEnter"
+          @mouseleave="preview.hoverEnd()"
+          @click.stop.prevent="preview.hide(), emit('details', link)"
         >
           <i class="mdi mdi-text-box-outline text-sm leading-none"></i>
         </button>
@@ -179,13 +187,16 @@ function onClick(event) {
           +{{ link.tags.length - 3 }}
         </span>
       </div>
+      <!-- Public links: a quiet globe that copies the public link, shown on
+           hover (desktop). On phones it's in the long-press sheet. -->
       <button
         v-if="link.is_public"
-        class="text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 text-sm shrink-0"
-        title="Copy public link"
+        class="hidden md:inline text-gray-400 hover:text-green-600 dark:text-brand-500 dark:hover:text-green-400 text-sm shrink-0 opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity"
+        title="Public: copy the public link"
+        data-testid="public-copy"
         @click.stop.prevent="$emit('copyPublic', link.hash)"
       >
-        <i class="mdi mdi-link-variant"></i>
+        <i class="mdi mdi-earth"></i>
       </button>
       <!-- Reorder arrows (desktop only) -->
       <div
