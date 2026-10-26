@@ -40,11 +40,20 @@ watch(
 function goTo(name) {
   router.push({ name });
 }
+
+// It is a toggle: tapping the side you are already on flips to the other
+function pickMode(name) {
+  if (route.name === name) {
+    goTo(name === "view" ? "edit" : "view");
+  } else {
+    goTo(name);
+  }
+}
 </script>
 
 <template>
   <header
-    class="bg-white dark:bg-brand-900 border-b border-gray-200 dark:border-brand-800 transition-colors"
+    class="sticky top-0 z-30 bg-white/90 dark:bg-brand-900/90 backdrop-blur-md border-b border-gray-200 dark:border-brand-800 transition-colors"
   >
     <div
       class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-12 sm:h-16 flex items-center justify-between gap-2 sm:gap-4"
@@ -76,8 +85,8 @@ function goTo(name) {
           ></span>
           <button
             v-for="item in [
-              { name: 'view', label: 'View', icon: 'mdi-view-list', hint: 'Browse and open your links' },
-              { name: 'edit', label: 'Edit', icon: 'mdi-pencil', hint: 'Add, change and organize links' },
+              { name: 'view', label: 'View', icon: 'mdi-view-list', hint: route.name === 'view' ? 'Switch to Edit' : 'Browse and open your links' },
+              { name: 'edit', label: 'Edit', icon: 'mdi-pencil', hint: route.name === 'edit' ? 'Switch to View' : 'Add, change and organize links' },
             ]"
             :key="item.name"
             class="relative z-10 px-2 py-1 sm:px-3 sm:py-1.5 text-sm rounded-md transition-colors flex items-center justify-center gap-1.5"
@@ -88,7 +97,7 @@ function goTo(name) {
             "
             :title="item.hint"
             :aria-current="route.name === item.name ? 'page' : undefined"
-            @click="goTo(item.name)"
+            @click="pickMode(item.name)"
           >
             <i :class="item.icon" class="mdi" aria-hidden="true"></i>
             <span class="max-[359px]:sr-only">{{ item.label }}</span>

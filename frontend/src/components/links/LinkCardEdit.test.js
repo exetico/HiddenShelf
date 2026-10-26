@@ -2,7 +2,10 @@ import { describe, expect, it, vi } from "vitest";
 import { mount } from "@vue/test-utils";
 import { createPinia, setActivePinia } from "pinia";
 import { useAppStore } from "@/stores/app";
+import { useContextMenuStore } from "@/stores/contextMenu";
 import LinkCardEdit from "@/components/links/LinkCardEdit.vue";
+
+vi.mock("vue-router", () => ({ useRouter: () => ({ push: vi.fn() }) }));
 
 describe("LinkCardEdit", () => {
   function mountCard(linkOverrides = {}) {
@@ -167,5 +170,15 @@ describe("LinkCardEdit", () => {
       "Delete Example",
       "Copy the public link to the clipboard",
     ]);
+  });
+
+  it("opens the link menu on right-click, with Edit wired to the editor", async () => {
+    const wrapper = mountCard();
+    await wrapper.find("article").trigger("contextmenu", { clientX: 5, clientY: 6 });
+    const menu = useContextMenuStore();
+    expect(menu.open).toBe(true);
+    expect(menu.title).toBe("Example");
+    await menu.run(menu.items.find((i) => i.label === "Edit"));
+    expect(wrapper.emitted("edit")[0][0]).toMatchObject({ id: 1 });
   });
 });

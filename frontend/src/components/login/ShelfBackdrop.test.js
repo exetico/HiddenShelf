@@ -29,4 +29,17 @@ describe("ShelfBackdrop", () => {
     );
     expect(source).not.toContain(":global(");
   });
+
+  it("animates light, dust and a few books, unless motion is reduced", () => {
+    const wrapper = mount(ShelfBackdrop);
+    expect(wrapper.findAll(".mote").length).toBe(18);
+    expect(wrapper.findAll(".book.pull").length).toBeGreaterThan(3);
+    const source = readFileSync(
+      resolve(import.meta.dirname, "ShelfBackdrop.vue"),
+      "utf8",
+    );
+    expect(source).toMatch(/@keyframes pull/);
+    expect(source).toMatch(/@keyframes float/);
+    expect(source).toMatch(/prefers-reduced-motion: reduce/);
+  });
 });

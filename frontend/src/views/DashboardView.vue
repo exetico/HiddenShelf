@@ -3,6 +3,8 @@ import { ref, computed, onMounted } from "vue";
 import { useRouter } from "vue-router";
 import { useAppStore } from "@/stores/app";
 import { useTheme } from "@/composables/useTheme";
+import { useContextMenuStore } from "@/stores/contextMenu";
+import { useDialogStore } from "@/stores/dialog";
 
 const appStore = useAppStore();
 const router = useRouter();
@@ -52,7 +54,9 @@ const statTiles = computed(() => [
     label: "Links",
     value: totalLinks.value,
     icon: "mdi-link-variant",
-    art: "from-sky-500/25 to-brand-500/5 text-sky-500",
+    tint: "to-sky-500/15 dark:to-sky-400/15",
+    iconColor: "text-sky-500 dark:text-sky-400",
+    bar: "bg-sky-500/70",
     title: "Manage your links",
   },
   {
@@ -60,7 +64,9 @@ const statTiles = computed(() => [
     label: "Categories",
     value: appStore.totalCategories,
     icon: "mdi-folder-multiple-outline",
-    art: "from-amber-500/25 to-brand-500/5 text-amber-500",
+    tint: "to-amber-500/15 dark:to-amber-400/15",
+    iconColor: "text-amber-500 dark:text-amber-400",
+    bar: "bg-amber-500/70",
     title: "Manage your categories",
   },
   {
@@ -68,7 +74,9 @@ const statTiles = computed(() => [
     label: "Tags",
     value: appStore.totalTags,
     icon: "mdi-tag-multiple-outline",
-    art: "from-emerald-500/25 to-brand-500/5 text-emerald-500",
+    tint: "to-emerald-500/15 dark:to-emerald-400/15",
+    iconColor: "text-emerald-500 dark:text-emerald-400",
+    bar: "bg-emerald-500/70",
     title: "Manage your tags",
   },
 ]);
@@ -76,6 +84,30 @@ const statTiles = computed(() => [
 const ownSharedCount = computed(
   () => appStore.categories.filter((c) => c.is_shared).length,
 );
+
+// Right-click on a tag
+const menu = useContextMenuStore();
+function openTagMenu(event, tag) {
+  menu.show(event, {
+    title: `#${tag.name}`,
+    items: [
+      { label: "Show its links", icon: "mdi-filter-outline", action: () => openTag(tag) },
+      { divider: true },
+      {
+        label: "Delete tag",
+        icon: "mdi-delete-outline",
+        danger: true,
+        action: async () => {
+          const ok = await useDialogStore().confirmDelete({
+            title: `Delete tag "${tag.name}"?`,
+            message: "It will be removed from all links. This can't be undone.",
+          });
+          if (ok) await appStore.deleteTag(tag.id);
+        },
+      },
+    ],
+  });
+}
 
 async function openTag(tag) {
   appStore.search = "";
@@ -102,20 +134,22 @@ const topVisitedLinks = computed(() =>
       <button
         v-for="tile in statTiles"
         :key="tile.key"
-        class="group relative overflow-hidden bg-white dark:bg-brand-900 rounded-lg border border-gray-200 dark:border-brand-800 p-3 sm:p-5 text-left hover:border-brand-500 transition-colors"
+        class="group relative overflow-hidden bg-white dark:bg-brand-900 bg-linear-to-br from-transparent from-40% rounded-lg border border-gray-200 dark:border-brand-800 p-3 sm:p-5 text-left hover:border-brand-500 transition-colors"
+        :class="tile.tint"
         :title="tile.title"
         :data-testid="`stat-${tile.key}`"
         @click="router.push({ name: 'edit' })"
       >
-        <!-- Icon art: a soft glow with an oversized, tilted icon -->
+        <!-- Icon art: a thin color bar, a light tint towards the corner and
+             a big icon cut off by the tile's edge. No blur, so it stays crisp. -->
         <span
-          class="pointer-events-none absolute -right-4 -bottom-5 sm:-right-3 sm:-bottom-6 size-20 sm:size-28 rounded-full bg-linear-to-br blur-md"
-          :class="tile.art"
+          class="pointer-events-none absolute inset-x-0 top-0 h-0.5"
+          :class="tile.bar"
           aria-hidden="true"
         ></span>
         <i
-          class="stat-art mdi pointer-events-none absolute -right-2 -bottom-3 sm:right-1 sm:-bottom-4 text-5xl sm:text-7xl leading-none opacity-25 dark:opacity-30 -rotate-12 transition-transform duration-300 group-hover:-rotate-3 group-hover:scale-110"
-          :class="[tile.icon, tile.art.split(' ').pop()]"
+          class="stat-art mdi pointer-events-none absolute -right-3 -bottom-4 sm:-right-2 sm:-bottom-5 text-6xl sm:text-8xl leading-none opacity-20 dark:opacity-25 -rotate-12 transition-all duration-300 group-hover:-rotate-6 group-hover:opacity-35"
+          :class="[tile.icon, tile.iconColor]"
           aria-hidden="true"
         ></i>
         <p class="relative text-sm text-gray-600 dark:text-brand-300">
@@ -208,6 +242,7 @@ const topVisitedLinks = computed(() =>
             :class="tag.sizeClass"
             :title="`Show the ${tag.usage_count || 0} links tagged ${tag.name}`"
             @click="openTag(tag)"
+            @contextmenu="openTagMenu($event, tag)"
           >
             #{{ tag.name }}
             <span class="text-xs opacity-60">{{ tag.usage_count || 0 }}</span>

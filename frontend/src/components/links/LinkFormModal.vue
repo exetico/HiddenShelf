@@ -2,6 +2,8 @@
 import { reactive, watch, computed, ref } from "vue";
 import BaseModal from "@/components/common/BaseModal.vue";
 import { linkVisitsApi } from "@/services/api/linkVisitsApi";
+import { linksApi } from "@/services/api/linksApi";
+import { useDialogStore } from "@/stores/dialog";
 
 const props = defineProps({
   open: Boolean,
@@ -35,6 +37,36 @@ const recentVisits = ref(null);
 const recentDays = ref(30);
 const loadingVisits = ref(false);
 
+// Warn when the URL is already on the shelf. Checked shortly after typing
+// stops, and once more on save in case the check hadn't come back yet.
+const duplicates = ref([]);
+let duplicateTimer = null;
+let duplicateRequest = 0;
+
+async function checkDuplicates() {
+  const url = form.url.trim();
+  const request = ++duplicateRequest;
+  if (!/^https?:\/\/\S+\.\S+/.test(url)) {
+    duplicates.value = [];
+    return [];
+  }
+  try {
+    const matches = await linksApi.findDuplicates(url, props.model?.id);
+    if (request === duplicateRequest) duplicates.value = matches;
+    return matches;
+  } catch {
+    return []; // the check is a nicety; never block saving on it
+  }
+}
+
+watch(
+  () => form.url,
+  () => {
+    clearTimeout(duplicateTimer);
+    duplicateTimer = setTimeout(checkDuplicates, 400);
+  },
+);
+
 // Normalize icon: auto-prepend mdi- if needed
 const normalizedIcon = computed(() => {
   const raw = form.icon?.trim();
@@ -60,6 +92,8 @@ watch(
     form.newTagInput = "";
     form.is_public = Boolean(model?.is_public);
     form.direct_redirect = Boolean(model?.direct_redirect);
+    clearTimeout(duplicateTimer);
+    duplicates.value = [];
 
     // Load visit stats for existing links
     visitCount.value = null;
@@ -111,8 +145,29 @@ function handleTagKeydown(event) {
   }
 }
 
-function submit() {
+async function submit() {
   if (form.newTagInput.trim()) addTag();
+  // Only ask when the URL changed; editing a known duplicate's title
+  // shouldn't nag every time
+  const urlChanged = form.url.trim() !== (props.model?.url || "");
+  if (urlChanged) {
+    clearTimeout(duplicateTimer);
+    const matches = await checkDuplicates();
+    if (matches.length) {
+      const first = matches[0];
+      const ok = await useDialogStore().confirm({
+        title: "Already on your shelf",
+        message:
+          matches.length === 1
+            ? `You saved this URL before as "${first.title}"${first.category_name ? ` in ${first.category_name}` : ""}. Save it again?`
+            : `You saved this URL ${matches.length} times before. Save it again?`,
+        confirmText: "Save anyway",
+        cancelText: "Go back",
+        icon: "mdi-content-duplicate",
+      });
+      if (!ok) return;
+    }
+  }
   emit("save", {
     title: form.title,
     url: form.url,
@@ -145,7 +200,25 @@ function submit() {
         type="url"
         placeholder="https://..."
         class="w-full px-3 py-2 rounded-md border border-gray-300 dark:border-brand-700 dark:bg-brand-800"
+        :aria-describedby="duplicates.length ? 'duplicate-warning' : undefined"
       />
+      <p
+        v-if="duplicates.length"
+        id="duplicate-warning"
+        role="status"
+        class="-mt-1 flex items-start gap-1.5 text-sm text-amber-700 dark:text-amber-400"
+      >
+        <i class="mdi mdi-content-duplicate mt-0.5" aria-hidden="true"></i>
+        <span>
+          Already on your shelf as
+          <strong>{{ duplicates[0].title }}</strong
+          ><template v-if="duplicates[0].category_name">
+            in {{ duplicates[0].category_name }}</template
+          ><template v-if="duplicates.length > 1">
+            (and {{ duplicates.length - 1 }} more)</template
+          >.
+        </span>
+      </p>
       <textarea
         v-model="form.description"
         placeholder="Description"

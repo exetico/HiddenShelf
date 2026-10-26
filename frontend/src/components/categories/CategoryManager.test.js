@@ -2,6 +2,7 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 import { mount, flushPromises } from "@vue/test-utils";
 import { createPinia, setActivePinia } from "pinia";
 import { useAppStore } from "@/stores/app";
+import { useDialogStore } from "@/stores/dialog";
 import CategoryManager from "@/components/categories/CategoryManager.vue";
 
 // Mock sharesApi
@@ -100,14 +101,26 @@ describe("CategoryManager", () => {
       .filter((b) => b.text() === "Delete");
     await deleteButtons[0].trigger("click");
 
-    // Confirm delete in the modal
-    const confirmButton = wrapper
-      .findAll("button")
-      .filter((b) => b.text() === "Delete");
-    // The last "Delete" button should be in the confirmation modal
-    await confirmButton[confirmButton.length - 1].trigger("click");
+    // The shared dialog asks first
+    const dialog = useDialogStore();
+    expect(dialog.current).toMatchObject({ danger: true, confirmText: "Delete" });
+    expect(dialog.current.title).toContain("Delete category");
+    expect(wrapper.emitted("remove")).toBeFalsy();
 
+    dialog.close(true);
+    await flushPromises();
     expect(wrapper.emitted("remove")).toBeTruthy();
+  });
+
+  it("keeps the category when the delete is cancelled", async () => {
+    const wrapper = mountManager();
+    await wrapper
+      .findAll("button")
+      .find((b) => b.text() === "Delete")
+      .trigger("click");
+    useDialogStore().close(false);
+    await flushPromises();
+    expect(wrapper.emitted("remove")).toBeFalsy();
   });
 
   it("enters edit mode when Edit is clicked", async () => {

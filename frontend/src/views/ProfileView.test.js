@@ -3,6 +3,7 @@ import { mount, flushPromises } from "@vue/test-utils";
 import { createPinia, setActivePinia } from "pinia";
 import { useAppStore } from "@/stores/app";
 import { useAuthStore } from "@/stores/auth";
+import { useDialogStore } from "@/stores/dialog";
 import ProfileView from "@/views/ProfileView.vue";
 
 const mockRoute = { query: {} };
@@ -227,6 +228,21 @@ describe("ProfileView", () => {
     expect(leaveBtn.length).toBeGreaterThan(0);
   });
 
+  it("asks before leaving a shared category", async () => {
+    const appStore = useAppStore();
+    appStore.sharedCategories = [
+      { id: 5, name: "Shared Stuff", owner_email: "friend@example.com" },
+    ];
+    appStore.leaveSharedCategory = vi.fn();
+    const wrapper = mountProfile();
+    await wrapper.findAll("button").find((b) => b.text() === "Leave").trigger("click");
+    expect(useDialogStore().current.title).toBe('Leave "Shared Stuff"?');
+    expect(appStore.leaveSharedCategory).not.toHaveBeenCalled();
+    useDialogStore().close(true);
+    await flushPromises();
+    expect(appStore.leaveSharedCategory).toHaveBeenCalledWith(5);
+  });
+
   describe("Shared by you", () => {
     const share = () => ({
       id: 5,
@@ -256,25 +272,32 @@ describe("ProfileView", () => {
         .findAll("button")
         .find((b) => b.text() === "Remove");
       await remove.trigger("click");
+      expect(useDialogStore().current.title).toBe("Remove a@example.com?");
+      useDialogStore().close(true);
       await flushPromises();
       expect(sharesApi.removeMember).toHaveBeenCalledWith(5, 11);
       expect(wrapper.text()).not.toContain("a@example.com");
     });
 
-    it("asks for a second tap before it stops sharing", async () => {
+    it("asks before it stops sharing", async () => {
       sharesApi.listOwnedShares.mockResolvedValueOnce([share()]);
       const wrapper = mountProfile();
       await flushPromises();
       const stop = () =>
-        wrapper
-          .findAll("button")
-          .find((b) => /Stop sharing|Tap to confirm/.test(b.text()));
+        wrapper.findAll("button").find((b) => b.text() === "Stop sharing");
 
       await stop().trigger("click");
+      const dialog = useDialogStore();
+      expect(dialog.current).toMatchObject({
+        title: 'Stop sharing "Team links"?',
+        danger: true,
+      });
+      dialog.close(false);
+      await flushPromises();
       expect(sharesApi.removeSharing).not.toHaveBeenCalled();
-      expect(stop().text()).toBe("Tap to confirm");
 
       await stop().trigger("click");
+      dialog.close(true);
       await flushPromises();
       expect(sharesApi.removeSharing).toHaveBeenCalledWith(5);
       expect(wrapper.text()).not.toContain("Team links");

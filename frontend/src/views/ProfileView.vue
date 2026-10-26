@@ -5,6 +5,7 @@ import { useRoute } from "vue-router";
 import { useAuthStore } from "@/stores/auth";
 import { useAppStore } from "@/stores/app";
 import { useToastStore } from "@/stores/toast";
+import { useDialogStore } from "@/stores/dialog";
 import { sharesApi } from "@/services/api/sharesApi";
 import { accountApi } from "@/services/api/accountApi";
 import ImportExportModal from "@/components/common/ImportExportModal.vue";
@@ -66,7 +67,7 @@ async function confirmJoinShare() {
 
 // Categories I share with others
 const ownedShares = ref([]);
-const confirmStopId = ref(null);
+const dialog = useDialogStore();
 
 async function loadOwnedShares() {
   try {
@@ -88,6 +89,17 @@ onMounted(async () => {
   await loadOwnedShares();
 });
 
+async function leaveShared(category) {
+  const ok = await dialog.confirm({
+    title: `Leave "${category.name}"?`,
+    message: "Its links disappear from your shelf until you join again.",
+    confirmText: "Leave",
+    danger: true,
+    icon: "mdi-exit-run",
+  });
+  if (ok) await appStore.leaveSharedCategory(category.id);
+}
+
 async function copyOwnedShareUrl(share) {
   await navigator.clipboard.writeText(
     appUrl(`/login?share=${share.share_code}`),
@@ -96,6 +108,14 @@ async function copyOwnedShareUrl(share) {
 }
 
 async function removeOwnedMember(share, member) {
+  const ok = await dialog.confirm({
+    title: `Remove ${member.email}?`,
+    message: `They lose access to "${share.name}". They can join again with the share link.`,
+    confirmText: "Remove",
+    danger: true,
+    icon: "mdi-account-remove-outline",
+  });
+  if (!ok) return;
   try {
     await sharesApi.removeMember(share.id, member.id);
     share.members = share.members.filter((m) => m.id !== member.id);
@@ -106,11 +126,14 @@ async function removeOwnedMember(share, member) {
 }
 
 async function stopSharing(share) {
-  if (confirmStopId.value !== share.id) {
-    confirmStopId.value = share.id;
-    return;
-  }
-  confirmStopId.value = null;
+  const ok = await dialog.confirm({
+    title: `Stop sharing "${share.name}"?`,
+    message: "Everyone who joined loses access, and the share link stops working.",
+    confirmText: "Stop sharing",
+    danger: true,
+    icon: "mdi-link-variant-off",
+  });
+  if (!ok) return;
   try {
     await sharesApi.removeSharing(share.id);
     ownedShares.value = ownedShares.value.filter((s) => s.id !== share.id);
@@ -294,7 +317,7 @@ async function confirmDeleteEverything() {
     <article
       id="sharing"
       ref="sharingSection"
-      class="bg-white dark:bg-brand-900 rounded-lg border border-gray-200 dark:border-brand-800 p-5 space-y-3 scroll-mt-4"
+      class="bg-white dark:bg-brand-900 rounded-lg border border-gray-200 dark:border-brand-800 p-5 space-y-3 scroll-mt-16 sm:scroll-mt-20"
     >
       <h2 class="text-lg font-semibold">Shared categories</h2>
       <p class="text-sm text-gray-500 dark:text-brand-400">
@@ -349,7 +372,7 @@ async function confirmDeleteEverything() {
                 class="text-sm text-red-600 dark:text-red-400 shrink-0"
                 @click="stopSharing(share)"
               >
-                {{ confirmStopId === share.id ? "Tap to confirm" : "Stop sharing" }}
+                Stop sharing
               </button>
             </div>
             <ul v-if="share.members.length" class="pl-7 space-y-1">
@@ -420,7 +443,7 @@ async function confirmDeleteEverything() {
             <button
               :title="`Leave ${category.name}`"
               class="text-red-600 dark:text-red-400 text-sm"
-              @click="appStore.leaveSharedCategory(category.id)"
+              @click="leaveShared(category)"
             >
               Leave
             </button>

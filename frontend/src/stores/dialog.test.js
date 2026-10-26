@@ -43,4 +43,28 @@ describe("dialog store", () => {
     await expect(first).resolves.toBe(false);
     expect(dialog.current.title).toBe("Second");
   });
+
+  it("prompt resolves the typed text, or null when cancelled", async () => {
+    const dialog = useDialogStore();
+    const answer = dialog.prompt({ title: "Position", value: 3 });
+    expect(dialog.current).toMatchObject({ kind: "prompt", confirmText: "Save", value: 3 });
+    dialog.current.value = "7";
+    dialog.close(true);
+    await expect(answer).resolves.toBe("7");
+
+    const cancelled = dialog.prompt({ title: "Position" });
+    dialog.close(false);
+    await expect(cancelled).resolves.toBeNull();
+  });
+
+  it("confirmDelete is a red Delete question", () => {
+    const dialog = useDialogStore();
+    dialog.confirmDelete({ title: "Delete x?" });
+    expect(dialog.current).toMatchObject({
+      title: "Delete x?",
+      confirmText: "Delete",
+      danger: true,
+      message: "This can't be undone.",
+    });
+  });
 });

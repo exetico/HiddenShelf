@@ -10,6 +10,7 @@ import {
   json,
 } from "./helpers.js";
 import { getDb } from "../src/lib/database.js";
+import { normalizeUrl } from "../src/routes/links.js";
 
 describe("Links API", () => {
   let app, cookie, userId;
@@ -111,6 +112,55 @@ describe("Links API", () => {
   });
 
   // ── GET /api/links (list) ──
+
+  describe("duplicate URL check", () => {
+    const check = async (url, extra = "", who = cookie) =>
+      json(
+        await app.request(
+          `/api/links?duplicate_of=${encodeURIComponent(url)}${extra}`,
+          { headers: { Cookie: who } },
+        ),
+      );
+
+    it("normalizes URLs the way people read them", () => {
+      expect(normalizeUrl("https://www.Example.com/a/")).toBe("example.com/a");
+      expect(normalizeUrl("http://example.com/a#top")).toBe("example.com/a");
+      expect(normalizeUrl("https://example.com/a?x=1")).toBe("example.com/a?x=1");
+      expect(normalizeUrl("not a url")).toBeNull();
+    });
+
+    it("finds a link already on the shelf", async () => {
+      const { link } = await createLink({ url: "https://example.com/page", title: "Mine" });
+      const data = await check("http://www.example.com/page/");
+      expect(data.matches).toEqual([
+        expect.objectContaining({ id: link.id, title: "Mine" }),
+      ]);
+    });
+
+    it("finds nothing for a new URL or a different query", async () => {
+      await createLink({ url: "https://example.com/page" });
+      expect((await check("https://example.com/other")).matches).toEqual([]);
+      expect((await check("https://example.com/page?x=1")).matches).toEqual([]);
+      expect((await check("nonsense")).matches).toEqual([]);
+    });
+
+    it("leaves out the link being edited", async () => {
+      const { link } = await createLink({ url: "https://example.com/page" });
+      const data = await check("https://example.com/page", `&exclude_id=${link.id}`);
+      expect(data.matches).toEqual([]);
+    });
+
+    it("only looks at your own links", async () => {
+      await createLink({ url: "https://example.com/page" });
+      const other = createAuthenticatedUser("other@example.com");
+      expect((await check("https://example.com/page", "", other.cookie)).matches).toEqual([]);
+    });
+
+    it("requires authentication", async () => {
+      const res = await app.request("/api/links?duplicate_of=https://x.com");
+      expect(res.status).toBe(401);
+    });
+  });
 
   describe("GET /api/links", () => {
     it("lists links for authenticated user", async () => {

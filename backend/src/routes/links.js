@@ -5,6 +5,7 @@
  *   GET    /api/links                → list (paginated, searchable)
  *   GET    /api/links?id=            → single link (auth)
  *   GET    /api/links?hash=          → public link by hash
+ *   GET    /api/links?duplicate_of=  → own links with the same URL (auth)
  *   POST   /api/links                → create
  *   PUT    /api/links?id=            → update
  *   DELETE /api/links?id=            → delete
@@ -24,6 +25,22 @@ import { requireAuth, optionalAuth } from "../middleware/auth.js";
 import config from "../config.js";
 
 const links = new Hono();
+
+/**
+ * Compare URLs the way people think of them: ignore http vs https, a
+ * leading "www.", letter case in the host, a trailing slash and the
+ * #fragment. Returns null for something that isn't a URL.
+ */
+export function normalizeUrl(value) {
+  try {
+    const url = new URL(String(value).trim());
+    const host = url.host.toLowerCase().replace(/^www\./, "");
+    const path = url.pathname.replace(/\/+$/, "");
+    return `${host}${path}${url.search}`;
+  } catch {
+    return null;
+  }
+}
 
 // Helper: get tags for a link
 function getTagsForLink(db, linkId) {
@@ -86,6 +103,24 @@ links.get("/", optionalAuth(), (c) => {
 
   // Everything below requires auth
   if (!c.userId) return errorResponse(c, "Authentication required", 401);
+
+  // ── Duplicate check: is this URL already on the shelf? ──
+  const duplicateOf = c.req.query("duplicate_of");
+  if (duplicateOf !== undefined) {
+    const wanted = normalizeUrl(duplicateOf);
+    if (!wanted) return successResponse(c, { matches: [] });
+    const excludeId = parseInt(c.req.query("exclude_id") || "0", 10);
+    const matches = db
+      .prepare(
+        `SELECT l.id, l.title, l.url, c.name as category_name
+       FROM links l
+       LEFT JOIN categories c ON l.category_id = c.id
+       WHERE l.user_id = ? AND l.id != ?`,
+      )
+      .all(c.userId, excludeId)
+      .filter((link) => normalizeUrl(link.url) === wanted);
+    return successResponse(c, { matches });
+  }
 
   // ── Single by id ──
   if (id) {
