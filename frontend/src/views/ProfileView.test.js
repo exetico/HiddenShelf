@@ -15,6 +15,7 @@ vi.mock("@/services/api/sharesApi", () => ({
     verifyShareCode: vi.fn(),
     listSharedCategories: vi.fn().mockResolvedValue([]),
     listOwnedShares: vi.fn().mockResolvedValue([]),
+    getCategoryShare: vi.fn().mockResolvedValue({ share: null }),
     removeMember: vi.fn().mockResolvedValue({}),
     removeSharing: vi.fn().mockResolvedValue({}),
   },
@@ -327,6 +328,25 @@ describe("ProfileView", () => {
         expect.stringMatching(/\/login\?share=xyz$/),
       );
       expect(wrapper.text()).toContain("0 people joined");
+    });
+
+    it("copies the current link, since a link is used up when someone joins", async () => {
+      const writeText = vi.fn().mockResolvedValue();
+      Object.assign(navigator, { clipboard: { writeText } });
+      sharesApi.listOwnedShares.mockResolvedValueOnce([
+        { id: 5, name: "Team", share_code: "used", members: [] },
+      ]);
+      sharesApi.getCategoryShare.mockResolvedValueOnce({
+        share: { share_code: "fresh" },
+      });
+      const wrapper = mountProfile();
+      await flushPromises();
+      await wrapper.find('[aria-label="Copy share link for Team"]').trigger("click");
+      await flushPromises();
+      expect(sharesApi.getCategoryShare).toHaveBeenCalledWith(5);
+      expect(writeText).toHaveBeenCalledWith(
+        expect.stringMatching(/\/login\?share=fresh$/),
+      );
     });
   });
 

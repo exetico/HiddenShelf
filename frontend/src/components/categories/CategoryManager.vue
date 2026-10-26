@@ -146,6 +146,16 @@ async function copyShareCode() {
   toastStore.success("Share code copied");
 }
 
+async function resetShare() {
+  if (!shareCategory.value) return;
+  try {
+    shareData.value = await sharesApi.resetShareCode(shareCategory.value.id);
+    toastStore.success("New share link made; the old one no longer works");
+  } catch (e) {
+    toastStore.error(e.message || "Failed to make a new link");
+  }
+}
+
 async function removeMember(memberId) {
   if (!shareCategory.value) return;
   try {
@@ -463,7 +473,15 @@ async function removeSharing() {
 
         <div v-else-if="shareData">
           <p class="text-sm text-gray-600 dark:text-brand-300 mb-3">
-            Share this URL with others to give them read-only access:
+            Send this link to one person to give them read-only access:
+          </p>
+          <p
+            class="text-xs text-gray-500 dark:text-brand-400 mb-3"
+            data-testid="share-single-use"
+          >
+            <i class="mdi mdi-shield-check-outline"></i>
+            It works once. When someone joins, it stops working and a new link
+            shows up here for the next person.
           </p>
           <div
             class="flex items-center gap-2 bg-gray-50 dark:bg-brand-800 rounded-md p-3 mb-4"
@@ -528,8 +546,17 @@ async function removeSharing() {
             </ul>
           </div>
 
-          <!-- Remove sharing -->
-          <div class="mb-2">
+          <!-- New link / remove sharing -->
+          <div class="mb-2 flex flex-col gap-2">
+            <button
+              title="Make a new link; the current one stops working"
+              class="w-full px-4 py-2 rounded-md border border-gray-300 dark:border-brand-700 text-sm hover:bg-gray-50 dark:hover:bg-brand-800"
+              data-testid="reset-share"
+              @click="resetShare"
+            >
+              <i class="mdi mdi-refresh"></i>
+              New link
+            </button>
             <button
               title="Stop sharing this category"
               class="w-full px-4 py-2 rounded-md border border-red-400 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950 text-sm"

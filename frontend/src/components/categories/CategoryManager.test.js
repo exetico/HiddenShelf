@@ -10,6 +10,7 @@ vi.mock("@/services/api/sharesApi", () => ({
   sharesApi: {
     getCategoryShare: vi.fn(),
     createCategoryShare: vi.fn(),
+    resetShareCode: vi.fn(),
     removeMember: vi.fn(),
     removeSharing: vi.fn(),
   },
@@ -205,6 +206,37 @@ describe("CategoryManager", () => {
       expect(appStore.toggleFavorite).toHaveBeenCalledWith(
         expect.objectContaining({ id: 2 }),
       );
+    });
+  });
+
+  describe("Share link", () => {
+    async function openShareFor(wrapper) {
+      sharesApi.getCategoryShare.mockResolvedValue({
+        share: { share_code: "first" },
+        members: [],
+      });
+      await wrapper.find('button[title="Share"]').trigger("click");
+      await flushPromises();
+    }
+
+    it("says the link works for one person", async () => {
+      const wrapper = mountManager();
+      await openShareFor(wrapper);
+      expect(wrapper.find('[data-testid="share-single-use"]').text()).toContain(
+        "It works once",
+      );
+      expect(wrapper.find("input[readonly]").element.value).toMatch(/share=first$/);
+    });
+
+    it("makes a new link that replaces the old one", async () => {
+      sharesApi.resetShareCode.mockResolvedValue({ share_code: "second" });
+      const wrapper = mountManager();
+      await openShareFor(wrapper);
+      await wrapper.find('[data-testid="reset-share"]').trigger("click");
+      await flushPromises();
+      expect(sharesApi.resetShareCode).toHaveBeenCalledWith(1);
+      expect(wrapper.find("input[readonly]").element.value).toMatch(/share=second$/);
+      expect(wrapper.text()).toContain("second");
     });
   });
 });
