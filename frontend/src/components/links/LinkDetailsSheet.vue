@@ -7,7 +7,7 @@ import { useLinkMenu } from "@/composables/useLinkMenu";
 import { renderMarkdown } from "@/lib/markdown";
 import { appUrl } from "@/lib/appUrl";
 import { formatDate } from "@/lib/date";
-import LinkQrCode from "@/components/links/LinkQrCode.vue";
+import { usePublicShareStore } from "@/stores/publicShare";
 
 // Everything about one link, with previous/next (buttons, swipe or arrow
 // keys) through the links on screen. See stores/linkDetails.js.
@@ -33,12 +33,7 @@ const own = computed(() => !link.value?.is_from_shared_category);
 const publicUrl = computed(() =>
   link.value?.is_public && link.value?.hash ? appUrl(`/h/${link.value.hash}`) : "",
 );
-
-const showQr = ref(false);
-watch(
-  () => link.value?.id,
-  () => (showQr.value = false),
-);
+const publicShare = usePublicShareStore();
 
 function go(step) {
   direction.value = step > 0 ? "next" : "prev";
@@ -60,9 +55,9 @@ function edit(current) {
   details.close();
   linkMenu.edit(current);
 }
-function trash(current) {
-  details.close();
-  linkMenu.remove(current);
+// The question shows over the sheet; it closes once the link is gone
+async function trash(current) {
+  if (await linkMenu.remove(current)) details.close();
 }
 
 function showTag(tag) {
@@ -262,7 +257,6 @@ onUnmounted(() => window.removeEventListener("keydown", onKeydown));
               <span v-if="addedOn">Added {{ addedOn }}</span>
             </p>
 
-            <LinkQrCode v-if="showQr && publicUrl" :url="publicUrl" :name="link.title" />
           </section>
         </Transition>
 
@@ -299,10 +293,8 @@ onUnmounted(() => window.removeEventListener("keydown", onKeydown));
             v-if="publicUrl"
             type="button"
             class="px-3 py-2 rounded-md border border-gray-300 dark:border-brand-700 text-sm"
-            :class="showQr ? 'bg-gray-100 dark:bg-brand-800' : ''"
-            :title="showQr ? 'Hide the QR code' : 'Show a QR code for the public link'"
-            :aria-pressed="showQr"
-            @click="showQr = !showQr"
+            title="Show a QR code for the public link"
+            @click="publicShare.open(link)"
           >
             <i class="mdi mdi-qrcode" aria-hidden="true"></i> QR
           </button>

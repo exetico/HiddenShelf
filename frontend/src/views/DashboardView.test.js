@@ -81,14 +81,14 @@ describe("DashboardView", () => {
     expect(wrapper.text()).toContain("3"); // tags
   });
 
-  it("stat cards are clickable buttons that navigate to edit", async () => {
+  it("the Links tile opens View; Categories and Tags open Edit", async () => {
     const wrapper = mountDashboard();
-    const linksCard = wrapper
-      .findAll("button")
-      .find((b) => b.text().includes("Links"));
-    expect(linksCard).toBeDefined();
-    await linksCard.trigger("click");
-    expect(mockPush).toHaveBeenCalledWith({ name: "edit" });
+    await wrapper.find('[data-testid="stat-links"]').trigger("click");
+    expect(mockPush).toHaveBeenLastCalledWith({ name: "view" });
+    await wrapper.find('[data-testid="stat-categories"]').trigger("click");
+    expect(mockPush).toHaveBeenLastCalledWith({ name: "edit" });
+    await wrapper.find('[data-testid="stat-tags"]').trigger("click");
+    expect(mockPush).toHaveBeenLastCalledWith({ name: "edit" });
   });
 
   it("totalCategories includes shared categories", () => {

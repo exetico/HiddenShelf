@@ -4,6 +4,7 @@ import { createPinia, setActivePinia } from "pinia";
 import { useAppStore } from "@/stores/app";
 import { useDialogStore } from "@/stores/dialog";
 import { useContextMenuStore } from "@/stores/contextMenu";
+import { usePublicShareStore } from "@/stores/publicShare";
 import { useLinkMenu } from "@/composables/useLinkMenu";
 
 const push = vi.fn();
@@ -40,6 +41,7 @@ describe("useLinkMenu", () => {
       "Open in new tab",
       "Copy URL",
       "Copy public link",
+      "QR code",
       "—",
       "Edit",
       "Add to favorites",
@@ -65,12 +67,19 @@ describe("useLinkMenu", () => {
     );
   });
 
-  it("moves a link to the trash without asking (the toast can undo)", async () => {
+  it("asks before moving a link to the trash", async () => {
+    appStore.trashLink = vi.fn().mockResolvedValue(true);
     const { items } = useLinkMenu();
     items(link()).find((i) => i.label === "Move to trash").action();
     await flushPromises();
-    expect(useDialogStore().current).toBeFalsy();
-    expect(appStore.deleteLink).toHaveBeenCalledWith(3);
+    expect(appStore.trashLink).toHaveBeenCalledWith(expect.objectContaining({ id: 3 }));
+  });
+
+  it("opens the QR code for a public link", () => {
+    const { items } = useLinkMenu();
+    items(link()).find((i) => i.label === "QR code").action();
+    expect(usePublicShareStore().link).toMatchObject({ id: 3 });
+    expect(labels(link({ is_public: 0 }))).not.toContain("QR code");
   });
 
   it("stars and unstars a link", () => {

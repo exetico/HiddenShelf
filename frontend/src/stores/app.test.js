@@ -2,6 +2,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createPinia, setActivePinia } from "pinia";
 import { useAppStore } from "@/stores/app";
 import { useToastStore } from "@/stores/toast";
+import { useDialogStore } from "@/stores/dialog";
+import { flushPromises } from "@vue/test-utils";
 
 vi.mock("@/services/api/linksApi", () => ({
   linksApi: {
@@ -226,5 +228,26 @@ describe("app store favorites and trash", () => {
     linksApi.favorites.mockResolvedValue([{ id: 9, title: "Fav" }]);
     await store.refreshLinks();
     expect(store.favoriteLinks).toEqual([{ id: 9, title: "Fav" }]);
+  });
+
+  it("asks before moving a link to the trash", async () => {
+    linksApi.remove.mockResolvedValue({});
+    const dialog = useDialogStore();
+
+    const no = store.trashLink({ id: 1, title: "Beta" });
+    expect(dialog.current).toMatchObject({
+      title: 'Move "Beta" to the trash?',
+      confirmText: "Move to trash",
+      danger: true,
+    });
+    dialog.close(false);
+    expect(await no).toBe(false);
+    expect(linksApi.remove).not.toHaveBeenCalled();
+
+    const yes = store.trashLink({ id: 1, title: "Beta" });
+    dialog.close(true);
+    expect(await yes).toBe(true);
+    await flushPromises();
+    expect(linksApi.remove).toHaveBeenCalledWith(1);
   });
 });

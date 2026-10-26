@@ -203,6 +203,19 @@ export const useAppStore = defineStore("app", {
         duration: 6000,
       });
     },
+    /** Asks first, then moves the link to the trash. Resolves true if it did. */
+    async trashLink(link) {
+      const ok = await useDialogStore().confirm({
+        title: `Move "${link.title}" to the trash?`,
+        message: "You can restore it from Trash for 30 days.",
+        confirmText: "Move to trash",
+        danger: true,
+        icon: "mdi-delete-outline",
+      });
+      if (!ok) return false;
+      await this.deleteLink(link.id);
+      return true;
+    },
     async restoreLink(id) {
       await linksApi.restore(id);
       await this.refreshLinks();

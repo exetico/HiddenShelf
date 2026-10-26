@@ -1,19 +1,26 @@
 <script setup>
+import { useInfiniteScroll } from "@/composables/useInfiniteScroll";
 import { onMounted, onUnmounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useAppStore } from "@/stores/app";
 import { useToastStore } from "@/stores/toast";
-import { appUrl } from "@/lib/appUrl";
 import LinkCardEdit from "@/components/links/LinkCardEdit.vue";
 import LinkFormModal from "@/components/links/LinkFormModal.vue";
 import CategoryManager from "@/components/categories/CategoryManager.vue";
 import TagManager from "@/components/tags/TagManager.vue";
 import TrashModal from "@/components/links/TrashModal.vue";
+import SearchField from "@/components/common/SearchField.vue";
 import ActiveTagFilter from "@/components/tags/ActiveTagFilter.vue";
 
 const route = useRoute();
 const router = useRouter();
 const appStore = useAppStore();
+// Load the next page as you near the bottom; the button stays as a fallback
+const { sentinel } = useInfiniteScroll({
+  hasMore: () => appStore.hasMore,
+  loadMore: () => appStore.loadMore(),
+  count: () => appStore.links.length,
+});
 const toastStore = useToastStore();
 
 const showLinkModal = ref(false);
@@ -117,19 +124,16 @@ async function handleSave(payload) {
   showLinkModal.value = false;
 }
 
-// Goes to the trash; the toast has Undo
+// Asks, then moves it to the trash; the toast has Undo
 async function handleDelete(id) {
+  const link = appStore.links.find((l) => l.id === id) || { id, title: "this link" };
   try {
-    await appStore.deleteLink(id);
+    await appStore.trashLink(link);
   } catch (error) {
     toastStore.error(error.message || "Couldn't delete the link");
   }
 }
 
-async function copyPublic(hash) {
-  await navigator.clipboard.writeText(appUrl(`/h/${hash}`));
-  toastStore.success("Public URL copied");
-}
 </script>
 
 <template>
@@ -172,13 +176,13 @@ async function copyPublic(hash) {
     <div
       class="bg-white dark:bg-brand-900 rounded-lg border border-gray-200 dark:border-brand-800 p-2 sm:p-3 flex gap-2"
     >
-      <input
-        v-model="localSearch"
-        type="search"
-        placeholder="Search links..."
-        class="md:hidden flex-1 min-w-0 sm:min-w-[200px] px-3 py-1.5 sm:py-2 rounded-md border border-gray-300 dark:border-brand-700 dark:bg-brand-800"
-        data-testid="page-search"
-      />
+      <div class="md:hidden flex flex-1 min-w-0">
+        <SearchField
+          v-model="localSearch"
+          placeholder="Search links..."
+          data-testid="page-search"
+        />
+      </div>
       <select
         v-model="localFilterCategory"
         class="max-w-[40%] sm:max-w-none md:max-w-xs px-2 sm:px-3 py-1.5 sm:py-2 rounded-md border border-gray-300 dark:border-brand-700 dark:bg-brand-800"
@@ -214,7 +218,6 @@ async function copyPublic(hash) {
         :link="link"
         @edit="openEdit"
         @delete="handleDelete"
-        @copy-public="copyPublic"
       />
     </div>
 
@@ -223,6 +226,7 @@ async function copyPublic(hash) {
       No links yet. Add your first link!
     </div>
 
+    <div ref="sentinel" aria-hidden="true"></div>
     <div v-if="appStore.hasMore" class="text-center">
       <button
         title="Load more links"

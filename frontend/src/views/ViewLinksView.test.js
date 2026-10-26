@@ -151,7 +151,9 @@ describe("ViewLinksView", () => {
   describe("mobile layout", () => {
     it("puts the category picker in the search row and hides the bar on phones", () => {
       const wrapper = mountView();
-      const searchRow = wrapper.find('input[type="search"]').element.parentElement;
+      const searchRow = wrapper
+        .find('input[type="search"]')
+        .element.closest('[data-testid="page-search"]');
       expect(searchRow.querySelector('[aria-haspopup="dialog"]')).not.toBeNull();
       expect(wrapper.html()).toContain("hidden sm:block");
     });

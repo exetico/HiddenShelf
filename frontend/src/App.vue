@@ -7,6 +7,7 @@ import AppShell from "@/components/layout/AppShell.vue";
 import ToastList from "@/components/feedback/ToastList.vue";
 import ConfirmDialog from "@/components/common/ConfirmDialog.vue";
 import ContextMenuPopover from "@/components/common/ContextMenuPopover.vue";
+import PublicLinkDialog from "@/components/links/PublicLinkDialog.vue";
 
 const route = useRoute();
 const authStore = useAuthStore();
@@ -28,6 +29,7 @@ onMounted(async () => {
   </AppShell>
   <router-view v-else />
   <ContextMenuPopover />
+  <PublicLinkDialog />
   <ConfirmDialog />
   <ToastList />
 </template>

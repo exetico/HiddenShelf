@@ -3,6 +3,7 @@ import { mount } from "@vue/test-utils";
 import { createPinia, setActivePinia } from "pinia";
 import { useAppStore } from "@/stores/app";
 import { useContextMenuStore } from "@/stores/contextMenu";
+import { usePublicShareStore } from "@/stores/publicShare";
 import LinkCardEdit from "@/components/links/LinkCardEdit.vue";
 
 vi.mock("vue-router", () => ({ useRouter: () => ({ push: vi.fn() }) }));
@@ -41,13 +42,13 @@ describe("LinkCardEdit", () => {
     expect(wrapper.emitted("edit")).toHaveLength(1);
   });
 
-  it("shows a globe for public links that copies the public link", async () => {
+  it("shows a globe for public links that opens the public link dialog", async () => {
     const wrapper = mountCard({ is_public: 1, hash: "xyz123" });
     const globe = wrapper.find('[data-testid="public-indicator"]');
-    expect(globe.attributes("title")).toBe("Public: copy the public link");
+    expect(globe.attributes("title")).toBe("Public link: copy it or show a QR code");
     expect(wrapper.find('[data-testid="private-indicator"]').exists()).toBe(false);
     await globe.trigger("click");
-    expect(wrapper.emitted("copyPublic")[0]).toEqual(["xyz123"]);
+    expect(usePublicShareStore().link).toMatchObject({ hash: "xyz123" });
   });
 
   it("shows a lock for private links, with nothing to copy", () => {
@@ -191,7 +192,7 @@ describe("LinkCardEdit", () => {
       "Add to favorites",
       "Edit Example",
       "Move Example to the trash",
-      "Public: copy the public link",
+      "Public link: copy it or show a QR code",
     ]);
   });
 

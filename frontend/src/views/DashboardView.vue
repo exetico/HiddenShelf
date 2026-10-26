@@ -59,7 +59,8 @@ const statTiles = computed(() => [
     tint: "to-sky-500/15 dark:to-sky-400/15",
     iconColor: "text-sky-500 dark:text-sky-400",
     bar: "bg-sky-500/70",
-    title: "Manage your links",
+    title: "Browse your links",
+    to: "view",
   },
   {
     key: "categories",
@@ -70,6 +71,7 @@ const statTiles = computed(() => [
     iconColor: "text-amber-500 dark:text-amber-400",
     bar: "bg-amber-500/70",
     title: "Manage your categories",
+    to: "edit",
   },
   {
     key: "tags",
@@ -80,6 +82,7 @@ const statTiles = computed(() => [
     iconColor: "text-emerald-500 dark:text-emerald-400",
     bar: "bg-emerald-500/70",
     title: "Manage your tags",
+    to: "edit",
   },
 ]);
 
@@ -195,7 +198,7 @@ const topVisitedLinks = computed(() =>
         :class="tile.tint"
         :title="tile.title"
         :data-testid="`stat-${tile.key}`"
-        @click="router.push({ name: 'edit' })"
+        @click="router.push({ name: tile.to })"
       >
         <!-- Icon art: a thin color bar, a light tint towards the corner and
              a big icon cut off by the tile's edge. No blur, so it stays crisp. -->

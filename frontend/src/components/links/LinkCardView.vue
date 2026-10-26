@@ -3,6 +3,7 @@ import { computed } from "vue";
 import { useAppStore } from "@/stores/app";
 import { useLinkPreviewStore } from "@/stores/linkPreview";
 import { useLinkDrag } from "@/composables/useLinkDrag";
+import { usePublicShareStore } from "@/stores/publicShare";
 
 const props = defineProps({
   link: {
@@ -21,11 +22,12 @@ const props = defineProps({
   },
 });
 
-const emit = defineEmits(["copyPublic", "contextAction", "details", "reorder"]);
+const emit = defineEmits(["contextAction", "details", "reorder"]);
 
 const appStore = useAppStore();
 const preview = useLinkPreviewStore();
 const drag = useLinkDrag();
+const publicShare = usePublicShareStore();
 
 // Hover card with the description, from the note icon, on devices that
 // can hover
@@ -187,14 +189,14 @@ function onClick(event) {
           +{{ link.tags.length - 3 }}
         </span>
       </div>
-      <!-- Public links: a quiet globe that copies the public link, shown on
-           hover (desktop). On phones it's in the long-press sheet. -->
+      <!-- Public links: a quiet globe, shown on hover (desktop), that opens
+           the link to copy and its QR code. On phones: the long-press sheet. -->
       <button
         v-if="link.is_public"
         class="hidden md:inline text-gray-400 hover:text-green-600 dark:text-brand-500 dark:hover:text-green-400 text-sm shrink-0 opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity"
-        title="Public: copy the public link"
+        title="Public link: copy it or show a QR code"
         data-testid="public-copy"
-        @click.stop.prevent="$emit('copyPublic', link.hash)"
+        @click.stop.prevent="publicShare.open(link)"
       >
         <i class="mdi mdi-earth"></i>
       </button>

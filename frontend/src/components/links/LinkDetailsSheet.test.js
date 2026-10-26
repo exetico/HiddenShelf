@@ -3,6 +3,8 @@ import { mount, flushPromises } from "@vue/test-utils";
 import { createPinia, setActivePinia } from "pinia";
 import { useAppStore } from "@/stores/app";
 import { useLinkDetailsStore } from "@/stores/linkDetails";
+import { useDialogStore } from "@/stores/dialog";
+import { usePublicShareStore } from "@/stores/publicShare";
 import LinkDetailsSheet from "@/components/links/LinkDetailsSheet.vue";
 
 const push = vi.fn();
@@ -93,10 +95,20 @@ describe("LinkDetailsSheet", () => {
     wrapper.unmount();
   });
 
-  it("moves the link to the trash and closes", async () => {
+  it("asks before moving the link to the trash, and only closes if it did", async () => {
     const appStore = useAppStore();
     appStore.deleteLink = vi.fn().mockResolvedValue();
     await wrapper.find('[aria-label="Move to trash"]').trigger("click");
+    const dialog = useDialogStore();
+    expect(dialog.current.title).toBe('Move "Grafana" to the trash?');
+    dialog.close(false);
+    await flushPromises();
+    expect(appStore.deleteLink).not.toHaveBeenCalled();
+    expect(details.current).not.toBeNull();
+
+    await wrapper.find('[aria-label="Move to trash"]').trigger("click");
+    dialog.close(true);
+    await flushPromises();
     expect(appStore.deleteLink).toHaveBeenCalledWith(1);
     expect(details.current).toBeNull();
     wrapper.unmount();
@@ -114,15 +126,9 @@ describe("LinkDetailsSheet", () => {
     wrapper.unmount();
   });
 
-  it("shows a QR code for a public link", async () => {
-    expect(wrapper.find('[data-testid="link-qr"]').exists()).toBe(false);
+  it("opens the QR code for a public link", async () => {
     await wrapper.find('[title="Show a QR code for the public link"]').trigger("click");
-    await flushPromises();
-    const img = wrapper.find('[data-testid="link-qr"] img');
-    expect(img.attributes("src")).toBe("data:image/png;base64,QR");
-    expect(wrapper.find('[data-testid="link-qr"] a').attributes("download")).toBe(
-      "grafana-qr.png",
-    );
+    expect(usePublicShareStore().link).toMatchObject({ id: 1 });
     wrapper.unmount();
   });
 

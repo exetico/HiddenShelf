@@ -7,8 +7,10 @@ import EditLinksView from "@/views/EditLinksView.vue";
 // Mock child components
 vi.mock("@/components/links/LinkCardEdit.vue", () => ({
   default: {
+    name: "LinkCardEdit",
     template: '<div class="link-card">{{ link.title }}</div>',
     props: ["link"],
+    emits: ["edit", "delete"],
   },
 }));
 vi.mock("@/components/links/LinkFormModal.vue", () => ({
@@ -188,5 +190,14 @@ describe("EditLinksView", () => {
     const wrapper = mountEdit();
     await wrapper.find('[data-testid="open-trash"]').trigger("click");
     expect(wrapper.findComponent({ name: "TrashModal" }).props("open")).toBe(true);
+  });
+
+  it("asks before a card's Delete moves the link to the trash", async () => {
+    const appStore = useAppStore();
+    appStore.trashLink = vi.fn().mockResolvedValue(true);
+    const wrapper = mountEdit();
+    wrapper.findAllComponents({ name: "LinkCardEdit" })[1].vm.$emit("delete", 2);
+    await flushPromises();
+    expect(appStore.trashLink).toHaveBeenCalledWith(expect.objectContaining({ id: 2, title: "Beta" }));
   });
 });

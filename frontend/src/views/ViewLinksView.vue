@@ -1,20 +1,25 @@
 <script setup>
+import { useInfiniteScroll } from "@/composables/useInfiniteScroll";
 import { ref, computed, watch } from "vue";
 import { useAppStore } from "@/stores/app";
-import { useToastStore } from "@/stores/toast";
 import LinkCardView from "@/components/links/LinkCardView.vue";
 import CategoryFilterBar from "@/components/categories/CategoryFilterBar.vue";
 import CategoryPicker from "@/components/categories/CategoryPicker.vue";
+import SearchField from "@/components/common/SearchField.vue";
 import ActiveTagFilter from "@/components/tags/ActiveTagFilter.vue";
 import LinkDetailsSheet from "@/components/links/LinkDetailsSheet.vue";
 import LinkPreviewPopover from "@/components/links/LinkPreviewPopover.vue";
 import { useLinkMenu } from "@/composables/useLinkMenu";
 import { reorderIds } from "@/composables/useLinkDrag";
 import { useLinkDetailsStore } from "@/stores/linkDetails";
-import { appUrl } from "@/lib/appUrl";
 
 const appStore = useAppStore();
-const toastStore = useToastStore();
+// Load the next page as you near the bottom; the button stays as a fallback
+const { sentinel } = useInfiniteScroll({
+  hasMore: () => appStore.hasMore,
+  loadMore: () => appStore.loadMore(),
+  count: () => appStore.links.length,
+});
 
 const details = useLinkDetailsStore();
 const linkMenu = useLinkMenu({ onDetails: openDetails });
@@ -105,10 +110,6 @@ const groupedCategories = computed(() => {
   return result;
 });
 
-async function copyPublic(hash) {
-  await navigator.clipboard.writeText(appUrl(`/h/${hash}`));
-  toastStore.success("Public URL copied");
-}
 
 function handleContextAction({ link, event, action }) {
   if (action === "moveUp") {
@@ -144,12 +145,7 @@ function toggleCategory(key) {
       data-testid="page-search"
     >
       <CategoryPicker />
-      <input
-        v-model="appStore.search"
-        type="search"
-        placeholder="Search links..."
-        class="flex-1 min-w-0 px-3 py-1.5 sm:py-2 rounded-md border border-gray-300 dark:border-brand-700 dark:bg-brand-800"
-      />
+      <SearchField v-model="appStore.search" placeholder="Search links..." />
     </div>
 
     <!-- Favorite categories as quick chips (mobile) -->
@@ -254,7 +250,6 @@ function toggleCategory(key) {
               :reorderable="
                 !group.owner && !group.fixedOrder && group.links.length > 1
               "
-              @copy-public="copyPublic"
               @context-action="handleContextAction"
               @details="openDetails"
               @reorder="onReorder"
@@ -269,6 +264,7 @@ function toggleCategory(key) {
       No links found.
     </div>
 
+    <div ref="sentinel" aria-hidden="true"></div>
     <div v-if="appStore.hasMore" class="text-center">
       <button
         title="Load more links"
