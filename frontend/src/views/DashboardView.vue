@@ -8,6 +8,7 @@ import { useDialogStore } from "@/stores/dialog";
 import { useToastStore } from "@/stores/toast";
 import { linksApi } from "@/services/api/linksApi";
 import { filterHref, isPlainClick } from "@/lib/filterLinks";
+import { TOOLS, toolHref, toolQuery } from "@/lib/urlTools";
 
 const appStore = useAppStore();
 const router = useRouter();
@@ -305,6 +306,32 @@ const topVisitedLinks = computed(() =>
         "read later". Add them when you create or edit a link, then come back
         here to jump straight to everything with that tag.
       </p>
+    </article>
+
+    <!-- Tools: real links, so each opens its own tool -->
+    <article
+      class="bg-white dark:bg-brand-900 rounded-lg border border-gray-200 dark:border-brand-800 p-4 sm:p-5"
+      data-testid="dashboard-tools"
+    >
+      <h2 class="font-semibold text-gray-900 dark:text-white mb-1">
+        <i class="mdi mdi-toolbox-outline mr-1"></i>Tools
+      </h2>
+      <p class="text-sm text-gray-500 dark:text-brand-400 mb-3">
+        Small helpers for links that run in your browser.
+      </p>
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+        <a
+          v-for="tool in TOOLS"
+          :key="tool.key"
+          :href="toolHref(tool.key)"
+          class="flex items-center gap-2 p-2.5 rounded-md border border-gray-200 dark:border-brand-800 text-sm text-gray-700 dark:text-brand-200 hover:border-brand-500"
+          :title="tool.hint"
+          @click="isPlainClick($event) && ($event.preventDefault(), router.push({ name: 'tools', query: toolQuery(tool.key) }))"
+        >
+          <i class="mdi text-lg leading-none" :class="tool.icon" aria-hidden="true"></i>
+          {{ tool.label }}
+        </a>
+      </div>
     </article>
 
     <!-- Visit Stats -->

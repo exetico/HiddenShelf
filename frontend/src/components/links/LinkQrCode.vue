@@ -6,6 +6,7 @@ import QRCode from "qrcode";
 const props = defineProps({
   url: { type: String, required: true },
   name: { type: String, default: "link" },
+  hint: { type: String, default: "Scan it to open the public link on another device." },
 });
 
 const image = ref("");
@@ -39,7 +40,7 @@ const fileName = () =>
     />
     <p v-else-if="failed" class="text-sm text-red-600">Couldn't make a QR code</p>
     <div class="text-xs text-gray-500 dark:text-brand-400 space-y-2">
-      <p>Scan it to open the public link on another device.</p>
+      <p>{{ hint }}</p>
       <a
         v-if="image"
         :href="image"
