@@ -45,7 +45,8 @@ SMTP_USER=you@example.com
 SMTP_PASS=your-password
 # tls (port 587), ssl (port 465) or empty
 SMTP_ENCRYPTION=tls
-FROM_EMAIL=noreply@example.com
+# An address your SMTP provider is set up to send for
+FROM_EMAIL=login@links.example.com
 ```
 
 Keep comments in `.env` on their own lines. Some Docker Compose versions read `NAME=value # comment` as part of the value.
@@ -54,11 +55,15 @@ Leave `DEBUG_MODE=false`. The full list of settings is under [Configuration](#co
 
 > If SMTP isn't set, login emails go to smtpbucket.com, a public test inbox anyone can read. The server prints a warning at startup when that happens on a non-localhost `SITE_URL`.
 
+Login emails go out through your SMTP provider, so use a `FROM_EMAIL` it is set up to send for (with the SPF/DKIM records it asks you to add), or they may land in spam.
+
 ### 3. Start it
 
 ```bash
 make up                  # same as: docker compose up -d --build web
 ```
+
+When you run `make up` yourself, it first checks for new code and asks before updating; yes runs `make upgrade` (backup, pull, rebuild). Scripts and cron jobs are never asked and never pull. `make up PULL=no` skips the check, `make up PULL=yes` updates without asking.
 
 This builds one image with the backend and the built frontend, and starts it in the background. It restarts with the server. The database is created in `db/` on the first start. Follow the log with `make logs`.
 

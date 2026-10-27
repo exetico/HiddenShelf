@@ -130,7 +130,7 @@ describe("LinkCardView", () => {
       delete window.matchMedia;
     });
 
-    it("shows a star on favorites and a quiet globe on public links", () => {
+    it("shows a star on favorites and a share chip on public links", () => {
       const wrapper = mount(LinkCardView, {
         props: { link: { ...link, is_favorite: 1, is_public: 1, hash: "h1" } },
         global: { plugins: [pinia] },
@@ -138,8 +138,10 @@ describe("LinkCardView", () => {
       expect(wrapper.find('[data-testid="favorite-mark"]').exists()).toBe(true);
       const globe = wrapper.find('[data-testid="public-copy"]');
       expect(globe.classes()).toEqual(
-        expect.arrayContaining(["hidden", "md:inline", "opacity-0", "group-hover:opacity-100"]),
+        expect.arrayContaining(["hidden", "md:inline-flex", "opacity-0", "group-hover:opacity-100"]),
       );
+      expect(globe.find(".mdi-qrcode").exists()).toBe(true);
+      expect(globe.attributes("aria-label")).toBe("Share the public link");
       expect(mountCard().find('[data-testid="public-copy"]').exists()).toBe(false);
       expect(mountCard().find('[data-testid="favorite-mark"]').exists()).toBe(false);
     });

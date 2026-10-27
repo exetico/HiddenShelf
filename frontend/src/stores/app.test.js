@@ -89,6 +89,21 @@ describe("app store pagination", () => {
     expect(store.links).toHaveLength(50);
     expect(store.hasMore).toBe(false);
   });
+
+  it("loads the next page after the first one, if asked while it loads", async () => {
+    // Infinite scroll asks for more while the start-up page is in flight;
+    // dropping that request left the list stuck at the first page
+    serveLinks(52);
+    const store = useAppStore();
+    const first = store.loadLinks({ reset: true });
+    const more = store.loadMore();
+    await Promise.all([first, more]);
+
+    expect(store.links).toHaveLength(40);
+    expect(store.links.map((l) => l.id)).toEqual(
+      Array.from({ length: 40 }, (_, i) => i + 1),
+    );
+  });
 });
 
 describe("app store category favorites and order", () => {
