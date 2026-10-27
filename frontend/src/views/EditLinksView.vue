@@ -1,13 +1,14 @@
 <script setup>
 import { useInfiniteScroll } from "@/composables/useInfiniteScroll";
 import { useLinkFilterReload } from "@/composables/useLinkFilterReload";
+import { useFilterQuery } from "@/composables/useFilterQuery";
 import { quickAddFromQuery } from "@/lib/quickAdd";
-import { onMounted, ref, watch } from "vue";
+import { computed, onMounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useAppStore } from "@/stores/app";
 import { useToastStore } from "@/stores/toast";
+import { useLinkEditorStore } from "@/stores/linkEditor";
 import LinkCardEdit from "@/components/links/LinkCardEdit.vue";
-import LinkFormModal from "@/components/links/LinkFormModal.vue";
 import CategoryManager from "@/components/categories/CategoryManager.vue";
 import TagManager from "@/components/tags/TagManager.vue";
 import TrashModal from "@/components/links/TrashModal.vue";
@@ -18,6 +19,8 @@ import HiddenMatchesNote from "@/components/categories/HiddenMatchesNote.vue";
 const route = useRoute();
 const router = useRouter();
 const appStore = useAppStore();
+// First, so the first load already uses filters from the address
+useFilterQuery();
 // Load the next page as you near the bottom; the button stays as a fallback
 const { sentinel } = useInfiniteScroll({
   hasMore: () => appStore.hasMore,
@@ -28,18 +31,19 @@ const toastStore = useToastStore();
 
 // The bar's secondary buttons: no fill, a visible border
 const OUTLINE =
-  "flex items-center gap-1.5 whitespace-nowrap px-3 py-1.5 sm:px-4 sm:py-2 text-sm sm:text-base rounded-md border border-gray-300 dark:border-brand-700 text-gray-700 dark:text-brand-200 hover:bg-gray-100 dark:hover:bg-brand-800";
+  "flex items-center gap-1.5 whitespace-nowrap px-3 py-1.5 sm:px-4 sm:py-2 text-sm sm:text-base rounded-md border border-gray-300 dark:border-brand-700 text-gray-800 dark:text-brand-100 hover:bg-white dark:hover:bg-brand-800";
 
-const showLinkModal = ref(false);
 const showCategoryModal = ref(false);
 const showTagModal = ref(false);
 const showTrash = ref(false);
-const activeLink = ref(null);
+const editor = useLinkEditorStore();
 
-// Search + filter
-const localFilterCategory = ref(appStore.filterCategory);
-watch(localFilterCategory, (val) => {
-  appStore.filterCategory = val;
+// The category select; ids are strings, as in the address bar
+const localFilterCategory = computed({
+  get: () => String(appStore.filterCategory || ""),
+  set: (value) => {
+    appStore.filterCategory = value;
+  },
 });
 
 
@@ -47,8 +51,7 @@ function openEditById(editId) {
   const id = Number(editId);
   const link = appStore.links.find((l) => l.id === id);
   if (link) {
-    activeLink.value = link;
-    showLinkModal.value = true;
+    editor.open(link);
     router.replace({ name: "edit" });
   }
 }
@@ -64,11 +67,10 @@ onMounted(async () => {
   if (route.query.new) openCreateFromRoute();
 });
 
-// "Add link" in the top bar comes here with ?new=1; the bookmarklet adds
-// &url=…&title=… for the page it was clicked on
+// The bookmarklet opens /edit?new=1&url=…&title=… for the page it was
+// clicked on
 function openCreateFromRoute() {
-  openCreate();
-  activeLink.value = { ...activeLink.value, ...quickAddFromQuery(route.query) };
+  editor.create(quickAddFromQuery(route.query));
   router.replace({ name: "edit" });
 }
 watch(
@@ -89,30 +91,12 @@ watch(
 appStore.setLinkGrouping("");
 useLinkFilterReload();
 
-// A new link starts in the category and with the tag the list is
-// filtered by, so it shows up in the list you're looking at
 function openCreate() {
-  const category = Number(appStore.filterCategory) || "";
-  const tag = appStore.tags.find((t) => String(t.id) === appStore.filterTag);
-  activeLink.value = {
-    category_id: appStore.categories.some((c) => c.id === category) ? category : "",
-    tags: tag ? [{ name: tag.name }] : [],
-  };
-  showLinkModal.value = true;
+  editor.create();
 }
 
 function openEdit(link) {
-  activeLink.value = link;
-  showLinkModal.value = true;
-}
-
-async function handleSave(payload) {
-  if (activeLink.value?.id) {
-    await appStore.updateLink(activeLink.value.id, payload);
-  } else {
-    await appStore.createLink(payload);
-  }
-  showLinkModal.value = false;
+  editor.open(link);
 }
 
 // The managers show link counts, which editing links changes
@@ -136,7 +120,7 @@ async function runTagAction(action) {
 // Picking a category or tag in its manager shows its links here
 function filterByCategory(id) {
   showCategoryModal.value = false;
-  localFilterCategory.value = id;
+  localFilterCategory.value = String(id);
 }
 function filterByTag(id) {
   showTagModal.value = false;
@@ -161,8 +145,10 @@ async function handleDelete(id) {
          category on the first row, the buttons on the second. From md up
          (where search and "Add link" are in the top bar): the category,
          the managers, and Trash at the end. -->
+    <!-- On the page background, not a white card, so the outlined
+         controls keep their contrast -->
     <div
-      class="bg-white dark:bg-brand-900 rounded-lg border border-gray-200 dark:border-brand-800 p-2 sm:p-3 flex flex-wrap items-center gap-2"
+      class="flex flex-wrap items-center gap-2"
       data-testid="edit-toolbar"
     >
       <div class="md:hidden flex flex-1 min-w-0">
@@ -172,22 +158,30 @@ async function handleDelete(id) {
           data-testid="page-search"
         />
       </div>
+      <!-- Our own chevron: the browser's sits too close to the edge and
+           not quite centered -->
+      <div class="relative max-w-[40%] md:max-w-xs">
       <select
         v-model="localFilterCategory"
         title="Show the links in one category"
         aria-label="Category"
         data-testid="category-filter"
-        class="max-w-[40%] md:max-w-xs px-2 sm:px-3 py-1.5 sm:py-2 text-sm sm:text-base rounded-md border border-gray-300 dark:border-brand-700 bg-transparent dark:bg-brand-900 text-gray-700 dark:text-brand-200 hover:bg-gray-100 dark:hover:bg-brand-800"
+        class="w-full appearance-none pl-3 pr-9 py-1.5 sm:py-2 text-sm sm:text-base rounded-md border border-gray-300 dark:border-brand-700 bg-white dark:bg-brand-900 text-gray-800 dark:text-brand-100 hover:bg-gray-100 dark:hover:bg-brand-800 truncate"
       >
         <option value="">All Categories</option>
         <option
           v-for="cat in appStore.categories"
           :key="cat.id"
-          :value="cat.id"
+          :value="String(cat.id)"
         >
           {{ cat.name }}{{ cat.is_hidden ? " (hidden)" : "" }}
         </option>
       </select>
+      <i
+        class="mdi mdi-chevron-down pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-lg leading-none text-gray-500 dark:text-brand-300"
+        aria-hidden="true"
+      ></i>
+      </div>
 
       <div class="flex flex-1 basis-full md:basis-auto items-center gap-2" data-testid="edit-actions">
         <!-- From md up, "Add link" is in the top bar -->
@@ -276,14 +270,6 @@ async function handleDelete(id) {
         Load more
       </button>
     </div>
-
-    <LinkFormModal
-      :open="showLinkModal"
-      :model="activeLink"
-      :categories="appStore.categories"
-      @close="showLinkModal = false"
-      @save="handleSave"
-    />
 
     <CategoryManager
       :open="showCategoryModal"

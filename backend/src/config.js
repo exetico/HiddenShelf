@@ -66,7 +66,7 @@ const config = {
   ), // seconds
 
   // Pagination
-  linksPerPage: parseInt(process.env.LINKS_PER_PAGE || "20", 10),
+  linksPerPage: parseInt(process.env.LINKS_PER_PAGE || "100", 10),
 
   // Reverse proxy: "true" always trusts X-Forwarded-For and friends, "false"
   // never does. Unset: trusted only when the request comes from a loopback

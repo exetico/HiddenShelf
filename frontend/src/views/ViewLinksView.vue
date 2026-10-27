@@ -1,6 +1,7 @@
 <script setup>
 import { useInfiniteScroll } from "@/composables/useInfiniteScroll";
 import { useLinkFilterReload } from "@/composables/useLinkFilterReload";
+import { useFilterQuery } from "@/composables/useFilterQuery";
 import { useMediaQuery } from "@/composables/useMediaQuery";
 import { ref, computed } from "vue";
 import { useAppStore } from "@/stores/app";
@@ -17,6 +18,8 @@ import { reorderIds } from "@/composables/useLinkDrag";
 import { useLinkDetailsStore } from "@/stores/linkDetails";
 
 const appStore = useAppStore();
+// First, so the first load already uses filters from the address
+useFilterQuery();
 // Whole categories per page, in the order they're shown, so a category
 // never shows part of its links and new ones only add at the bottom
 appStore.setLinkGrouping("category");

@@ -63,4 +63,16 @@ describe("LinkEditorHost", () => {
     form().vm.$emit("close");
     expect(editor.link).toBeNull();
   });
+
+  it("adds a new link, starting from the list's filters", async () => {
+    appStore.createLink = vi.fn().mockResolvedValue();
+    appStore.filterCategory = "1";
+    editor.create({ url: "https://new.example" });
+    await flushPromises();
+    expect(form().props("model")).toEqual({ category_id: 1, tags: [], url: "https://new.example" });
+    form().vm.$emit("save", { title: "New" });
+    await flushPromises();
+    expect(appStore.createLink).toHaveBeenCalledWith({ title: "New" });
+    expect(editor.link).toBeNull();
+  });
 });

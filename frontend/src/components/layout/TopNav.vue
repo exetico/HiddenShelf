@@ -6,6 +6,7 @@ import { useAppStore } from "@/stores/app";
 import SearchField from "@/components/common/SearchField.vue";
 import { useTheme } from "@/composables/useTheme";
 import { useHideOnScroll } from "@/composables/useHideOnScroll";
+import { useLinkEditorStore } from "@/stores/linkEditor";
 
 const route = useRoute();
 const router = useRouter();
@@ -63,8 +64,10 @@ const searchText = computed({
   },
 });
 
+// Opens over the page you're on, like editing does
+const editor = useLinkEditorStore();
 function addLink() {
-  router.push({ name: "edit", query: { new: "1" } });
+  editor.create();
 }
 
 // "/" jumps to the search box and "n" adds a link, unless you're already

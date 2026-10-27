@@ -49,6 +49,8 @@ describe("app store pagination", () => {
   beforeEach(() => {
     setActivePinia(createPinia());
     vi.clearAllMocks();
+    // Paging is easier to follow with small pages than the default 100
+    useAppStore().settings.links_per_page = 20;
     document.documentElement.style.setProperty = vi.fn();
   });
 

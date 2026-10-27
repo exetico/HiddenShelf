@@ -3,6 +3,7 @@ import { mount, flushPromises } from "@vue/test-utils";
 import { createPinia, setActivePinia } from "pinia";
 import { useAppStore } from "@/stores/app";
 import { useToastStore } from "@/stores/toast";
+import { useLinkEditorStore } from "@/stores/linkEditor";
 import EditLinksView from "@/views/EditLinksView.vue";
 
 // Mock child components
@@ -194,18 +195,16 @@ describe("EditLinksView", () => {
     const wrapper = mountEdit();
 
     const select = wrapper.find("select");
-    await select.setValue(1);
+    await select.setValue("1");
 
-    expect(appStore.filterCategory).toBe(1);
+    expect(appStore.filterCategory).toBe("1");
   });
 
   it("opens the new-link form when sent here by the top bar's Add link", async () => {
     mockRoute.query = { new: "1" };
     const wrapper = mountEdit();
     await flushPromises();
-    const form = wrapper.findComponent({ name: "LinkFormModal" });
-    expect(form.props("open")).toBe(true);
-    expect(form.props("model")).toEqual({ category_id: "", tags: [] });
+    expect(useLinkEditorStore().link).toEqual({ category_id: "", tags: [] });
     mockRoute.query = {};
   });
 
@@ -216,9 +215,7 @@ describe("EditLinksView", () => {
     appStore.filterTag = "7";
     const wrapper = mountEdit();
     await wrapper.find('[data-testid="add-link"]').trigger("click");
-    const form = wrapper.findComponent({ name: "LinkFormModal" });
-    expect(form.props("open")).toBe(true);
-    expect(form.props("model")).toEqual({ category_id: 2, tags: [{ name: "infra" }] });
+    expect(useLinkEditorStore().link).toEqual({ category_id: 2, tags: [{ name: "infra" }] });
   });
 
   it("starts a new link without a category when filtered on Uncategorized", async () => {
@@ -226,17 +223,15 @@ describe("EditLinksView", () => {
     appStore.filterCategory = "uncategorized";
     const wrapper = mountEdit();
     await wrapper.find('[data-testid="add-link"]').trigger("click");
-    expect(wrapper.findComponent({ name: "LinkFormModal" }).props("model").category_id).toBe("");
+    expect(useLinkEditorStore().link.category_id).toBe("");
   });
 
   it("fills in the page the bookmarklet was clicked on", async () => {
     mockRoute.query = { new: "1", url: "https://news.example/a", title: "News" };
     const wrapper = mountEdit();
     await flushPromises();
-    const form = wrapper.findComponent({ name: "LinkFormModal" });
-    expect(form.props("open")).toBe(true);
     // No id: it's still a new link, just filled in
-    expect(form.props("model")).toEqual({
+    expect(useLinkEditorStore().link).toEqual({
       url: "https://news.example/a",
       title: "News",
       category_id: "",
@@ -307,7 +302,7 @@ describe("EditLinksView", () => {
     await wrapper.find('[data-testid="open-categories"]').trigger("click");
     wrapper.findComponent({ name: "CategoryManager" }).vm.$emit("filter", 2);
     await flushPromises();
-    expect(appStore.filterCategory).toBe(2);
+    expect(appStore.filterCategory).toBe("2");
     expect(wrapper.find('[data-testid="category-filter"]').element.value).toBe("2");
     expect(wrapper.findComponent({ name: "CategoryManager" }).props("open")).toBe(false);
   });

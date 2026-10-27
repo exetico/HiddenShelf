@@ -169,4 +169,38 @@ describe("LinkFormModal filling in", () => {
     await flushPromises();
     expect(wrapper.emitted("save")[0][0].url).toBe("https://example.com");
   });
+
+  it("asks before closing with unsaved changes, and not without", async () => {
+    const wrapper = mount(LinkFormModal, {
+      props: { open: true, model: { id: 3, title: "Docs", url: "https://docs.example.com" }, categories: [] },
+      global: { stubs: { Teleport: true } },
+    });
+    const dialog = useDialogStore();
+    // Nothing changed: closes right away
+    await wrapper.find('[role="dialog"]').trigger("click");
+    expect(wrapper.emitted("close")).toHaveLength(1);
+    expect(dialog.current).toBeNull();
+
+    await wrapper.find('input[placeholder="Title"]').setValue("Docs v2");
+    await wrapper.find('[role="dialog"]').trigger("click");
+    expect(dialog.current).toMatchObject({ title: "Discard your changes?", cancelText: "Keep editing" });
+    dialog.close(false);
+    await flushPromises();
+    expect(wrapper.emitted("close")).toHaveLength(1);
+
+    await wrapper.find('[role="dialog"]').trigger("click");
+    dialog.close(true);
+    await flushPromises();
+    expect(wrapper.emitted("close")).toHaveLength(2);
+  });
+
+  it("counts a half-typed tag as a change", async () => {
+    const wrapper = mount(LinkFormModal, {
+      props: { open: true, model: null, categories: [] },
+      global: { stubs: { Teleport: true } },
+    });
+    await wrapper.find('input[placeholder*="tag" i]').setValue("inf");
+    await wrapper.find('[role="dialog"]').trigger("click");
+    expect(useDialogStore().current?.title).toBe("Discard your changes?");
+  });
 });

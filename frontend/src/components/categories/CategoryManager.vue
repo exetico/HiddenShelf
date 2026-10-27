@@ -7,6 +7,7 @@ import { useToastStore } from "@/stores/toast";
 import { useAppStore } from "@/stores/app";
 import { useDialogStore } from "@/stores/dialog";
 import { linkCount } from "@/lib/linkCount";
+import { filterHref, isPlainClick } from "@/lib/filterLinks";
 import { backdropClose } from "@/lib/backdropClose";
 
 const props = defineProps({
@@ -318,11 +319,12 @@ const shareBackdrop = backdropClose(() => (showShareModal.value = false));
                   <i class="mdi mdi-chevron-down text-lg"></i>
                 </button>
               </div>
-              <button
+              <a
                 class="flex items-center gap-2 min-w-0 text-left group"
+                :href="filterHref('edit', { category: category.id })"
                 :title="`Show links in ${category.name}`"
                 data-testid="category-filter-link"
-                @click="emit('filter', category.id)"
+                @click="isPlainClick($event) && ($event.preventDefault(), emit('filter', category.id))"
               >
                 <i
                   :class="category.icon || 'mdi-folder'"
@@ -335,7 +337,7 @@ const shareBackdrop = backdropClose(() => (showShareModal.value = false));
                     {{ linkCount(category.link_count) }}{{ category.is_hidden ? " · hidden" : "" }}
                   </span>
                 </span>
-              </button>
+              </a>
             </div>
             <div class="flex items-center gap-3 text-sm shrink-0">
               <button

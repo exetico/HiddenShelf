@@ -85,6 +85,31 @@ const iconWasNormalized = computed(() => {
   return raw && !raw.startsWith("mdi-");
 });
 
+// What the form held when it opened, to tell whether anything changed
+const FIELDS = ["title", "url", "description", "icon", "category_id", "tags", "newTagInput", "is_public", "direct_redirect"];
+const snapshot = () => JSON.stringify(FIELDS.map((key) => form[key]));
+const initial = ref("");
+const dirty = computed(() => snapshot() !== initial.value);
+
+// Closing (outside click, Esc, ✕, Cancel) asks first when something was
+// typed, so a stray click doesn't lose it
+let asking = false;
+async function requestClose() {
+  if (asking) return;
+  if (!dirty.value) return emit("close");
+  asking = true;
+  const discard = await useDialogStore().confirm({
+    title: "Discard your changes?",
+    message: "This link has changes that aren't saved yet.",
+    confirmText: "Discard",
+    cancelText: "Keep editing",
+    danger: true,
+    icon: "mdi-file-undo-outline",
+  });
+  asking = false;
+  if (discard) emit("close");
+}
+
 // Fill the form each time it opens, not only when the model changes:
 // "Add link" twice in a row passes the same empty model, and the form
 // must not keep what was typed for the last link
@@ -101,6 +126,7 @@ watch(
     form.newTagInput = "";
     form.is_public = Boolean(model?.is_public);
     form.direct_redirect = Boolean(model?.direct_redirect);
+    initial.value = snapshot();
     clearTimeout(duplicateTimer);
     duplicates.value = [];
     showPreview.value = false;
@@ -201,7 +227,7 @@ async function submit() {
   <BaseModal
     :open="open"
     :title="model?.id ? 'Edit Link' : 'Add Link'"
-    @close="emit('close')"
+    @close="requestClose"
   >
     <form class="space-y-3" @submit.prevent="submit">
       <input
@@ -376,7 +402,7 @@ async function submit() {
           title="Close without saving"
           type="button"
           class="px-3 py-2 rounded-md border border-gray-300 dark:border-brand-700"
-          @click="emit('close')"
+          @click="requestClose"
         >
           Cancel
         </button>

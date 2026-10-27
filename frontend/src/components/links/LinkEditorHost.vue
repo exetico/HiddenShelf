@@ -7,13 +7,15 @@ import LinkFormModal from "@/components/links/LinkFormModal.vue";
 const appStore = useAppStore();
 const editor = useLinkEditorStore();
 
-// updateLink shows its own "Link updated" toast; on failure the form stays
+// The store actions show their own toasts; on failure the form stays open
 async function save(payload) {
+  const id = editor.link?.id;
   try {
-    await appStore.updateLink(editor.link.id, payload);
+    if (id) await appStore.updateLink(id, payload);
+    else await appStore.createLink(payload);
     editor.close();
   } catch (error) {
-    useToastStore().error(error.message || "Couldn't update the link");
+    useToastStore().error(error.message || "Couldn't save the link");
   }
 }
 </script>

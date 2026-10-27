@@ -2,6 +2,7 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 import { mount } from "@vue/test-utils";
 import { createPinia, setActivePinia } from "pinia";
 import { useAuthStore } from "@/stores/auth";
+import { useLinkEditorStore } from "@/stores/linkEditor";
 import { useAppStore } from "@/stores/app";
 import TopNav from "@/components/layout/TopNav.vue";
 
@@ -144,7 +145,9 @@ describe("TopNav", () => {
     it("opens the new-link form from Add link", async () => {
       const wrapper = mountNav();
       await wrapper.find('[data-testid="nav-add"]').trigger("click");
-      expect(mockPush).toHaveBeenCalledWith({ name: "edit", query: { new: "1" } });
+      // Opens over the current page instead of going to Edit
+      expect(mockPush).not.toHaveBeenCalled();
+      expect(useLinkEditorStore().link).toEqual({ category_id: "", tags: [] });
     });
 
     it("focuses the search on / unless you're typing", async () => {
@@ -167,11 +170,11 @@ describe("TopNav", () => {
 
     it("adds a link on N, but not while typing or with a dialog open", async () => {
       const wrapper = mountNav();
-      mockPush.mockClear();
+      const editor = useLinkEditorStore();
       window.dispatchEvent(new KeyboardEvent("keydown", { key: "n", cancelable: true }));
-      expect(mockPush).toHaveBeenCalledWith({ name: "edit", query: { new: "1" } });
+      expect(editor.link).toEqual({ category_id: "", tags: [] });
 
-      mockPush.mockClear();
+      editor.close();
       const input = document.createElement("input");
       document.body.appendChild(input);
       input.dispatchEvent(new KeyboardEvent("keydown", { key: "n", bubbles: true }));
@@ -184,7 +187,7 @@ describe("TopNav", () => {
       dialog.remove();
 
       window.dispatchEvent(new KeyboardEvent("keydown", { key: "n", ctrlKey: true }));
-      expect(mockPush).not.toHaveBeenCalled();
+      expect(editor.link).toBeNull();
       wrapper.unmount();
     });
 
