@@ -1,24 +1,31 @@
 <script setup>
-import { computed, onUnmounted, watch } from "vue";
+import { computed, onUnmounted, ref, watch } from "vue";
 import { usePublicShareStore } from "@/stores/publicShare";
 import { useToastStore } from "@/stores/toast";
 import { appUrl } from "@/lib/appUrl";
 import LinkQrCode from "@/components/links/LinkQrCode.vue";
 import { backdropClose } from "@/lib/backdropClose";
+import { EMBED_HEIGHT, embedSnippet, embedUrl } from "@/lib/embed";
 
 const share = usePublicShareStore();
 const toast = useToastStore();
 
 const url = computed(() => (share.link ? appUrl(`/h/${share.link.hash}`) : ""));
 
-async function copy() {
+async function copy(text = url.value, message = "Public link copied") {
   try {
-    await navigator.clipboard.writeText(url.value);
-    toast.success("Public link copied");
+    await navigator.clipboard.writeText(text);
+    toast.success(message);
   } catch {
     toast.error("Couldn't copy to the clipboard");
   }
 }
+
+// Embedding: an iframe with a small card, for blogs and start pages
+const embedTheme = ref("");
+const snippet = computed(() =>
+  share.link ? embedSnippet(url.value, share.link.title, embedTheme.value) : "",
+);
 
 function onKeydown(event) {
   if (event.key === "Escape") share.close();
@@ -48,7 +55,7 @@ const backdrop = backdropClose(() => share.close());
       v-on="backdrop"
     >
       <div
-        class="w-full sm:max-w-sm bg-white dark:bg-brand-900 rounded-t-2xl sm:rounded-xl shadow-xl border border-gray-200 dark:border-brand-800 p-4 space-y-3 pb-[max(1rem,env(safe-area-inset-bottom))]"
+        class="w-full sm:max-w-sm max-h-[90dvh] overflow-y-auto bg-white dark:bg-brand-900 rounded-t-2xl sm:rounded-xl shadow-xl border border-gray-200 dark:border-brand-800 p-4 space-y-3 pb-[max(1rem,env(safe-area-inset-bottom))]"
       >
         <header class="flex items-start gap-2">
           <i class="mdi mdi-earth text-xl text-green-600 dark:text-green-400" aria-hidden="true"></i>
@@ -82,13 +89,62 @@ const backdrop = backdropClose(() => share.close());
             class="shrink-0 px-3 py-1.5 rounded-md bg-brand-600 text-white text-sm hover:bg-brand-700"
             title="Copy the public link"
             data-testid="public-link-copy"
-            @click="copy"
+            @click="copy()"
           >
             <i class="mdi mdi-content-copy" aria-hidden="true"></i> Copy
           </button>
         </div>
 
         <LinkQrCode :url="url" :name="share.link.title" />
+
+        <details class="group text-sm" data-testid="embed-section">
+          <summary class="cursor-pointer select-none text-gray-700 dark:text-brand-200">
+            <i class="mdi mdi-code-tags" aria-hidden="true"></i> Embed on a website
+          </summary>
+          <div class="mt-2 space-y-2">
+            <p class="text-xs text-gray-500 dark:text-brand-400">
+              Paste this into a page to show the link as a small card.
+            </p>
+            <label class="flex items-center gap-2 text-xs">
+              Colors
+              <select
+                v-model="embedTheme"
+                class="px-2 py-1 rounded-md border border-gray-300 dark:border-brand-700 bg-white dark:bg-brand-800"
+                data-testid="embed-theme"
+              >
+                <option value="">Follow the visitor</option>
+                <option value="light">Light</option>
+                <option value="dark">Dark</option>
+              </select>
+            </label>
+            <iframe
+              :src="embedUrl(url, embedTheme)"
+              :title="`Preview: ${share.link.title}`"
+              :height="EMBED_HEIGHT"
+              class="w-full border-0"
+              loading="lazy"
+              data-testid="embed-preview"
+            ></iframe>
+            <textarea
+              :value="snippet"
+              readonly
+              rows="3"
+              aria-label="Embed code"
+              class="w-full text-xs font-mono rounded-md bg-gray-50 dark:bg-brand-800 border border-gray-200 dark:border-brand-700 p-2"
+              data-testid="embed-code"
+              @focus="$event.target.select()"
+            ></textarea>
+            <button
+              type="button"
+              class="inline-flex items-center gap-1 px-3 py-1.5 rounded-md border border-gray-300 dark:border-brand-700 text-gray-800 dark:text-brand-100 hover:bg-gray-50 dark:hover:bg-brand-800"
+              title="Copy the embed code"
+              data-testid="embed-copy"
+              @click="copy(snippet, 'Embed code copied')"
+            >
+              <i class="mdi mdi-content-copy" aria-hidden="true"></i> Copy code
+            </button>
+          </div>
+        </details>
 
         <a
           :href="url"

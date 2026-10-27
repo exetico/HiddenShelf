@@ -45,7 +45,7 @@ describe("LinkCardEdit", () => {
   it("shows a Share chip for public links that opens the public link dialog", async () => {
     const wrapper = mountCard({ is_public: 1, hash: "xyz123" });
     const globe = wrapper.find('[data-testid="public-indicator"]');
-    expect(globe.attributes("title")).toBe("Public link: copy it or show a QR code");
+    expect(globe.attributes("title")).toBe("Public link: copy it, show a QR code or embed it");
     // Labelled, with the QR icon, so it reads as a button and says what it does
     expect(globe.text()).toBe("Share");
     expect(globe.find(".mdi-earth").exists()).toBe(true);
@@ -196,7 +196,7 @@ describe("LinkCardEdit", () => {
       "Add to favorites",
       "Edit Example",
       "Move Example to the trash",
-      "Public link: copy it or show a QR code",
+      "Public link: copy it, show a QR code or embed it",
     ]);
   });
 

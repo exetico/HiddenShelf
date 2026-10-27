@@ -73,6 +73,68 @@ describe("Public link page", () => {
     });
   });
 
+  describe("GET /h/:hash/embed", () => {
+    it("serves a small card that other sites may frame", async () => {
+      createLink("emb1", { title: "Grafana", description: "**Team** dashboards" });
+      const res = await app.request("/h/emb1/embed");
+      expect(res.status).toBe(200);
+      const csp = res.headers.get("content-security-policy");
+      expect(csp).toContain("frame-ancestors *");
+      expect(csp).toContain("default-src 'none'");
+      expect(res.headers.get("x-frame-options")).toBeNull();
+      const html = await res.text();
+      expect(html).toContain("<h1>Grafana</h1>");
+      expect(html).toContain("<p>Team dashboards</p>");
+      expect(html).toContain('<p class="host">example.com</p>');
+      expect(html).toContain('href="/h/emb1" target="_blank"');
+      expect(html).not.toContain("<script");
+      // Showing the card isn't a visit; opening it is
+      expect(visitCount()).toBe(0);
+    });
+
+    it("shows the card for direct-redirect links too", async () => {
+      createLink("emb2", { directRedirect: 1 });
+      expect((await app.request("/h/emb2/embed")).status).toBe(200);
+    });
+
+    it("escapes HTML", async () => {
+      createLink("emb3", { title: '<img src=x onerror=alert(1)>' });
+      const html = await (await app.request("/h/emb3/embed")).text();
+      expect(html).not.toContain("<img src=x");
+      expect(html).toContain("&lt;img src=x");
+    });
+
+    it("can fix the colors to light or dark", async () => {
+      createLink("emb4");
+      const auto = await (await app.request("/h/emb4/embed")).text();
+      expect(auto).toContain("prefers-color-scheme:dark");
+      const dark = await (await app.request("/h/emb4/embed?theme=dark")).text();
+      expect(dark).not.toContain("prefers-color-scheme");
+      expect(dark).toContain(":root{--bg:#232720");
+    });
+
+    it("returns 404 for private or deleted links", async () => {
+      createLink("emb5", { isPublic: 0 });
+      expect((await app.request("/h/emb5/embed")).status).toBe(404);
+      createLink("emb6");
+      getDb().prepare("UPDATE links SET deleted_at = CURRENT_TIMESTAMP WHERE hash = 'emb6'").run();
+      expect((await app.request("/h/emb6/embed")).status).toBe(404);
+      expect((await app.request("/h/bad!/embed")).status).toBe(404);
+    });
+
+    it("links back under BASE_PATH", async () => {
+      createLink("emb7");
+      const before = config.basePath;
+      config.basePath = "/shelf";
+      try {
+        const html = await (await app.request("/h/emb7/embed")).text();
+        expect(html).toContain('href="/shelf/h/emb7"');
+      } finally {
+        config.basePath = before;
+      }
+    });
+  });
+
   describe("GET /public/view.html", () => {
     it("redirects the old URL to /h/:hash", async () => {
       const res = await app.request("/public/view.html?hash=abc123");
