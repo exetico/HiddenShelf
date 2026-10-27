@@ -2,13 +2,12 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { flushPromises } from "@vue/test-utils";
 import { createPinia, setActivePinia } from "pinia";
 import { useAppStore } from "@/stores/app";
+import { useLinkEditorStore } from "@/stores/linkEditor";
 import { useDialogStore } from "@/stores/dialog";
 import { useContextMenuStore } from "@/stores/contextMenu";
 import { usePublicShareStore } from "@/stores/publicShare";
 import { useLinkMenu } from "@/composables/useLinkMenu";
 
-const push = vi.fn();
-vi.mock("vue-router", () => ({ useRouter: () => ({ push }) }));
 
 const link = (overrides = {}) => ({
   id: 3,
@@ -27,7 +26,6 @@ describe("useLinkMenu", () => {
     appStore = useAppStore();
     appStore.deleteLink = vi.fn();
     appStore.updateLink = vi.fn();
-    push.mockClear();
     Object.assign(navigator, { clipboard: { writeText: vi.fn().mockResolvedValue() } });
   });
 
@@ -102,9 +100,9 @@ describe("useLinkMenu", () => {
     expect(appStore.updateLink).toHaveBeenCalledWith(3, { display_order: 5 });
   });
 
-  it("edits on the Edit page, or with the given editor", () => {
+  it("edits in place on the current page, or with the given editor", () => {
     useLinkMenu().items(link()).find((i) => i.label === "Edit").action();
-    expect(push).toHaveBeenCalledWith({ name: "edit", query: { editId: 3 } });
+    expect(useLinkEditorStore().link).toMatchObject({ id: 3 });
     const onEdit = vi.fn();
     useLinkMenu({ onEdit }).items(link()).find((i) => i.label === "Edit").action();
     expect(onEdit).toHaveBeenCalledWith(expect.objectContaining({ id: 3 }));

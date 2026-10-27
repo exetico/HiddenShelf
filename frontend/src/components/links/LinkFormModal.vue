@@ -5,6 +5,7 @@ import { linkVisitsApi } from "@/services/api/linkVisitsApi";
 import { linksApi } from "@/services/api/linksApi";
 import { useDialogStore } from "@/stores/dialog";
 import { renderMarkdown } from "@/lib/markdown";
+import { withScheme } from "@/lib/url";
 
 const props = defineProps({
   open: Boolean,
@@ -48,9 +49,9 @@ let duplicateTimer = null;
 let duplicateRequest = 0;
 
 async function checkDuplicates() {
-  const url = form.url.trim();
+  const url = withScheme(form.url);
   const request = ++duplicateRequest;
-  if (!/^https?:\/\/\S+\.\S+/.test(url)) {
+  if (!/^https?:\/\/[^\s/]+(\.|:\d)\S*/.test(url)) {
     duplicates.value = [];
     return [];
   }
@@ -84,9 +85,13 @@ const iconWasNormalized = computed(() => {
   return raw && !raw.startsWith("mdi-");
 });
 
+// Fill the form each time it opens, not only when the model changes:
+// "Add link" twice in a row passes the same empty model, and the form
+// must not keep what was typed for the last link
 watch(
-  () => props.model,
-  async (model) => {
+  () => [props.open, props.model],
+  async ([open, model], previous) => {
+    if (!open && previous) return;
     form.title = model?.title || "";
     form.url = model?.url || "";
     form.description = model?.description || "";
@@ -150,8 +155,14 @@ function handleTagKeydown(event) {
   }
 }
 
+// "10.0.0.2:8080" is fine to type; it becomes http://10.0.0.2:8080
+function completeUrl() {
+  form.url = withScheme(form.url);
+}
+
 async function submit() {
   if (form.newTagInput.trim()) addTag();
+  completeUrl();
   // Only ask when the URL changed; editing a known duplicate's title
   // shouldn't nag every time
   const urlChanged = form.url.trim() !== (props.model?.url || "");
@@ -202,10 +213,17 @@ async function submit() {
       <input
         v-model="form.url"
         required
-        type="url"
-        placeholder="https://..."
+        type="text"
+        inputmode="url"
+        autocapitalize="off"
+        autocorrect="off"
+        spellcheck="false"
+        aria-label="URL"
+        placeholder="example.com or 192.168.1.10:8080"
+        data-testid="link-url"
         class="w-full px-3 py-2 rounded-md border border-gray-300 dark:border-brand-700 dark:bg-brand-800"
         :aria-describedby="duplicates.length ? 'duplicate-warning' : undefined"
+        @blur="completeUrl"
       />
       <p
         v-if="duplicates.length"

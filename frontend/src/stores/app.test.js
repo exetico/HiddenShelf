@@ -18,6 +18,9 @@ vi.mock("@/services/api/linksApi", () => ({
 vi.mock("@/services/api/categoriesApi", () => ({
   categoriesApi: { update: vi.fn(), reorder: vi.fn() },
 }));
+vi.mock("@/services/api/tagsApi", () => ({
+  tagsApi: { list: vi.fn(), update: vi.fn(), remove: vi.fn() },
+}));
 vi.mock("@/services/api/settingsApi", () => ({
   settingsApi: { get: vi.fn(), update: vi.fn() },
 }));
@@ -25,6 +28,7 @@ vi.mock("@/services/api/settingsApi", () => ({
 import { linksApi } from "@/services/api/linksApi";
 import { settingsApi } from "@/services/api/settingsApi";
 import { categoriesApi } from "@/services/api/categoriesApi";
+import { tagsApi } from "@/services/api/tagsApi";
 
 // Fake server holding `count` links, paged like GET /api/links
 function serveLinks(count) {
@@ -310,5 +314,38 @@ describe("app store favorites and trash", () => {
     expect(await yes).toBe(true);
     await flushPromises();
     expect(linksApi.remove).toHaveBeenCalledWith(1);
+  });
+});
+
+describe("app store tags", () => {
+  let store;
+  beforeEach(() => {
+    setActivePinia(createPinia());
+    store = useAppStore();
+    store.links = [
+      { id: 1, tags: [{ id: 7, name: "infra" }, { id: 8, name: "home" }] },
+      { id: 2, tags: [] },
+    ];
+    store.favoriteLinks = [{ id: 3, tags: [{ id: 7, name: "infra" }] }];
+    tagsApi.list.mockResolvedValue([{ id: 7, name: "servers", usage_count: 2 }]);
+  });
+
+  it("renames a tag on the cards already shown", async () => {
+    tagsApi.update.mockResolvedValue({ id: 7, name: "servers" });
+    await store.renameTag(7, "servers");
+    expect(tagsApi.update).toHaveBeenCalledWith(7, { name: "servers" });
+    expect(store.links[0].tags.map((t) => t.name)).toEqual(["servers", "home"]);
+    expect(store.favoriteLinks[0].tags[0].name).toBe("servers");
+    expect(store.tags).toEqual([{ id: 7, name: "servers", usage_count: 2 }]);
+  });
+
+  it("takes a deleted tag off the cards, and clears it as the filter", async () => {
+    tagsApi.remove.mockResolvedValue({});
+    store.filterTag = "7";
+    const filterByTag = vi.spyOn(store, "filterByTag").mockResolvedValue();
+    await store.deleteTag(7);
+    expect(store.links[0].tags).toEqual([{ id: 8, name: "home" }]);
+    expect(store.favoriteLinks[0].tags).toEqual([]);
+    expect(filterByTag).toHaveBeenCalledWith("");
   });
 });

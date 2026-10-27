@@ -4,6 +4,7 @@ import { usePublicShareStore } from "@/stores/publicShare";
 import { useToastStore } from "@/stores/toast";
 import { appUrl } from "@/lib/appUrl";
 import LinkQrCode from "@/components/links/LinkQrCode.vue";
+import { backdropClose } from "@/lib/backdropClose";
 
 const share = usePublicShareStore();
 const toast = useToastStore();
@@ -30,6 +31,9 @@ watch(
   },
 );
 onUnmounted(() => window.removeEventListener("keydown", onKeydown));
+
+// Closes on a backdrop click, but not when a text selection ends there
+const backdrop = backdropClose(() => share.close());
 </script>
 
 <template>
@@ -41,7 +45,7 @@ onUnmounted(() => window.removeEventListener("keydown", onKeydown));
       :aria-label="`Public link for ${share.link.title}`"
       class="fixed inset-0 z-[70] bg-black/50 flex items-end sm:items-center justify-center sm:p-4"
       data-testid="public-link-dialog"
-      @click.self="share.close()"
+      v-on="backdrop"
     >
       <div
         class="w-full sm:max-w-sm bg-white dark:bg-brand-900 rounded-t-2xl sm:rounded-xl shadow-xl border border-gray-200 dark:border-brand-800 p-4 space-y-3 pb-[max(1rem,env(safe-area-inset-bottom))]"

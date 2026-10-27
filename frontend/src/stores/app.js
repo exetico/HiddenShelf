@@ -364,8 +364,25 @@ export const useAppStore = defineStore("app", {
       const toastStore = useToastStore();
       toastStore.success("Tag created");
     },
+    async renameTag(id, name) {
+      const tag = await tagsApi.update(id, { name });
+      // Cards show tag names, so rename them in place too
+      for (const list of [this.links, this.favoriteLinks]) {
+        for (const link of list) {
+          for (const t of link.tags || []) if (t.id === tag.id) t.name = tag.name;
+        }
+      }
+      await this.loadTags();
+      useToastStore().success("Tag renamed");
+    },
     async deleteTag(id) {
       await tagsApi.remove(id);
+      for (const list of [this.links, this.favoriteLinks]) {
+        for (const link of list) {
+          if (link.tags) link.tags = link.tags.filter((t) => t.id !== id);
+        }
+      }
+      if (this.filterTag === String(id)) await this.filterByTag("");
       await this.loadTags();
       const toastStore = useToastStore();
       toastStore.success("Tag deleted");

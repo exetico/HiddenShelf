@@ -1,6 +1,7 @@
 <script setup>
 import { ref, computed } from "vue";
 import { useAppStore } from "@/stores/app";
+import { backdropClose } from "@/lib/backdropClose";
 
 // Mobile replacement for CategoryFilterBar: one compact button that opens
 // a bottom sheet with every category, favorites first.
@@ -43,6 +44,9 @@ function rowClass(active) {
     active ? "bg-brand-600 text-white" : "",
   ];
 }
+
+// Closes on a backdrop click, but not when a text selection ends there
+const backdrop = backdropClose(() => (open.value = false));
 </script>
 
 <template>
@@ -71,7 +75,7 @@ function rowClass(active) {
       role="dialog"
       aria-modal="true"
       aria-label="Choose category"
-      @click.self="open = false"
+      v-on="backdrop"
     >
       <div
         class="w-full max-h-[75dvh] overflow-y-auto bg-white dark:bg-brand-900 rounded-t-2xl pb-[max(0.75rem,env(safe-area-inset-bottom))]"

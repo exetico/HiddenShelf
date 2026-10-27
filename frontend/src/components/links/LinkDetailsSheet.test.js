@@ -2,13 +2,12 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { mount, flushPromises } from "@vue/test-utils";
 import { createPinia, setActivePinia } from "pinia";
 import { useAppStore } from "@/stores/app";
+import { useLinkEditorStore } from "@/stores/linkEditor";
 import { useLinkDetailsStore } from "@/stores/linkDetails";
 import { useDialogStore } from "@/stores/dialog";
 import { usePublicShareStore } from "@/stores/publicShare";
 import LinkDetailsSheet from "@/components/links/LinkDetailsSheet.vue";
 
-const push = vi.fn();
-vi.mock("vue-router", () => ({ useRouter: () => ({ push }) }));
 vi.mock("qrcode", () => ({
   default: { toDataURL: vi.fn().mockResolvedValue("data:image/png;base64,QR") },
 }));
@@ -91,7 +90,8 @@ describe("LinkDetailsSheet", () => {
     expect(wrapper.find('[aria-label="More actions"]').exists()).toBe(false);
     await wrapper.find('[title="Edit this link"]').trigger("click");
     expect(details.current).toBeNull();
-    expect(push).toHaveBeenCalledWith({ name: "edit", query: { editId: 1 } });
+    // Opens over the page you're on instead of going to the Edit page
+    expect(useLinkEditorStore().link).toMatchObject({ id: 1 });
     wrapper.unmount();
   });
 

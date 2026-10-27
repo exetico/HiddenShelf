@@ -4,6 +4,7 @@
  * Endpoint mapping:
  *   GET    /api/tags          → list (with usage_count)
  *   POST   /api/tags          → create
+ *   PUT    /api/tags?id=      → rename
  *   DELETE /api/tags?id=      → delete
  */
 
@@ -66,6 +67,38 @@ tags.post("/", requireAuth(), async (c) => {
     .get(info.lastInsertRowid);
 
   return successResponse(c, { tag }, "Tag created successfully");
+});
+
+// ─── PUT /api/tags?id= ───────────────────────────────────────────
+
+tags.put("/", requireAuth(), async (c) => {
+  const db = getDb();
+  const id = c.req.query("id");
+  if (!id) return errorResponse(c, "Tag ID is required");
+
+  const tag = db
+    .prepare("SELECT * FROM tags WHERE id = ? AND user_id = ?")
+    .get(id, c.userId);
+  if (!tag) return errorResponse(c, "Tag not found or access denied", 404);
+
+  const input = await c.req.json().catch(() => ({}));
+  const name = sanitize(input.name || "");
+  if (!name) return errorResponse(c, "Tag name is required");
+  if (name.length > MAX_LENGTHS.tagName)
+    return errorResponse(
+      c,
+      `Tag name must not exceed ${MAX_LENGTHS.tagName} characters`,
+    );
+
+  // Names are unique per user, so renaming onto another tag is refused
+  const clash = db
+    .prepare("SELECT id FROM tags WHERE name = ? AND user_id = ? AND id != ?")
+    .get(name, c.userId, id);
+  if (clash) return errorResponse(c, `You already have a tag named "${name}"`, 409);
+
+  db.prepare("UPDATE tags SET name = ? WHERE id = ?").run(name, id);
+  const updated = db.prepare("SELECT * FROM tags WHERE id = ?").get(id);
+  return successResponse(c, { tag: updated }, "Tag renamed");
 });
 
 // ─── DELETE /api/tags?id= ────────────────────────────────────────

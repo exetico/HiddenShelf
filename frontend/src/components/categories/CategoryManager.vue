@@ -6,6 +6,8 @@ import { sharesApi } from "@/services/api/sharesApi";
 import { useToastStore } from "@/stores/toast";
 import { useAppStore } from "@/stores/app";
 import { useDialogStore } from "@/stores/dialog";
+import { linkCount } from "@/lib/linkCount";
+import { backdropClose } from "@/lib/backdropClose";
 
 const props = defineProps({
   open: Boolean,
@@ -15,7 +17,7 @@ const props = defineProps({
   },
 });
 
-const emit = defineEmits(["close", "create", "update", "remove"]);
+const emit = defineEmits(["close", "create", "update", "remove", "filter"]);
 
 const toastStore = useToastStore();
 const appStore = useAppStore();
@@ -83,8 +85,9 @@ function saveEdit(id) {
 async function promptDelete(category) {
   const ok = await useDialogStore().confirmDelete({
     title: `Delete category "${category.name}"?`,
-    message:
-      "Its links stay on your shelf as uncategorized. This can't be undone.",
+    message: category.link_count
+      ? `Its ${linkCount(category.link_count)} stay on your shelf as uncategorized. This can't be undone.`
+      : "It has no links. This can't be undone.",
   });
   if (ok) emit("remove", category.id);
 }
@@ -186,15 +189,23 @@ async function removeSharing() {
     toastStore.error(e.message || "Failed to remove sharing");
   }
 }
+
+// Closes on a backdrop click, but not when a text selection ends there
+const shareBackdrop = backdropClose(() => (showShareModal.value = false));
 </script>
 
 <template>
-  <BaseModal :open="open" title="Categories" @close="emit('close')">
-    <div class="space-y-4">
+  <BaseModal :open="open" title="Manage categories" @close="emit('close')">
+    <div class="space-y-4" data-testid="category-manager">
+      <p class="text-sm text-gray-600 dark:text-brand-300">
+        Each link sits in one category. Pick a category to see its links.
+      </p>
+
       <!-- Add Category toggle button -->
       <button
         title="Create a new category"
         v-if="!showCreateForm"
+        data-testid="add-category"
         class="w-full px-3 py-2 rounded-md border-2 border-dashed border-gray-300 dark:border-brand-700 text-gray-600 dark:text-brand-400 hover:border-brand-500 hover:text-brand-600 dark:hover:border-brand-500 dark:hover:text-brand-300 transition-colors flex items-center justify-center gap-2"
         @click="showCreateForm = true"
       >
@@ -277,6 +288,7 @@ async function removeSharing() {
         <li
           v-for="(category, index) in categories"
           :key="category.id"
+          data-testid="category-row"
           class="border border-gray-200 dark:border-brand-800 rounded-md p-3"
         >
           <!-- View mode -->
@@ -305,17 +317,24 @@ async function removeSharing() {
                   <i class="mdi mdi-chevron-down text-lg"></i>
                 </button>
               </div>
-              <i
-                :class="category.icon || 'mdi-folder'"
-                class="mdi text-lg"
-                :style="`color: ${category.color || '#6B7280'}`"
-              ></i>
-              <div class="min-w-0">
-                <p class="font-medium truncate">{{ category.name }}</p>
-                <p class="text-xs text-gray-500 dark:text-brand-400">
-                  {{ category.link_count || 0 }} links
-                </p>
-              </div>
+              <button
+                class="flex items-center gap-2 min-w-0 text-left group"
+                :title="`Show links in ${category.name}`"
+                data-testid="category-filter-link"
+                @click="emit('filter', category.id)"
+              >
+                <i
+                  :class="category.icon || 'mdi-folder'"
+                  class="mdi text-lg"
+                  :style="`color: ${category.color || '#6B7280'}`"
+                ></i>
+                <span class="min-w-0">
+                  <span class="block font-medium truncate group-hover:underline">{{ category.name }}</span>
+                  <span class="block text-xs text-gray-500 dark:text-brand-400">
+                    {{ linkCount(category.link_count) }}
+                  </span>
+                </span>
+              </button>
             </div>
             <div class="flex items-center gap-3 text-sm shrink-0">
               <button
@@ -458,7 +477,7 @@ async function removeSharing() {
     <div
       v-if="showShareModal"
       class="fixed inset-0 bg-black/50 flex items-center justify-center z-70 p-4"
-      @click.self="showShareModal = false"
+      v-on="shareBackdrop"
     >
       <div
         class="bg-white dark:bg-brand-900 rounded-lg shadow-xl max-w-md w-full p-6"

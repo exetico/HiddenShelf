@@ -8,6 +8,7 @@ import { renderMarkdown } from "@/lib/markdown";
 import { appUrl } from "@/lib/appUrl";
 import { formatDate } from "@/lib/date";
 import { usePublicShareStore } from "@/stores/publicShare";
+import { backdropClose } from "@/lib/backdropClose";
 
 // Everything about one link, with previous/next (buttons, swipe or arrow
 // keys) through the links on screen. See stores/linkDetails.js.
@@ -94,6 +95,9 @@ watch(
   },
 );
 onUnmounted(() => window.removeEventListener("keydown", onKeydown));
+
+// Closes on a backdrop click, but not when a text selection ends there
+const backdrop = backdropClose(() => details.close());
 </script>
 
 <template>
@@ -105,7 +109,7 @@ onUnmounted(() => window.removeEventListener("keydown", onKeydown));
       :aria-label="`Details for ${link.title}`"
       class="fixed inset-0 z-[60] bg-black/50 flex items-end sm:items-center justify-center sm:p-4"
       data-testid="link-details"
-      @click.self="details.close()"
+      v-on="backdrop"
     >
       <div
         class="w-full sm:max-w-lg max-h-[85dvh] flex flex-col bg-white dark:bg-brand-900 rounded-t-2xl sm:rounded-xl shadow-xl border border-gray-200 dark:border-brand-800 overflow-hidden"

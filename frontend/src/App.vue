@@ -8,6 +8,7 @@ import ToastList from "@/components/feedback/ToastList.vue";
 import ConfirmDialog from "@/components/common/ConfirmDialog.vue";
 import ContextMenuPopover from "@/components/common/ContextMenuPopover.vue";
 import PublicLinkDialog from "@/components/links/PublicLinkDialog.vue";
+import LinkEditorHost from "@/components/links/LinkEditorHost.vue";
 
 const route = useRoute();
 const authStore = useAuthStore();
@@ -30,6 +31,7 @@ onMounted(async () => {
   <router-view v-else />
   <ContextMenuPopover />
   <PublicLinkDialog />
+  <LinkEditorHost v-if="!isPublicRoute" />
   <ConfirmDialog />
   <ToastList />
 </template>

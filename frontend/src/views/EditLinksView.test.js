@@ -2,6 +2,7 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 import { mount, flushPromises } from "@vue/test-utils";
 import { createPinia, setActivePinia } from "pinia";
 import { useAppStore } from "@/stores/app";
+import { useToastStore } from "@/stores/toast";
 import EditLinksView from "@/views/EditLinksView.vue";
 
 // Mock child components
@@ -24,10 +25,10 @@ vi.mock("@/components/links/TrashModal.vue", () => ({
   default: { name: "TrashModal", template: "<div></div>", props: ["open"] },
 }));
 vi.mock("@/components/categories/CategoryManager.vue", () => ({
-  default: { template: "<div></div>", props: ["open", "categories"] },
+  default: { name: "CategoryManager", template: "<div></div>", props: ["open", "categories"] },
 }));
 vi.mock("@/components/tags/TagManager.vue", () => ({
-  default: { template: "<div></div>", props: ["open", "tags"] },
+  default: { name: "TagManager", template: "<div></div>", props: ["open", "tags"] },
 }));
 
 // Mock vue-router
@@ -107,8 +108,8 @@ describe("EditLinksView", () => {
   it("renders action buttons", () => {
     const wrapper = mountEdit();
     expect(wrapper.text()).toContain("+ Add link");
-    expect(wrapper.text()).toContain("Categories");
-    expect(wrapper.text()).toContain("Tags");
+    expect(wrapper.text()).toContain("Manage categories");
+    expect(wrapper.text()).toContain("Manage tags");
   });
 
   it("renders link cards", () => {
@@ -204,8 +205,28 @@ describe("EditLinksView", () => {
     await flushPromises();
     const form = wrapper.findComponent({ name: "LinkFormModal" });
     expect(form.props("open")).toBe(true);
-    expect(form.props("model")).toBeNull();
+    expect(form.props("model")).toEqual({ category_id: "", tags: [] });
     mockRoute.query = {};
+  });
+
+  it("starts a new link in the category and tag the list is filtered by", async () => {
+    const appStore = useAppStore();
+    appStore.filterCategory = 2;
+    appStore.tags = [{ id: 7, name: "infra" }];
+    appStore.filterTag = "7";
+    const wrapper = mountEdit();
+    await wrapper.find('[data-testid="add-link"]').trigger("click");
+    const form = wrapper.findComponent({ name: "LinkFormModal" });
+    expect(form.props("open")).toBe(true);
+    expect(form.props("model")).toEqual({ category_id: 2, tags: [{ name: "infra" }] });
+  });
+
+  it("starts a new link without a category when filtered on Uncategorized", async () => {
+    const appStore = useAppStore();
+    appStore.filterCategory = "uncategorized";
+    const wrapper = mountEdit();
+    await wrapper.find('[data-testid="add-link"]').trigger("click");
+    expect(wrapper.findComponent({ name: "LinkFormModal" }).props("model").category_id).toBe("");
   });
 
   it("fills in the page the bookmarklet was clicked on", async () => {
@@ -215,7 +236,12 @@ describe("EditLinksView", () => {
     const form = wrapper.findComponent({ name: "LinkFormModal" });
     expect(form.props("open")).toBe(true);
     // No id: it's still a new link, just filled in
-    expect(form.props("model")).toEqual({ url: "https://news.example/a", title: "News" });
+    expect(form.props("model")).toEqual({
+      url: "https://news.example/a",
+      title: "News",
+      category_id: "",
+      tags: [],
+    });
     mockRoute.query = {};
   });
 
@@ -240,5 +266,58 @@ describe("EditLinksView", () => {
     wrapper.findAllComponents({ name: "LinkCardEdit" })[1].vm.$emit("delete", 2);
     await flushPromises();
     expect(appStore.trashLink).toHaveBeenCalledWith(expect.objectContaining({ id: 2, title: "Beta" }));
+  });
+
+  it("labels the managers as managers, with the same look", () => {
+    const wrapper = mountEdit();
+    const categories = wrapper.find('[data-testid="open-categories"]');
+    const tags = wrapper.find('[data-testid="open-tags"]');
+    // "Manage …" from sm up; just the name on phones
+    expect(categories.text()).toContain("Manage categories");
+    expect(tags.text()).toContain("Manage tags");
+    expect(categories.find(".sm\\:hidden").text()).toBe("Categories");
+    expect(categories.classes()).toEqual(tags.classes());
+  });
+
+  it("refreshes link counts when a manager opens", async () => {
+    const appStore = useAppStore();
+    appStore.loadCategories = vi.fn().mockResolvedValue();
+    appStore.loadTags = vi.fn().mockResolvedValue();
+    const wrapper = mountEdit();
+    await wrapper.find('[data-testid="open-tags"]').trigger("click");
+    expect(appStore.loadTags).toHaveBeenCalled();
+    expect(wrapper.findComponent({ name: "TagManager" }).props("open")).toBe(true);
+    await wrapper.find('[data-testid="open-categories"]').trigger("click");
+    expect(appStore.loadCategories).toHaveBeenCalled();
+  });
+
+  it("picking a tag or category in its manager filters the list", async () => {
+    const appStore = useAppStore();
+    appStore.loadCategories = vi.fn().mockResolvedValue();
+    appStore.loadTags = vi.fn().mockResolvedValue();
+    appStore.filterByTag = vi.fn();
+    const wrapper = mountEdit();
+
+    await wrapper.find('[data-testid="open-tags"]').trigger("click");
+    wrapper.findComponent({ name: "TagManager" }).vm.$emit("filter", 7);
+    await flushPromises();
+    expect(appStore.filterByTag).toHaveBeenCalledWith(7);
+    expect(wrapper.findComponent({ name: "TagManager" }).props("open")).toBe(false);
+
+    await wrapper.find('[data-testid="open-categories"]').trigger("click");
+    wrapper.findComponent({ name: "CategoryManager" }).vm.$emit("filter", 2);
+    await flushPromises();
+    expect(appStore.filterCategory).toBe(2);
+    expect(wrapper.find('[data-testid="category-filter"]').element.value).toBe("2");
+    expect(wrapper.findComponent({ name: "CategoryManager" }).props("open")).toBe(false);
+  });
+
+  it("shows a toast when renaming a tag fails", async () => {
+    const appStore = useAppStore();
+    appStore.renameTag = vi.fn().mockRejectedValue(new Error('You already have a tag named "x"'));
+    const wrapper = mountEdit();
+    wrapper.findComponent({ name: "TagManager" }).vm.$emit("rename", 7, "x");
+    await flushPromises();
+    expect(useToastStore().items.at(-1)).toMatchObject({ message: 'You already have a tag named "x"' });
   });
 });

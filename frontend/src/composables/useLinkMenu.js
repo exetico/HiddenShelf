@@ -1,9 +1,9 @@
-import { useRouter } from "vue-router";
 import { useAppStore } from "@/stores/app";
 import { useToastStore } from "@/stores/toast";
 import { useDialogStore } from "@/stores/dialog";
 import { useContextMenuStore } from "@/stores/contextMenu";
 import { usePublicShareStore } from "@/stores/publicShare";
+import { useLinkEditorStore } from "@/stores/linkEditor";
 import { appUrl } from "@/lib/appUrl";
 
 /**
@@ -12,16 +12,16 @@ import { appUrl } from "@/lib/appUrl";
  *
  * @param {object} [options]
  * @param {(link) => void} [options.onEdit] opens the editor; without it,
- *   Edit goes to the Edit page with the link's editor open
+ *   Edit opens the shared editor on top of the current page
  * @param {(link) => void} [options.onDetails] adds "Details" at the top
  */
 export function useLinkMenu({ onEdit, onDetails } = {}) {
-  const router = useRouter();
   const appStore = useAppStore();
   const toast = useToastStore();
   const dialog = useDialogStore();
   const menu = useContextMenuStore();
   const publicShare = usePublicShareStore();
+  const editor = useLinkEditorStore();
 
   async function copy(text, message) {
     try {
@@ -65,7 +65,7 @@ export function useLinkMenu({ onEdit, onDetails } = {}) {
 
   function edit(link) {
     if (onEdit) onEdit(link);
-    else router.push({ name: "edit", query: { editId: link.id } });
+    else editor.open(link);
   }
 
   function items(link) {

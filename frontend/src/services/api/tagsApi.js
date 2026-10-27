@@ -12,5 +12,12 @@ export const tagsApi = {
     });
     return response.tag;
   },
+  update: async (id, payload) => {
+    const response = await request(`/api/tags?id=${id}`, {
+      method: "PUT",
+      body: JSON.stringify(payload),
+    });
+    return response.tag;
+  },
   remove: async (id) => request(`/api/tags?id=${id}`, { method: "DELETE" }),
 };
