@@ -28,6 +28,12 @@ describe("App shell routes", () => {
     expect(await res.text()).toContain('<div id="app"></div>');
   });
 
+  it("points the share preview image at SITE_URL, as crawlers need", async () => {
+    const html = await (await app.request("/")).text();
+    expect(html).toContain(`<meta property="og:image" content="${config.siteUrl}/og-image.png" />`);
+    expect(html).toContain(`<meta name="twitter:image" content="${config.siteUrl}/og-image.png" />`);
+  });
+
   it("keeps query strings working, e.g. a share invite", async () => {
     const res = await app.request("/login?share=abc");
     expect(res.status).toBe(200);

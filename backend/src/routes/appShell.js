@@ -13,6 +13,7 @@
 
 import fs from "node:fs";
 import { Hono } from "hono";
+import { withAbsoluteShareImage } from "../lib/helpers.js";
 
 export const APP_ROUTES = ["/", "/login", "/dashboard", "/view", "/edit", "/profile"];
 
@@ -29,7 +30,7 @@ export function appShellRoutes({ indexPath }) {
         return c.text("App not built. Run `make build-frontend`.", 503);
       }
       c.header("Cache-Control", "no-cache");
-      return c.html(html);
+      return c.html(withAbsoluteShareImage(html));
     });
   }
 
