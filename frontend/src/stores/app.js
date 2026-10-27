@@ -40,6 +40,9 @@ export const useAppStore = defineStore("app", {
     // True once the user's settings (page size) are in; until then the
     // start-up load is on its way and views shouldn't fetch on their own
     settingsLoaded: false,
+    // How the list is paged: "category" on View (whole categories, in View
+    // order), "" on Edit (newest first)
+    linkGrouping: "",
     search: "",
     filterCategory: "",
     filterTag: "",
@@ -150,6 +153,7 @@ export const useAppStore = defineStore("app", {
           this.filterCategory === "uncategorized" ? "" : this.filterCategory,
         search: this.search.trim(),
         tagId: this.filterTag,
+        group: this.linkGrouping,
       });
       // A newer reset started meanwhile; its result is the one to show
       if (id !== linksRequestId) return;
@@ -163,6 +167,13 @@ export const useAppStore = defineStore("app", {
         response.links.length < response.pagination.limit ||
         offset + response.links.length >= response.pagination.total;
       this.total = lastPage ? this.links.length : response.pagination.total;
+    },
+    // Each page sets the order it needs. Before start-up has loaded the
+    // settings, start-up's own load picks this up
+    async setLinkGrouping(mode) {
+      if (this.linkGrouping === mode) return;
+      this.linkGrouping = mode;
+      if (this.settingsLoaded) await this.loadLinks({ reset: true });
     },
     // Infinite scroll and "Load more". While a load is running this only
     // waits for it: the caller looks again afterwards, so nothing is

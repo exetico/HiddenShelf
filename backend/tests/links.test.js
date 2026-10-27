@@ -356,6 +356,63 @@ describe("Links API", () => {
       const bad = await get("offset=-3&page=2&limit=20");
       expect(bad.pagination.offset).toBe(20);
     });
+
+    it("with group=category, pages in View order and never split a category", async () => {
+      const post = async (path, body) =>
+        json(
+          await app.request(path, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", Cookie: cookie },
+            body: JSON.stringify(body),
+          }),
+        );
+      const cats = [];
+      for (const name of ["A", "B", "C"]) cats.push((await post("/api/categories", { name })).category);
+      // Uncategorized 3, A 15, B 30, C 5 (created mixed, to check grouping)
+      const plan = [[null, 3], [cats[0].id, 15], [cats[1].id, 30], [cats[2].id, 5]];
+      let n = 0;
+      for (let round = 0; round < 30; round++) {
+        for (const [categoryId, count] of plan) {
+          if (round < count) {
+            n += 1;
+            await createLink({ title: `L${n}`, url: `https://e${n}.com`, category_id: categoryId });
+          }
+        }
+      }
+      const get = async (q) =>
+        json(await app.request(`/api/links?${q}`, { headers: { Cookie: cookie } }));
+      const categoryList = await json(
+        await app.request("/api/categories", { headers: { Cookie: cookie } }),
+      );
+      const order = categoryList.categories.map((c) => c.id);
+
+      const pages = [];
+      let offset = 0;
+      for (let i = 0; i < 10; i++) {
+        const page = await get(`group=category&offset=${offset}&limit=20`);
+        if (!page.links.length) break;
+        pages.push(page.links);
+        offset += page.links.length;
+        expect(page.pagination.total).toBe(53);
+      }
+      const all = pages.flat();
+      expect(all).toHaveLength(53);
+      expect(new Set(all.map((l) => l.id)).size).toBe(53);
+
+      // Each category sits in one page, as one run, in the View order
+      const runs = [];
+      for (const link of all) {
+        const key = link.category_id ?? "none";
+        if (runs.at(-1) !== key) runs.push(key);
+      }
+      expect(runs).toEqual(["none", ...order]);
+      for (const key of runs) {
+        const pagesWithIt = pages.filter((p) => p.some((l) => (l.category_id ?? "none") === key));
+        expect(pagesWithIt).toHaveLength(1);
+      }
+      // 20 would cut the first category; the page runs on to its end instead
+      expect(pages[0].length).toBeGreaterThan(20);
+    });
   });
 
   // ── GET /api/links?id= (single) ──

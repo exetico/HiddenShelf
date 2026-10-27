@@ -1,4 +1,4 @@
-import { describe, expect, it, vi, beforeEach } from "vitest";
+import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import { mount } from "@vue/test-utils";
 import { createPinia, setActivePinia } from "pinia";
 import { useAppStore } from "@/stores/app";
@@ -193,15 +193,67 @@ describe("ViewLinksView", () => {
   });
 
   describe("wide screens", () => {
-    it("uses two columns when there is more than one category", () => {
-      const groups = mountView().find('[data-testid="link-groups"]');
-      expect(groups.classes()).toEqual(expect.arrayContaining(["xl:columns-2"]));
+    let wide;
+    beforeEach(() => {
+      wide = true;
+      window.matchMedia = (query) => ({
+        matches: query.includes("1280") ? wide : false,
+        addEventListener() {},
+        removeEventListener() {},
+      });
+    });
+    afterEach(() => {
+      delete window.matchMedia;
     });
 
-    it("stays one column for a single category", () => {
+    const columnTitles = (wrapper) =>
+      wrapper
+        .findAll('[data-testid="link-column"]')
+        .map((col) => col.findAll("h2").map((h) => h.text()));
+
+    it("splits categories over two columns, each to the shorter one", () => {
+      const appStore = useAppStore();
+      appStore.categories = [
+        { id: 1, name: "Big" },
+        { id: 2, name: "Small" },
+        { id: 3, name: "Third" },
+      ];
+      appStore.links = [
+        ...Array.from({ length: 10 }, (_, i) => ({ id: i + 1, title: `B${i}`, category_id: 1, url: "https://b.com" })),
+        { id: 20, title: "S", category_id: 2, url: "https://s.com" },
+        { id: 21, title: "T", category_id: 3, url: "https://t.com" },
+      ];
+      const wrapper = mountView();
+      expect(wrapper.find('[data-testid="link-groups"]').classes()).toContain("grid-cols-2");
+      expect(columnTitles(wrapper)).toEqual([["Big"], ["Small", "Third"]]);
+    });
+
+    it("adds later categories at the bottom without moving earlier ones", async () => {
+      const appStore = useAppStore();
+      appStore.categories = [
+        { id: 1, name: "One" },
+        { id: 2, name: "Two" },
+        { id: 3, name: "Three" },
+      ];
+      appStore.links = [
+        { id: 1, title: "a", category_id: 1, url: "https://a.com" },
+        { id: 2, title: "b", category_id: 2, url: "https://b.com" },
+      ];
+      const wrapper = mountView();
+      const before = columnTitles(wrapper);
+      appStore.links = [...appStore.links, { id: 3, title: "c", category_id: 3, url: "https://c.com" }];
+      await wrapper.vm.$nextTick();
+      const after = columnTitles(wrapper);
+      expect(after[0].slice(0, before[0].length)).toEqual(before[0]);
+      expect(after[1].slice(0, before[1].length)).toEqual(before[1]);
+    });
+
+    it("stays one column for a single category, and on narrower screens", () => {
       useAppStore().filterCategory = "1";
-      const groups = mountView().find('[data-testid="link-groups"]');
-      expect(groups.classes()).not.toContain("xl:columns-2");
+      expect(mountView().findAll('[data-testid="link-column"]')).toHaveLength(1);
+      useAppStore().filterCategory = "";
+      wide = false;
+      expect(mountView().findAll('[data-testid="link-column"]')).toHaveLength(1);
     });
   });
 

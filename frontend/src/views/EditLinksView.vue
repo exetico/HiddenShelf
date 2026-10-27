@@ -80,6 +80,8 @@ watch(
   },
 );
 
+// Edit lists newest first, across categories
+appStore.setLinkGrouping("");
 useLinkFilterReload();
 
 function openCreate() {

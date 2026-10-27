@@ -1,6 +1,7 @@
 <script setup>
 import { useInfiniteScroll } from "@/composables/useInfiniteScroll";
 import { useLinkFilterReload } from "@/composables/useLinkFilterReload";
+import { useMediaQuery } from "@/composables/useMediaQuery";
 import { ref, computed } from "vue";
 import { useAppStore } from "@/stores/app";
 import LinkCardView from "@/components/links/LinkCardView.vue";
@@ -15,6 +16,9 @@ import { reorderIds } from "@/composables/useLinkDrag";
 import { useLinkDetailsStore } from "@/stores/linkDetails";
 
 const appStore = useAppStore();
+// Whole categories per page, in the order they're shown, so a category
+// never shows part of its links and new ones only add at the bottom
+appStore.setLinkGrouping("category");
 // Load the next page as you near the bottom; the button stays as a fallback
 const { sentinel } = useInfiniteScroll({
   hasMore: () => appStore.hasMore,
@@ -106,6 +110,23 @@ const groupedCategories = computed(() => {
   return result;
 });
 
+// Two columns on wide screens. Each category goes to the column that is
+// shorter so far, decided in order, so categories loaded later only add
+// at the bottom and nothing already on screen moves (CSS columns would
+// rebalance everything). Collapsing doesn't count, so nothing hops over.
+const wide = useMediaQuery("(min-width: 1280px)");
+const columns = computed(() => {
+  const groups = groupedCategories.value;
+  if (!wide.value || groups.length < 2) return [groups];
+  const result = [[], []];
+  const heights = [0, 0];
+  for (const group of groups) {
+    const i = heights[0] <= heights[1] ? 0 : 1;
+    result[i].push(group);
+    heights[i] += 3 + group.links.length; // the header is about 3 rows
+  }
+  return result;
+});
 
 function handleContextAction({ link, event, action }) {
   if (action === "moveUp") {
@@ -190,74 +211,79 @@ function toggleCategory(key) {
     <!-- Two columns on wide screens when there's more than one category -->
     <section
       v-if="groupedCategories.length"
-      :class="
-        groupedCategories.length > 1 ? 'xl:columns-2 xl:gap-6' : ''
-      "
+      :class="columns.length > 1 ? 'grid grid-cols-2 gap-6 items-start' : ''"
       data-testid="link-groups"
     >
-      <article
-        v-for="group in groupedCategories"
-        :key="group.key"
-        class="break-inside-avoid mb-3 sm:mb-6"
-        :data-testid="`link-group-${group.key}`"
+      <div
+        v-for="(column, columnIndex) in columns"
+        :key="columnIndex"
+        class="min-w-0"
+        data-testid="link-column"
       >
-        <button
-          :title="collapsedCategories[group.key] ? 'Expand' : 'Collapse'"
-          class="flex items-center gap-2 mb-1 sm:mb-2 w-full text-left group"
-          data-testid="link-group-toggle"
-          @click="toggleCategory(group.key)"
+        <article
+          v-for="group in column"
+          :key="group.key"
+          class="mb-3 sm:mb-6"
+          :data-testid="`link-group-${group.key}`"
         >
-          <i
-            class="mdi transition-transform text-sm text-gray-400 dark:text-brand-500"
-            :class="
-              collapsedCategories[group.key]
-                ? 'mdi-chevron-right'
-                : 'mdi-chevron-down'
-            "
-          ></i>
-          <i
-            :class="group.icon"
-            class="mdi text-base sm:text-lg"
-            :style="group.color ? `color: ${group.color}` : ''"
-          ></i>
-          <h2 class="text-base sm:text-xl font-semibold">{{ group.name }}</h2>
-          <span
-            v-if="group.owner"
-            class="text-xs px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300"
+          <button
+            :title="collapsedCategories[group.key] ? 'Expand' : 'Collapse'"
+            class="flex items-center gap-2 mb-1 sm:mb-2 w-full text-left group"
+            data-testid="link-group-toggle"
+            @click="toggleCategory(group.key)"
           >
-            shared by {{ group.owner }}
-          </span>
-          <span class="text-sm text-gray-500 dark:text-brand-400"
-            >({{ group.links.length }})</span
-          >
-        </button>
-        <transition
-          enter-active-class="transition-all duration-200 ease-out overflow-hidden"
-          leave-active-class="transition-all duration-200 ease-in overflow-hidden"
-          enter-from-class="max-h-0 opacity-0"
-          enter-to-class="max-h-[2000px] opacity-100"
-          leave-from-class="max-h-[2000px] opacity-100"
-          leave-to-class="max-h-0 opacity-0"
-        >
-          <div
-            v-show="!collapsedCategories[group.key]"
-            class="bg-white dark:bg-brand-900 rounded-lg border border-gray-200 dark:border-brand-800 p-1 sm:p-2 sm:space-y-1"
-          >
-            <LinkCardView
-              v-for="link in group.links"
-              :key="link.id"
-              :link="link"
-              :group-key="group.key"
-              :reorderable="
-                !group.owner && !group.fixedOrder && group.links.length > 1
+            <i
+              class="mdi transition-transform text-sm text-gray-400 dark:text-brand-500"
+              :class="
+                collapsedCategories[group.key]
+                  ? 'mdi-chevron-right'
+                  : 'mdi-chevron-down'
               "
-              @context-action="handleContextAction"
-              @details="openDetails"
-              @reorder="onReorder"
-            />
-          </div>
-        </transition>
-      </article>
+            ></i>
+            <i
+              :class="group.icon"
+              class="mdi text-base sm:text-lg"
+              :style="group.color ? `color: ${group.color}` : ''"
+            ></i>
+            <h2 class="text-base sm:text-xl font-semibold">{{ group.name }}</h2>
+            <span
+              v-if="group.owner"
+              class="text-xs px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300"
+            >
+              shared by {{ group.owner }}
+            </span>
+            <span class="text-sm text-gray-500 dark:text-brand-400"
+              >({{ group.links.length }})</span
+            >
+          </button>
+          <transition
+            enter-active-class="transition-all duration-200 ease-out overflow-hidden"
+            leave-active-class="transition-all duration-200 ease-in overflow-hidden"
+            enter-from-class="max-h-0 opacity-0"
+            enter-to-class="max-h-[2000px] opacity-100"
+            leave-from-class="max-h-[2000px] opacity-100"
+            leave-to-class="max-h-0 opacity-0"
+          >
+            <div
+              v-show="!collapsedCategories[group.key]"
+              class="bg-white dark:bg-brand-900 rounded-lg border border-gray-200 dark:border-brand-800 p-1 sm:p-2 sm:space-y-1"
+            >
+              <LinkCardView
+                v-for="link in group.links"
+                :key="link.id"
+                :link="link"
+                :group-key="group.key"
+                :reorderable="
+                  !group.owner && !group.fixedOrder && group.links.length > 1
+                "
+                @context-action="handleContextAction"
+                @details="openDetails"
+                @reorder="onReorder"
+              />
+            </div>
+          </transition>
+        </article>
+      </div>
     </section>
 
     <div

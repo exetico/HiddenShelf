@@ -122,7 +122,8 @@ shares.get("/", optionalAuth(), (c) => {
      FROM category_share_members csm
      JOIN categories c ON csm.category_id = c.id
      JOIN users u ON c.user_id = u.id
-     WHERE csm.user_id = ?`,
+     WHERE csm.user_id = ?
+     ORDER BY csm.accepted_at ASC, c.id ASC`,
     )
     .all(c.userId);
 
