@@ -120,6 +120,12 @@ categories.put("/", requireAuth(), async (c) => {
         ? 1
         : 0
       : existing.is_favorite || 0;
+  const isHidden =
+    input.is_hidden !== undefined
+      ? input.is_hidden
+        ? 1
+        : 0
+      : existing.is_hidden || 0;
 
   if (!name) return errorResponse(c, "Category name is required");
   if (name.length > MAX_LENGTHS.categoryName)
@@ -129,8 +135,8 @@ categories.put("/", requireAuth(), async (c) => {
     );
 
   db.prepare(
-    "UPDATE categories SET name = ?, icon = ?, color = ?, direct_redirect_default = ?, is_favorite = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
-  ).run(name, icon, color, directRedirectDefault, isFavorite, id);
+    "UPDATE categories SET name = ?, icon = ?, color = ?, direct_redirect_default = ?, is_favorite = ?, is_hidden = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+  ).run(name, icon, color, directRedirectDefault, isFavorite, isHidden, id);
 
   const category = db.prepare("SELECT * FROM categories WHERE id = ?").get(id);
   return successResponse(c, { category }, "Category updated successfully");

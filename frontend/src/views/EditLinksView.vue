@@ -13,6 +13,7 @@ import TagManager from "@/components/tags/TagManager.vue";
 import TrashModal from "@/components/links/TrashModal.vue";
 import SearchField from "@/components/common/SearchField.vue";
 import ActiveTagFilter from "@/components/tags/ActiveTagFilter.vue";
+import HiddenMatchesNote from "@/components/categories/HiddenMatchesNote.vue";
 
 const route = useRoute();
 const router = useRouter();
@@ -215,12 +216,13 @@ async function handleDelete(id) {
           :key="cat.id"
           :value="cat.id"
         >
-          {{ cat.name }}
+          {{ cat.name }}{{ cat.is_hidden ? " (hidden)" : "" }}
         </option>
       </select>
     </div>
 
     <ActiveTagFilter />
+    <HiddenMatchesNote />
 
     <!-- Pagination info -->
     <p

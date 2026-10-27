@@ -124,10 +124,59 @@ describe("CategoryPicker", () => {
     expect(menu.items.map((i) => i.label).filter(Boolean)).toEqual([
       "Show its links",
       "Add to favorites",
+      "Hide from lists and search",
       "Move later", // Work is first, so it can't move earlier
     ]);
     // Chosen from a menu, so no extra question
     await menu.run(menu.items.find((i) => i.label === "Add to favorites"));
     expect(categoriesApi.update).toHaveBeenCalledWith(1, { is_favorite: true });
+  });
+
+describe("hidden categories in the pickers", () => {
+  let pinia, appStore;
+  beforeEach(() => {
+    pinia = createPinia();
+    setActivePinia(pinia);
+    appStore = useAppStore();
+    appStore.categories = [
+      { id: 1, name: "Friend", link_count: 4, is_favorite: 1, is_hidden: 1 },
+      { id: 2, name: "Mine", link_count: 2, is_favorite: 0, is_hidden: 0 },
+    ];
+    vi.clearAllMocks();
+  });
+
+  it("puts hidden categories last in the bar, marked, and still pickable", async () => {
+    const wrapper = mount(CategoryFilterBar, { global: { plugins: [pinia] } });
+    const groups = wrapper.findAll("div.group");
+    expect(groups.map((g) => g.text().split("(")[0].trim())).toEqual(["Mine", "Friend"]);
+    expect(groups[1].attributes("data-hidden")).toBe("");
+    expect(groups[1].find('[aria-label="hidden"]').exists()).toBe(true);
+    await groups[1].find("button").trigger("click");
+    expect(appStore.filterCategory).toBe("1");
+  });
+
+  it("hides and shows a category from its menu", async () => {
+    appStore.refreshLinks = vi.fn();
+    const wrapper = mount(CategoryFilterBar, { global: { plugins: [pinia] } });
+    const mine = wrapper.findAll("div.group")[0];
+    await mine.trigger("contextmenu", { clientX: 1, clientY: 1 });
+    const menu = useContextMenuStore();
+    await menu.run(menu.items.find((i) => i.label === "Hide from lists and search"));
+    await flushPromises();
+    expect(categoriesApi.update).toHaveBeenCalledWith(2, { is_hidden: true });
+    expect(appStore.categories[1].is_hidden).toBe(1);
+    expect(appStore.refreshLinks).toHaveBeenCalled();
+  });
+
+  it("gives hidden categories their own section in the phone sheet", async () => {
+    const wrapper = mount(CategoryPicker, {
+      global: { plugins: [pinia], stubs: { Teleport: true } },
+    });
+    await wrapper.find("button").trigger("click");
+    const text = wrapper.text();
+    // Not under Favorites even though it is one
+    expect(text).not.toContain("Favorites");
+    expect(text.indexOf("Mine")).toBeLessThan(text.indexOf("Hidden"));
+    expect(text.indexOf("Hidden")).toBeLessThan(text.indexOf("Friend"));
   });
 });

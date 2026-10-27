@@ -320,4 +320,11 @@ describe("EditLinksView", () => {
     await flushPromises();
     expect(useToastStore().items.at(-1)).toMatchObject({ message: 'You already have a tag named "x"' });
   });
+
+  it("marks hidden categories in the category filter", () => {
+    const appStore = useAppStore();
+    appStore.categories = [{ id: 1, name: "Work" }, { id: 2, name: "Friend", is_hidden: 1 }];
+    const options = mountEdit().findAll('[data-testid="category-filter"] option').map((o) => o.text());
+    expect(options).toEqual(["All Categories", "Work", "Friend (hidden)"]);
+  });
 });
