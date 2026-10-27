@@ -24,10 +24,14 @@ vi.mock("@/services/api/configApi", () => ({
 // Mock vue-router
 const mockRoute = { query: {} };
 const mockReplace = vi.fn();
-vi.mock("vue-router", () => ({
-  useRoute: () => mockRoute,
-  useRouter: () => ({ replace: mockReplace }),
-}));
+vi.mock("vue-router", async () => {
+  const { h } = await vi.importActual("vue");
+  return {
+    useRoute: () => mockRoute,
+    useRouter: () => ({ replace: mockReplace }),
+    RouterLink: { props: ["to"], setup: (props, { slots }) => () => h("a", { href: props.to }, slots.default?.()) },
+  };
+});
 
 describe("LoginView", () => {
   let pinia;
@@ -94,6 +98,16 @@ describe("LoginView", () => {
     expect(text).toContain("Private by default");
     expect(text).not.toContain("Your data stays yours");
     expect(text).not.toContain("Welcome back");
+  });
+
+  it("shows the front-page features and links to all of them and the FAQ", async () => {
+    const wrapper = mountLogin({});
+    await flushPromises();
+    const { FRONT_FEATURES } = await import("@/content/features");
+    const titles = wrapper.findAll('[aria-labelledby="features-heading"] h3').map((t) => t.text());
+    expect(titles).toEqual(FRONT_FEATURES.map((f) => f.title));
+    expect(titles).toContain("Link tools");
+    expect(wrapper.find('[data-testid="login-help-link"]').attributes("href")).toBe("/help");
   });
 
   it('shows "Welcome back" with email and user icon when email is remembered', async () => {

@@ -6,7 +6,7 @@ Hidden Shelf is a link-saving and sharing application. The backend is **Node.js 
 
 ### Once you're prompted
 
-You need to read the copilot-instructions, and if you introduce features, you must add tests for them, and document them, in features-instructions.md.
+You need to read the copilot-instructions, and if you introduce features, you must add tests for them, and document them, in features-instructions.md. Features users can see also belong in `frontend/src/content/features.js` (the front page highlights, the `/help` page and its FAQ); see `CLAUDE.md`.
 
 ## Architecture
 
@@ -57,7 +57,7 @@ You need to read the copilot-instructions, and if you introduce features, you mu
    - View components for each route in `views/`
 
 3. **Clean URL Routing**
-   - Vue Router history mode: `/dashboard`, `/view`, `/edit`, `/profile`, `/login`
+   - Vue Router history mode: `/dashboard`, `/view`, `/edit`, `/profile`, `/tools`, `/help`, `/login`
    - Hono serves the app's index.html for exactly those routes (`backend/src/routes/appShell.js`), so `/api`, `/h`, `/assets` and `/public` keep their own handlers
    - Old `/public/app/index.html#/route` URLs still work: the app rewrites them to the clean URL on load (`frontend/src/lib/appUrl.js`)
    - Subpath deploys: set `BASE_PATH` (backend) and `VITE_BASE_PATH` (build)

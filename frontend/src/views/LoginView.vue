@@ -1,50 +1,21 @@
 <script setup>
 import { ref, computed, onMounted } from "vue";
-import { useRouter, useRoute } from "vue-router";
+import { RouterLink, useRouter, useRoute } from "vue-router";
 import { authApi } from "@/services/api/authApi";
 import { configApi } from "@/services/api/configApi";
 import { useAuthStore } from "@/stores/auth";
 import { useToastStore } from "@/stores/toast";
 import ShelfBackdrop from "@/components/login/ShelfBackdrop.vue";
+import { FRONT_FEATURES } from "@/content/features";
 
 const router = useRouter();
 const route = useRoute();
 const authStore = useAuthStore();
 const toastStore = useToastStore();
 
-// Shown below the sign-in card for people who haven't used the app yet
-const features = [
-  {
-    icon: "mdi-folder-multiple-outline",
-    title: "Categories and tags",
-    text: "Group links into categories with their own icon and color, and tag them across categories.",
-  },
-  {
-    icon: "mdi-magnify",
-    title: "Find anything fast",
-    text: "Search titles, URLs, descriptions and tags, or pin favorite categories to the top.",
-  },
-  {
-    icon: "mdi-account-group-outline",
-    title: "Share collections",
-    text: "Share a category with a code or link. Others see it read-only and you can revoke access any time.",
-  },
-  {
-    icon: "mdi-link-variant",
-    title: "Public short links",
-    text: "Make a link public to get a short URL, with optional direct redirect and visit counts.",
-  },
-  {
-    icon: "mdi-cellphone",
-    title: "Built for your phone",
-    text: "A compact layout for mobile, plus light and dark themes in your own brand color.",
-  },
-  {
-    icon: "mdi-lock-outline",
-    title: "Private by default",
-    text: "Links are only visible to you until you choose to share or publish them. No password to create or remember.",
-  },
-];
+// Shown below the sign-in card for people who haven't used the app yet;
+// the full list and the FAQ are on /help
+const features = FRONT_FEATURES;
 
 const email = ref("");
 const loading = ref(false);
@@ -495,6 +466,16 @@ function clearRememberedEmail() {
           </p>
         </article>
       </div>
+      <p class="mt-6 text-center">
+        <RouterLink
+          to="/help"
+          title="Everything Hidden Shelf can do, and answers to common questions"
+          class="inline-flex items-center gap-1 font-medium text-brand-600 dark:text-brand-300 hover:underline"
+          data-testid="login-help-link"
+        >
+          All features and the FAQ <i class="mdi mdi-arrow-right" aria-hidden="true"></i>
+        </RouterLink>
+      </p>
     </section>
   </div>
 </template>
