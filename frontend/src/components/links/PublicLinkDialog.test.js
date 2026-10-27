@@ -38,6 +38,22 @@ describe("PublicLinkDialog", () => {
     expect(navigator.clipboard.writeText).toHaveBeenCalledWith(url);
   });
 
+  it("offers embed code for other websites, with a preview", async () => {
+    share.open({ id: 1, title: "Grafana", is_public: 1, hash: "abc" });
+    await flushPromises();
+    const embed = `${window.location.origin}/h/abc/embed`;
+    expect(wrapper.find('[data-testid="embed-preview"]').attributes("src")).toBe(embed);
+    expect(wrapper.find('[data-testid="embed-code"]').element.value).toContain(
+      `<iframe src="${embed}" title="Grafana"`,
+    );
+    await wrapper.find('[data-testid="embed-theme"]').setValue("dark");
+    expect(wrapper.find('[data-testid="embed-preview"]').attributes("src")).toBe(`${embed}?theme=dark`);
+    await wrapper.find('[data-testid="embed-copy"]').trigger("click");
+    expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
+      expect.stringContaining(`src="${embed}?theme=dark"`),
+    );
+  });
+
   it("closes on Escape and on the close button", async () => {
     share.open({ id: 1, title: "Grafana", is_public: 1, hash: "abc" });
     await flushPromises();

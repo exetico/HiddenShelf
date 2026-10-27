@@ -297,7 +297,7 @@ const backdrop = backdropClose(() => details.close());
             v-if="publicUrl"
             type="button"
             class="px-3 py-2 rounded-md border border-gray-300 dark:border-brand-700 text-sm"
-            title="Show a QR code for the public link"
+            title="Show a QR code and embed code for the public link"
             @click="publicShare.open(link)"
           >
             <i class="mdi mdi-qrcode" aria-hidden="true"></i> QR

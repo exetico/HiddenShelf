@@ -156,7 +156,7 @@ const iconColor = computed(() => {
           v-if="link.is_public"
           type="button"
           class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full border border-green-300 bg-green-50 text-green-700 hover:bg-green-100 dark:border-green-700 dark:bg-green-900/30 dark:text-green-300 dark:hover:bg-green-900/60"
-          title="Public link: copy it or show a QR code"
+          title="Public link: copy it, show a QR code or embed it"
           data-testid="public-indicator"
           @click="publicShare.open(link)"
         >
