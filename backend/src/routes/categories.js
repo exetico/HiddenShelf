@@ -35,7 +35,7 @@ categories.get("/", requireAuth(), (c) => {
      LEFT JOIN links l ON c.id = l.category_id AND l.deleted_at IS NULL
      WHERE c.user_id = ?
      GROUP BY c.id
-     ORDER BY c.position ASC, c.created_at DESC`,
+     ORDER BY c.position ASC, c.created_at DESC, c.id ASC`,
     )
     .all(c.userId);
 

@@ -119,6 +119,24 @@ describe("app store pagination", () => {
     expect(store.hasMore).toBe(false);
   });
 
+  it("asks for whole categories on View, and reloads when the page's order changes", async () => {
+    serveLinks(30);
+    const store = useAppStore();
+    // Before settings are in, start-up will load in the new order itself
+    await store.setLinkGrouping("category");
+    expect(linksApi.list).not.toHaveBeenCalled();
+
+    store.settingsLoaded = true;
+    await store.loadLinks({ reset: true });
+    expect(linksApi.list).toHaveBeenLastCalledWith(expect.objectContaining({ group: "category" }));
+
+    linksApi.list.mockClear();
+    await store.setLinkGrouping("category");
+    expect(linksApi.list).not.toHaveBeenCalled();
+    await store.setLinkGrouping("");
+    expect(linksApi.list).toHaveBeenCalledWith(expect.objectContaining({ group: "", offset: 0 }));
+  });
+
   it("continues by offset after the page size changes", async () => {
     serveLinks(67);
     const store = useAppStore();

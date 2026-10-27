@@ -9,6 +9,8 @@ export const linksApi = {
     categoryId = "",
     search = "",
     tagId = "",
+    // "category": View's order, pages end on a whole category
+    group = "",
   } = {}) => {
     const params = new URLSearchParams();
     params.set("offset", String(offset ?? (page - 1) * limit));
@@ -16,6 +18,7 @@ export const linksApi = {
     if (categoryId) params.set("category_id", String(categoryId));
     if (search) params.set("search", search);
     if (tagId) params.set("tag_id", String(tagId));
+    if (group) params.set("group", group);
     params.set("include_shared", "1");
     const response = await request(`/api/links?${params.toString()}`);
     return response;

@@ -247,6 +247,10 @@ links.get("/", optionalAuth(), (c) => {
   const search = c.req.query("search") || null;
   const tagId = c.req.query("tag_id") || null;
   const includeShared = c.req.query("include_shared") !== "0";
+  // ?group=category: in the View page's order (uncategorized, your
+  // categories, then shared ones), and a page always ends on a whole
+  // category, so a category is never shown with only part of its links
+  const byCategory = c.req.query("group") === "category";
 
   const where = ["l.deleted_at IS NULL"];
   const params = [];
@@ -299,20 +303,64 @@ links.get("/", optionalAuth(), (c) => {
     .prepare(`SELECT COUNT(*) as total FROM links l WHERE ${whereClause}`)
     .get(...params).total;
 
-  const linksRows = db
-    .prepare(
-      `SELECT l.*, c.name as category_name,
-            CASE WHEN l.user_id != ? THEN 1 ELSE 0 END as is_from_shared_category
+  const linkOrder = `CASE WHEN l.display_order IS NULL THEN 1 ELSE 0 END,
+       l.display_order ASC,
+       l.created_at DESC`;
+  const select = `SELECT l.*, c.name as category_name,
+            CASE WHEN l.user_id != ? THEN 1 ELSE 0 END as is_from_shared_category`;
+
+  let linksRows;
+  if (!byCategory) {
+    linksRows = db
+      .prepare(
+        `${select}
      FROM links l
      LEFT JOIN categories c ON l.category_id = c.id
      WHERE ${whereClause}
-     ORDER BY
-       CASE WHEN l.display_order IS NULL THEN 1 ELSE 0 END,
-       l.display_order ASC,
-       l.created_at DESC
+     ORDER BY ${linkOrder}
      LIMIT ? OFFSET ?`,
-    )
-    .all(c.userId, ...params, limit, offset);
+      )
+      .all(c.userId, ...params, limit, offset);
+  } else {
+    // Number the links in View order, then take the page plus the rest of
+    // the category the page would otherwise cut in half
+    linksRows = db
+      .prepare(
+        `WITH ordered AS (
+       ${select},
+            COALESCE(l.category_id, 0) AS grp,
+            ROW_NUMBER() OVER (ORDER BY
+              CASE WHEN l.category_id IS NULL THEN 0
+                   WHEN c.user_id = ? THEN 1 ELSE 2 END,
+              CASE WHEN c.user_id = ? THEN c.position END ASC,
+              CASE WHEN c.user_id = ? THEN c.created_at END DESC,
+              csm.accepted_at ASC,
+              l.category_id ASC,
+              ${linkOrder}) AS rn
+     FROM links l
+     LEFT JOIN categories c ON l.category_id = c.id
+     LEFT JOIN category_share_members csm
+       ON csm.category_id = l.category_id AND csm.user_id = ?
+     WHERE ${whereClause}
+   )
+   SELECT * FROM ordered
+   WHERE rn > ?
+     AND (rn <= ? OR grp = (SELECT grp FROM ordered WHERE rn = ?))
+   ORDER BY rn`,
+      )
+      .all(
+        c.userId,
+        c.userId,
+        c.userId,
+        c.userId,
+        c.userId,
+        ...params,
+        offset,
+        offset + limit,
+        offset + limit,
+      )
+      .map(({ grp, rn, ...link }) => link);
+  }
 
   // Batch-fetch tags and visit counts for all links (avoids N+1)
   attachTagsAndVisits(db, linksRows);
