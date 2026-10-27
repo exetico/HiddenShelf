@@ -131,6 +131,11 @@ function syncTags(db, linkId, tagNames, userId) {
   }
 }
 
+// Links in your hidden categories only show when you ask for them: pick
+// the category, or pass ?include_hidden=1 (e.g. "show the hidden matches")
+const NOT_HIDDEN = `(l.category_id IS NULL OR l.category_id NOT IN
+  (SELECT id FROM categories WHERE user_id = ? AND is_hidden = 1))`;
+
 // ─── GET /api/links ──────────────────────────────────────────────
 
 links.get("/", optionalAuth(), (c) => {
@@ -162,9 +167,11 @@ links.get("/", optionalAuth(), (c) => {
   if (c.req.query("random") !== undefined) {
     const link = db
       .prepare(
-        "SELECT id, title, url FROM links WHERE user_id = ? AND deleted_at IS NULL ORDER BY RANDOM() LIMIT 1",
+        `SELECT id, title, url FROM links l
+         WHERE user_id = ? AND deleted_at IS NULL AND ${NOT_HIDDEN}
+         ORDER BY RANDOM() LIMIT 1`,
       )
-      .get(c.userId);
+      .get(c.userId, c.userId);
     if (!link) return errorResponse(c, "Your shelf is empty", 404);
     return successResponse(c, { link });
   }
@@ -177,9 +184,10 @@ links.get("/", optionalAuth(), (c) => {
        FROM links l
        LEFT JOIN categories c ON l.category_id = c.id
        WHERE l.user_id = ? AND l.is_favorite = 1 AND l.deleted_at IS NULL
+         AND ${NOT_HIDDEN}
        ORDER BY l.title COLLATE NOCASE ASC`,
       )
-      .all(c.userId);
+      .all(c.userId, c.userId);
     attachTagsAndVisits(db, rows);
     return successResponse(c, { links: rows });
   }
@@ -252,6 +260,7 @@ links.get("/", optionalAuth(), (c) => {
   // categories, then shared ones), and a page always ends on a whole
   // category, so a category is never shown with only part of its links
   const byCategory = c.req.query("group") === "category";
+  const includeHidden = c.req.query("include_hidden") === "1";
 
   const where = ["l.deleted_at IS NULL"];
   const params = [];
@@ -296,6 +305,23 @@ links.get("/", optionalAuth(), (c) => {
     );
     const term = `%${search}%`;
     params.push(term, term, term, term);
+  }
+
+  // Picking a category shows it, hidden or not
+  let hiddenMatches = 0;
+  if (!categoryId && !includeHidden) {
+    // When searching or filtering by tag, say how many matches are hidden
+    // so the page can offer to show them
+    if (search || tagId) {
+      hiddenMatches = db
+        .prepare(
+          `SELECT COUNT(*) as n FROM links l WHERE ${where.join(" AND ")}
+           AND NOT ${NOT_HIDDEN}`,
+        )
+        .get(...params, c.userId).n;
+    }
+    where.push(NOT_HIDDEN);
+    params.push(c.userId);
   }
 
   const whereClause = where.join(" AND ");
@@ -368,6 +394,7 @@ links.get("/", optionalAuth(), (c) => {
 
   return successResponse(c, {
     links: linksRows,
+    hidden_matches: hiddenMatches,
     pagination: {
       page,
       limit,

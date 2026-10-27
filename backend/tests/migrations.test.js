@@ -98,7 +98,7 @@ describe("Database Migrations", () => {
 
     // Check final schema version
     const version = getSchemaVersion(db);
-    expect(version).toBe(11); // Update this when adding new migrations
+    expect(version).toBe(12); // Update this when adding new migrations
 
     // Verify all tables exist
     expect(tableExists(db, "_meta")).toBe(true);
@@ -123,7 +123,7 @@ describe("Database Migrations", () => {
     const version2 = getSchemaVersion(db);
 
     expect(version1).toBe(version2);
-    expect(version2).toBe(11);
+    expect(version2).toBe(12);
   });
 
   describe("Migration 008: Tags unique per user", () => {
@@ -144,7 +144,7 @@ describe("Database Migrations", () => {
 
       runMigrations(db);
 
-      expect(getSchemaVersion(db)).toBe(11);
+      expect(getSchemaVersion(db)).toBe(12);
       expect(db.prepare("SELECT * FROM link_tags").all()).toEqual([
         { link_id: 1, tag_id: 1 },
       ]);
@@ -172,7 +172,7 @@ describe("Database Migrations", () => {
         "INSERT INTO categories (user_id, name, created_at) VALUES (1, 'old', '2024-01-01'), (1, 'new', '2025-01-01')",
       ).run();
       runMigrations(db);
-      expect(getSchemaVersion(db)).toBe(11);
+      expect(getSchemaVersion(db)).toBe(12);
       expect(columnExists(db, "categories", "is_favorite")).toBe(true);
       const rows = db
         .prepare("SELECT name FROM categories ORDER BY position")

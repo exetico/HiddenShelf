@@ -128,6 +128,21 @@ describe("CategoryManager", () => {
     dialog.close(false);
   });
 
+  it("hides a category with the eye, and says it is hidden", async () => {
+    const appStore = useAppStore();
+    appStore.toggleHidden = vi.fn();
+    const wrapper = mountManager({
+      categories: [{ ...testCategories[0], is_hidden: 1 }, testCategories[1]],
+    });
+    const rows = wrapper.findAll('[data-testid="category-row"]');
+    expect(rows[0].text()).toContain("5 links · hidden");
+    expect(rows[1].text()).not.toContain("hidden");
+    const eye = rows[1].find('[data-testid="toggle-hidden"]');
+    expect(eye.attributes("aria-label")).toBe("Hide Personal from lists and search");
+    await eye.trigger("click");
+    expect(appStore.toggleHidden).toHaveBeenCalledWith(expect.objectContaining({ id: 2 }));
+  });
+
   it("says what it is, and picking a category shows its links", async () => {
     const wrapper = mountManager();
     expect(wrapper.text()).toContain("Pick a category to see its links");

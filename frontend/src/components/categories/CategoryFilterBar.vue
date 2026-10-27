@@ -26,6 +26,11 @@ function openCategoryMenu(event, category) {
         // A deliberate menu choice, so no extra "are you sure?"
         action: () => appStore.toggleFavorite(category),
       },
+      {
+        label: category.is_hidden ? "Show in lists and search" : "Hide from lists and search",
+        icon: category.is_hidden ? "mdi-eye-outline" : "mdi-eye-off-outline",
+        action: () => appStore.toggleHidden(category),
+      },
       { divider: true },
       {
         label: "Move earlier",
@@ -50,11 +55,16 @@ const hasDragged = ref(false);
 let dragStartX = 0;
 let dragScrollLeft = 0;
 
-// Favorites first, then the rest, each in the user's own order
-const orderedCategories = computed(() => [
-  ...appStore.categories.filter((c) => c.is_favorite),
-  ...appStore.categories.filter((c) => !c.is_favorite),
-]);
+// Favorites first, then the rest, each in the user's own order; hidden
+// ones last, since their links only show when picked
+const orderedCategories = computed(() => {
+  const shown = appStore.categories.filter((c) => !c.is_hidden);
+  return [
+    ...shown.filter((c) => c.is_favorite),
+    ...shown.filter((c) => !c.is_favorite),
+    ...appStore.categories.filter((c) => c.is_hidden),
+  ];
+});
 
 const uncategorizedCount = computed(() => {
   return (appStore.linksByCategory.get("uncategorized") || []).length;
@@ -150,11 +160,17 @@ function stopDrag() {
             : 'bg-gray-100 dark:bg-brand-800 text-gray-700 dark:text-brand-300 hover:bg-gray-200 dark:hover:bg-brand-700'
         "
         class="group relative flex items-center rounded-lg transition-colors whitespace-nowrap shrink-0"
+        :data-hidden="category.is_hidden ? '' : undefined"
         @contextmenu="openCategoryMenu($event, category)"
       >
         <button
-          :title="`Show links in ${category.name}`"
+          :title="
+            category.is_hidden
+              ? `${category.name} is hidden; pick it to see its links`
+              : `Show links in ${category.name}`
+          "
           class="flex items-center gap-1.5 sm:gap-2 px-3 py-1.5 sm:px-4 sm:py-2"
+          :class="category.is_hidden && String(appStore.filterCategory) !== String(category.id) ? 'opacity-60' : ''"
           @click="selectCategory(String(category.id))"
         >
           <i
@@ -167,6 +183,11 @@ function stopDrag() {
             "
           ></i>
           <span class="text-sm font-medium">{{ category.name }}</span>
+          <i
+            v-if="category.is_hidden"
+            class="mdi mdi-eye-off-outline text-xs opacity-75"
+            aria-label="hidden"
+          ></i>
           <span class="text-xs opacity-75"
             >({{ category.link_count || 0 }})</span
           >

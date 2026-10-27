@@ -5,7 +5,8 @@ import { useAppStore } from "@/stores/app";
  * Reloads the links when the search or category filter changes. Typing
  * waits until it pauses (`delay` ms), so a word is one request, not one per
  * key; clearing the search and picking a category reload right away.
- * Tag filters reload through appStore.filterByTag itself.
+ * Tag filters reload through appStore.filterByTag itself. A new search
+ * starts without the hidden categories again.
  */
 export function useLinkFilterReload({ delay = 300 } = {}) {
   const appStore = useAppStore();
@@ -16,6 +17,7 @@ export function useLinkFilterReload({ delay = 300 } = {}) {
     clearTimeout(timer);
     timer = null;
     lastSearch = appStore.search.trim();
+    appStore.showHidden = false;
     appStore.loadLinks({ reset: true });
   }
 

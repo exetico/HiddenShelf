@@ -13,6 +13,7 @@ import TagManager from "@/components/tags/TagManager.vue";
 import TrashModal from "@/components/links/TrashModal.vue";
 import SearchField from "@/components/common/SearchField.vue";
 import ActiveTagFilter from "@/components/tags/ActiveTagFilter.vue";
+import HiddenMatchesNote from "@/components/categories/HiddenMatchesNote.vue";
 
 const route = useRoute();
 const router = useRouter();
@@ -24,6 +25,10 @@ const { sentinel } = useInfiniteScroll({
   count: () => appStore.links.length,
 });
 const toastStore = useToastStore();
+
+// The bar's secondary buttons: no fill, a visible border
+const OUTLINE =
+  "flex items-center gap-1.5 whitespace-nowrap px-3 py-1.5 sm:px-4 sm:py-2 text-sm sm:text-base rounded-md border border-gray-300 dark:border-brand-700 text-gray-700 dark:text-brand-200 hover:bg-gray-100 dark:hover:bg-brand-800";
 
 const showLinkModal = ref(false);
 const showCategoryModal = ref(false);
@@ -152,50 +157,13 @@ async function handleDelete(id) {
 
 <template>
   <section class="space-y-3 sm:space-y-4" data-testid="edit-page">
-    <div class="flex flex-wrap gap-2" data-testid="edit-toolbar">
-      <!-- From md up, "Add link" is in the top bar -->
-      <button
-        title="Add a new link"
-        class="md:hidden px-3 py-1.5 sm:px-4 sm:py-2 text-sm sm:text-base rounded-md bg-brand-600 text-white hover:bg-brand-700"
-        data-testid="add-link"
-        @click="openCreate"
-      >
-        + Add link
-      </button>
-      <!-- Both managers open the same way and look the same -->
-      <button
-        title="Manage categories: add, rename, order, share and delete"
-        class="flex items-center gap-1.5 px-3 py-1.5 sm:px-4 sm:py-2 text-sm sm:text-base rounded-md border border-gray-300 dark:border-brand-700 text-gray-700 dark:text-brand-200 hover:bg-gray-100 dark:hover:bg-brand-800"
-        data-testid="open-categories"
-        @click="openCategories"
-      >
-        <i class="mdi mdi-folder-cog-outline" aria-hidden="true"></i>
-        <span class="sm:hidden">Categories</span><span class="max-sm:hidden">Manage categories</span>
-      </button>
-      <button
-        title="Manage tags: add, rename and delete"
-        class="flex items-center gap-1.5 px-3 py-1.5 sm:px-4 sm:py-2 text-sm sm:text-base rounded-md border border-gray-300 dark:border-brand-700 text-gray-700 dark:text-brand-200 hover:bg-gray-100 dark:hover:bg-brand-800"
-        data-testid="open-tags"
-        @click="openTags"
-      >
-        <i class="mdi mdi-tag-multiple-outline" aria-hidden="true"></i>
-        <span class="sm:hidden">Tags</span><span class="max-sm:hidden">Manage tags</span>
-      </button>
-      <button
-        title="Deleted links: restore them or delete them for good"
-        class="ml-auto px-3 py-1.5 sm:px-4 sm:py-2 text-sm sm:text-base rounded-md border border-gray-300 dark:border-brand-700 text-gray-700 dark:text-brand-200 hover:bg-gray-100 dark:hover:bg-brand-800"
-        data-testid="open-trash"
-        @click="showTrash = true"
-      >
-        <i class="mdi mdi-delete-outline" aria-hidden="true"></i>
-        <span class="max-sm:sr-only"> Trash</span>
-      </button>
-    </div>
-
-    <!-- Search and category filter -->
+    <!-- One bar for finding and managing links. Phones: search and the
+         category on the first row, the buttons on the second. From md up
+         (where search and "Add link" are in the top bar): the category,
+         the managers, and Trash at the end. -->
     <div
-      class="bg-white dark:bg-brand-900 rounded-lg border border-gray-200 dark:border-brand-800 p-2 sm:p-3 flex gap-2"
-      data-testid="edit-filters"
+      class="bg-white dark:bg-brand-900 rounded-lg border border-gray-200 dark:border-brand-800 p-2 sm:p-3 flex flex-wrap items-center gap-2"
+      data-testid="edit-toolbar"
     >
       <div class="md:hidden flex flex-1 min-w-0">
         <SearchField
@@ -206,8 +174,10 @@ async function handleDelete(id) {
       </div>
       <select
         v-model="localFilterCategory"
+        title="Show the links in one category"
+        aria-label="Category"
         data-testid="category-filter"
-        class="max-w-[40%] sm:max-w-none md:max-w-xs px-2 sm:px-3 py-1.5 sm:py-2 rounded-md border border-gray-300 dark:border-brand-700 dark:bg-brand-800"
+        class="max-w-[40%] md:max-w-xs px-2 sm:px-3 py-1.5 sm:py-2 text-sm sm:text-base rounded-md border border-gray-300 dark:border-brand-700 bg-transparent dark:bg-brand-900 text-gray-700 dark:text-brand-200 hover:bg-gray-100 dark:hover:bg-brand-800"
       >
         <option value="">All Categories</option>
         <option
@@ -215,12 +185,53 @@ async function handleDelete(id) {
           :key="cat.id"
           :value="cat.id"
         >
-          {{ cat.name }}
+          {{ cat.name }}{{ cat.is_hidden ? " (hidden)" : "" }}
         </option>
       </select>
+
+      <div class="flex flex-1 basis-full md:basis-auto items-center gap-2" data-testid="edit-actions">
+        <!-- From md up, "Add link" is in the top bar -->
+        <button
+          title="Add a new link"
+          class="md:hidden whitespace-nowrap px-3 py-1.5 sm:px-4 sm:py-2 text-sm sm:text-base rounded-md border border-brand-600 bg-brand-600 text-white hover:bg-brand-700"
+          data-testid="add-link"
+          @click="openCreate"
+        >
+          + Add link
+        </button>
+        <!-- Outlined, like the rest of the bar's secondary actions -->
+        <button
+          title="Manage categories: add, rename, order, share and delete"
+          :class="OUTLINE"
+          data-testid="open-categories"
+          @click="openCategories"
+        >
+          <i class="mdi mdi-folder-cog-outline" aria-hidden="true"></i>
+          <span class="sm:hidden">Categories</span><span class="max-sm:hidden">Manage categories</span>
+        </button>
+        <button
+          title="Manage tags: add, rename and delete"
+          :class="OUTLINE"
+          data-testid="open-tags"
+          @click="openTags"
+        >
+          <i class="mdi mdi-tag-multiple-outline" aria-hidden="true"></i>
+          <span class="sm:hidden">Tags</span><span class="max-sm:hidden">Manage tags</span>
+        </button>
+        <button
+          title="Deleted links: restore them or delete them for good"
+          :class="[OUTLINE, 'ml-auto']"
+          data-testid="open-trash"
+          @click="showTrash = true"
+        >
+          <i class="mdi mdi-delete-outline" aria-hidden="true"></i>
+          <span class="max-sm:sr-only">Trash</span>
+        </button>
+      </div>
     </div>
 
     <ActiveTagFilter />
+    <HiddenMatchesNote />
 
     <!-- Pagination info -->
     <p

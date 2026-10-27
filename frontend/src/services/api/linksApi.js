@@ -11,6 +11,8 @@ export const linksApi = {
     tagId = "",
     // "category": View's order, pages end on a whole category
     group = "",
+    // Also links in hidden categories
+    includeHidden = false,
   } = {}) => {
     const params = new URLSearchParams();
     params.set("offset", String(offset ?? (page - 1) * limit));
@@ -19,6 +21,7 @@ export const linksApi = {
     if (search) params.set("search", search);
     if (tagId) params.set("tag_id", String(tagId));
     if (group) params.set("group", group);
+    if (includeHidden) params.set("include_hidden", "1");
     params.set("include_shared", "1");
     const response = await request(`/api/links?${params.toString()}`);
     return response;

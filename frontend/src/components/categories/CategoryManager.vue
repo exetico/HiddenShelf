@@ -282,7 +282,8 @@ const shareBackdrop = backdropClose(() => (showShareModal.value = false));
         class="text-xs text-gray-500 dark:text-brand-400"
       >
         Use the arrows to set the order and the star to pin favorites to the
-        top of the View page.
+        top of the View page. The eye hides a category: its links stay out of
+        lists and search until you pick it.
       </p>
       <ul class="space-y-2 max-h-[50dvh] overflow-auto">
         <li
@@ -331,7 +332,7 @@ const shareBackdrop = backdropClose(() => (showShareModal.value = false));
                 <span class="min-w-0">
                   <span class="block font-medium truncate group-hover:underline">{{ category.name }}</span>
                   <span class="block text-xs text-gray-500 dark:text-brand-400">
-                    {{ linkCount(category.link_count) }}
+                    {{ linkCount(category.link_count) }}{{ category.is_hidden ? " · hidden" : "" }}
                   </span>
                 </span>
               </button>
@@ -354,6 +355,27 @@ const shareBackdrop = backdropClose(() => (showShareModal.value = false));
                 <i
                   class="mdi text-base"
                   :class="category.is_favorite ? 'mdi-star' : 'mdi-star-outline'"
+                ></i>
+              </button>
+              <button
+                :class="
+                  category.is_hidden
+                    ? 'text-brand-700 dark:text-brand-200'
+                    : 'text-gray-400 dark:text-brand-500'
+                "
+                :title="category.is_hidden ? 'Show in lists and search' : 'Hide from lists and search'"
+                :aria-label="
+                  category.is_hidden
+                    ? `Show ${category.name} in lists and search`
+                    : `Hide ${category.name} from lists and search`
+                "
+                :aria-pressed="Boolean(category.is_hidden)"
+                data-testid="toggle-hidden"
+                @click="appStore.toggleHidden(category)"
+              >
+                <i
+                  class="mdi text-base"
+                  :class="category.is_hidden ? 'mdi-eye-off' : 'mdi-eye-outline'"
                 ></i>
               </button>
               <button

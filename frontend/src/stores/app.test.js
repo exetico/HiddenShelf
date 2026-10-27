@@ -349,3 +349,55 @@ describe("app store tags", () => {
     expect(filterByTag).toHaveBeenCalledWith("");
   });
 });
+
+describe("app store hidden categories", () => {
+  let store;
+  beforeEach(() => {
+    setActivePinia(createPinia());
+    vi.clearAllMocks();
+    store = useAppStore();
+    store.settingsLoaded = true;
+    categoriesApi.update.mockResolvedValue({});
+    linksApi.list.mockResolvedValue({
+      links: [{ id: 1 }],
+      hidden_matches: 3,
+      pagination: { offset: 0, limit: 20, total: 1 },
+    });
+  });
+
+  it("remembers how many matches were left out, and shows them on request", async () => {
+    store.search = "grafana";
+    await store.loadLinks({ reset: true });
+    expect(store.hiddenMatches).toBe(3);
+    expect(linksApi.list).toHaveBeenLastCalledWith(expect.objectContaining({ includeHidden: false }));
+
+    await store.revealHidden();
+    expect(store.showHidden).toBe(true);
+    expect(linksApi.list).toHaveBeenLastCalledWith(expect.objectContaining({ includeHidden: true }));
+  });
+
+  it("starts a new tag filter without hidden categories", async () => {
+    store.showHidden = true;
+    await store.filterByTag(4);
+    expect(store.showHidden).toBe(false);
+  });
+
+  it("hides a category, then reloads so its links leave the list", async () => {
+    const category = { id: 5, name: "Friend", is_hidden: 0 };
+    store.categories = [category];
+    linksApi.favorites.mockResolvedValue([]);
+    await store.toggleHidden(category);
+    expect(categoriesApi.update).toHaveBeenCalledWith(5, { is_hidden: true });
+    expect(category.is_hidden).toBe(1);
+    expect(linksApi.list).toHaveBeenCalled();
+    expect(useToastStore().items.at(-1).message).toContain("Friend is hidden");
+  });
+
+  it("puts it back when hiding fails", async () => {
+    const category = { id: 5, name: "Friend", is_hidden: 0 };
+    categoriesApi.update.mockRejectedValueOnce(new Error("Nope"));
+    await store.toggleHidden(category);
+    expect(category.is_hidden).toBe(0);
+    expect(linksApi.list).not.toHaveBeenCalled();
+  });
+});

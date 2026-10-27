@@ -39,4 +39,12 @@ describe("API clients", () => {
     await linksApi.list({});
     expect(request.mock.calls[1][0]).not.toContain("tag_id");
   });
+
+  it("asks for hidden categories only when told to", async () => {
+    request.mockResolvedValue({ links: [] });
+    await linksApi.list({ includeHidden: true });
+    expect(request.mock.calls[0][0]).toContain("include_hidden=1");
+    await linksApi.list({});
+    expect(request.mock.calls[1][0]).not.toContain("include_hidden");
+  });
 });

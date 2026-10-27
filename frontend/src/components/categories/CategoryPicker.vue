@@ -12,8 +12,19 @@ const uncategorizedCount = computed(
   () => (appStore.linksByCategory.get("uncategorized") || []).length,
 );
 
+// Hidden categories get their own section at the end: picking one is
+// how their links are shown
+const shownCategories = computed(() =>
+  appStore.categories.filter((c) => !c.is_hidden),
+);
+const favoriteCategories = computed(() =>
+  shownCategories.value.filter((c) => c.is_favorite),
+);
 const otherCategories = computed(() =>
-  appStore.categories.filter((c) => !c.is_favorite),
+  shownCategories.value.filter((c) => !c.is_favorite),
+);
+const hiddenCategories = computed(() =>
+  appStore.categories.filter((c) => c.is_hidden),
 );
 
 const current = computed(() => {
@@ -120,8 +131,9 @@ const backdrop = backdropClose(() => (open.value = false));
 
           <template
             v-for="section in [
-              { label: 'Favorites', items: appStore.favoriteCategories },
+              { label: 'Favorites', items: favoriteCategories },
               { label: 'Categories', items: otherCategories },
+              { label: 'Hidden', items: hiddenCategories },
             ]"
             :key="section.label"
           >
@@ -147,6 +159,11 @@ const backdrop = backdropClose(() => (open.value = false));
                   :style="`color: ${category.color || '#6B7280'}`"
                 ></i>
                 <span class="flex-1 truncate">{{ category.name }}</span>
+                <i
+                  v-if="category.is_hidden"
+                  class="mdi mdi-eye-off-outline text-xs opacity-70"
+                  aria-label="hidden"
+                ></i>
                 <span class="text-xs opacity-70">{{
                   category.link_count || 0
                 }}</span>

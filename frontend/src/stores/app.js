@@ -46,6 +46,10 @@ export const useAppStore = defineStore("app", {
     search: "",
     filterCategory: "",
     filterTag: "",
+    // Search or tag matches left out because their category is hidden,
+    // and whether the person asked to see them anyway
+    hiddenMatches: 0,
+    showHidden: false,
   }),
   getters: {
     hasMore: (state) => state.links.length < state.total,
@@ -154,6 +158,7 @@ export const useAppStore = defineStore("app", {
         search: this.search.trim(),
         tagId: this.filterTag,
         group: this.linkGrouping,
+        includeHidden: this.showHidden,
       });
       // A newer reset started meanwhile; its result is the one to show
       if (id !== linksRequestId) return;
@@ -161,6 +166,7 @@ export const useAppStore = defineStore("app", {
       this.links = reset
         ? response.links
         : [...this.links, ...response.links];
+      if (reset) this.hiddenMatches = response.hidden_matches || 0;
       // A short page means the server has nothing more, even if the count
       // changed in between (e.g. a link deleted elsewhere)
       const lastPage =
@@ -312,6 +318,30 @@ export const useAppStore = defineStore("app", {
       const toastStore = useToastStore();
       toastStore.success("Category updated");
     },
+    // Show the matches in hidden categories for the current search or tag
+    async revealHidden(show = true) {
+      this.showHidden = show;
+      await this.loadLinks({ reset: true });
+    },
+    // A hidden category's links stay out of lists, search and favorites
+    // until you pick it
+    async toggleHidden(category) {
+      const isHidden = !category.is_hidden;
+      category.is_hidden = isHidden ? 1 : 0; // optimistic
+      try {
+        await categoriesApi.update(category.id, { is_hidden: isHidden });
+      } catch (error) {
+        category.is_hidden = isHidden ? 0 : 1;
+        useToastStore().error(error.message);
+        return;
+      }
+      useToastStore().success(
+        isHidden
+          ? `${category.name} is hidden; pick it to see its links`
+          : `${category.name} shows everywhere again`,
+      );
+      await this.refreshLinks();
+    },
     async toggleFavorite(category) {
       const isFavorite = !category.is_favorite;
       category.is_favorite = isFavorite ? 1 : 0; // optimistic
@@ -353,6 +383,7 @@ export const useAppStore = defineStore("app", {
     },
     async filterByTag(tagId) {
       this.filterTag = tagId ? String(tagId) : "";
+      this.showHidden = false;
       await this.loadLinks({ reset: true });
     },
     async loadTags() {

@@ -9,6 +9,7 @@ import CategoryFilterBar from "@/components/categories/CategoryFilterBar.vue";
 import CategoryPicker from "@/components/categories/CategoryPicker.vue";
 import SearchField from "@/components/common/SearchField.vue";
 import ActiveTagFilter from "@/components/tags/ActiveTagFilter.vue";
+import HiddenMatchesNote from "@/components/categories/HiddenMatchesNote.vue";
 import LinkDetailsSheet from "@/components/links/LinkDetailsSheet.vue";
 import LinkPreviewPopover from "@/components/links/LinkPreviewPopover.vue";
 import { useLinkMenu } from "@/composables/useLinkMenu";
@@ -198,6 +199,7 @@ function toggleCategory(key) {
     </div>
 
     <ActiveTagFilter />
+    <HiddenMatchesNote />
 
     <!-- Pagination info -->
     <p

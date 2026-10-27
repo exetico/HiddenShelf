@@ -730,4 +730,64 @@ describe("Links API", () => {
       expect(sharedLink.is_from_shared_category).toBe(1);
     });
   });
+
+  // ── Hidden categories ──
+
+  describe("hidden categories", () => {
+    let hiddenId, mineId;
+    const get = async (query) =>
+      json(await app.request(`/api/links?${query}`, { headers: { Cookie: cookie } }));
+    const titles = (data) => data.links.map((l) => l.title).sort();
+
+    beforeEach(async () => {
+      const db = getDb();
+      const add = db.prepare("INSERT INTO categories (name, user_id, is_hidden) VALUES (?, ?, ?)");
+      hiddenId = Number(add.run("Friend's server", userId, 1).lastInsertRowid);
+      mineId = Number(add.run("My server", userId, 0).lastInsertRowid);
+      await createLink({ title: "Grafana (mine)", url: "https://a.example", category_id: mineId, tags: ["infra"] });
+      await createLink({ title: "Grafana (friend)", url: "https://b.example", category_id: hiddenId, tags: ["infra"] });
+      await createLink({ title: "Loose", url: "https://c.example" });
+      db.prepare("UPDATE links SET is_favorite = 1").run();
+    });
+
+    it("keeps their links out of lists and search", async () => {
+      expect(titles(await get("limit=20"))).toEqual(["Grafana (mine)", "Loose"]);
+      const grouped = await get("limit=20&group=category");
+      expect(grouped.pagination.total).toBe(2);
+      const search = await get("limit=20&search=grafana");
+      expect(titles(search)).toEqual(["Grafana (mine)"]);
+      // ...but says how many it left out, so the page can offer them
+      expect(search.hidden_matches).toBe(1);
+      expect((await get("limit=20&tag_id=1")).hidden_matches).toBe(1);
+      expect((await get("limit=20")).hidden_matches).toBe(0);
+    });
+
+    it("shows them when the category is picked, or when asked for", async () => {
+      expect(titles(await get(`limit=20&category_id=${hiddenId}`))).toEqual(["Grafana (friend)"]);
+      const all = await get("limit=20&search=grafana&include_hidden=1");
+      expect(titles(all)).toEqual(["Grafana (friend)", "Grafana (mine)"]);
+      expect(all.hidden_matches).toBe(0);
+    });
+
+    it("leaves them out of favorites and the random pick", async () => {
+      expect(titles(await get("favorites=1"))).toEqual(["Grafana (mine)", "Loose"]);
+      getDb().prepare("DELETE FROM links WHERE category_id != ? OR category_id IS NULL").run(hiddenId);
+      const random = await app.request("/api/links?random=1", { headers: { Cookie: cookie } });
+      expect(random.status).toBe(404);
+    });
+
+    it("is set and cleared through the category", async () => {
+      const put = (body) =>
+        app.request(`/api/categories?id=${mineId}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json", Cookie: cookie },
+          body: JSON.stringify(body),
+        });
+      expect((await json(await put({ is_hidden: true }))).category.is_hidden).toBe(1);
+      // Other edits keep it hidden
+      expect((await json(await put({ name: "Mine" }))).category.is_hidden).toBe(1);
+      expect(titles(await get("limit=20"))).toEqual(["Loose"]);
+      expect((await json(await put({ is_hidden: false }))).category.is_hidden).toBe(0);
+    });
+  });
 });
