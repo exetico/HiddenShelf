@@ -6,6 +6,7 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { createTestApp, createAuthenticatedUser, cleanup } from "./helpers.js";
 import { getDb } from "../src/lib/database.js";
 import { renderLinkPage, stripMarkdown } from "../src/routes/publicLink.js";
+import config from "../src/config.js";
 
 describe("Public link page", () => {
   let app, userId;
@@ -92,6 +93,18 @@ describe("Public link page", () => {
   });
 
   describe("renderLinkPage", () => {
+    it("gives share previews an absolute image, under BASE_PATH too", () => {
+      const template = '<meta property="og:image" content="/shelf/og-image.png" />';
+      const saved = { siteUrl: config.siteUrl, basePath: config.basePath };
+      Object.assign(config, { siteUrl: "https://example.org", basePath: "/shelf" });
+      try {
+        const html = renderLinkPage(template, { title: "T", description: null });
+        expect(html).toBe('<meta property="og:image" content="https://example.org/shelf/og-image.png" />');
+      } finally {
+        Object.assign(config, saved);
+      }
+    });
+
     it("uses a fallback description", () => {
       const html = renderLinkPage(
         '<meta data-link-meta="description" content="x" />',

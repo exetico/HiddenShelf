@@ -281,6 +281,18 @@ export function returnToUrl(returnTo, redirectOrigin = null) {
 }
 
 /**
+ * Share previews (Facebook, Slack, iMessage…) only load an absolute
+ * og:image URL, and the page doesn't know its public address at build
+ * time. Point og:image and twitter:image at SITE_URL.
+ */
+export function withAbsoluteShareImage(html) {
+  return html.replace(
+    /(<meta [^>]*(?:property="og:image"|name="twitter:image")[^>]*content=")[^"]*\/(og-image\.png)(")/g,
+    (_, start, file, end) => `${start}${config.siteUrl}${baseUrl(`/${file}`)}${end}`,
+  );
+}
+
+/**
  * Construct a URL with the configured base path.
  */
 export function baseUrl(pathStr = "") {

@@ -14,7 +14,7 @@
 import fs from "node:fs";
 import { Hono } from "hono";
 import { getDb } from "../lib/database.js";
-import { baseUrl } from "../lib/helpers.js";
+import { baseUrl, withAbsoluteShareImage } from "../lib/helpers.js";
 import { logVisit } from "./linkVisits.js";
 
 const HASH_PATTERN = /^[a-zA-Z0-9]{1,20}$/;
@@ -49,7 +49,7 @@ export function renderLinkPage(template, link) {
     (link.description && stripMarkdown(link.description)) ||
     `View "${link.title}" shared via Hidden Shelf`;
 
-  return template
+  return withAbsoluteShareImage(template)
     .replace(/<title>[^<]*<\/title>/, `<title>${escapeHtml(title)}</title>`)
     .replace(
       /(<meta [^>]*data-link-meta="title"[^>]*content=")[^"]*(")/g,
