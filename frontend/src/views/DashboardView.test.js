@@ -303,6 +303,22 @@ describe("DashboardView", () => {
     expect(missing).toEqual([]);
   });
 
+  it("links to each tool, so Ctrl-click opens it in a new tab", async () => {
+    const tools = mountDashboard().find('[data-testid="dashboard-tools"]');
+    const links = tools.findAll("a");
+    expect(links.map((a) => [a.text(), a.attributes("href")])).toEqual([
+      ["QR code", "/tools"],
+      ["Encode / decode", "/tools?tool=encode"],
+      ["Clean link", "/tools?tool=clean"],
+      ["Inspect link", "/tools?tool=inspect"],
+    ]);
+    await links[2].trigger("click");
+    expect(mockPush).toHaveBeenCalledWith({ name: "tools", query: { tool: "clean" } });
+    mockPush.mockClear();
+    await links[2].trigger("click", { ctrlKey: true });
+    expect(mockPush).not.toHaveBeenCalled();
+  });
+
   it("draws tile art without blurred blobs", () => {
     const tile = mountDashboard().find('[data-testid="stat-links"]');
     expect(tile.find(".blur-md").exists()).toBe(false);

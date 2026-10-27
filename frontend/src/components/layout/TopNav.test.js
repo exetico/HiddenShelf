@@ -107,6 +107,16 @@ describe("TopNav", () => {
     expect(mockPush).toHaveBeenCalledWith({ name: "view" });
   });
 
+  it("opens the tools page from its button", async () => {
+    const wrapper = mountNav();
+    const button = wrapper.find('[data-testid="nav-tools-page"]');
+    expect(button.attributes("aria-current")).toBeUndefined();
+    await button.trigger("click");
+    expect(mockPush).toHaveBeenCalledWith({ name: "tools" });
+    mockRoute.name = "tools";
+    expect(mountNav().find('[data-testid="nav-tools-page"]').attributes("aria-current")).toBe("page");
+  });
+
   it("stays at the top while you scroll", () => {
     expect(mountNav().find("header").classes()).toEqual(
       expect.arrayContaining(["sticky", "top-0", "z-30"]),
