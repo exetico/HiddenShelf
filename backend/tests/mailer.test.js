@@ -5,13 +5,9 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import crypto from "node:crypto";
-import fs from "node:fs";
-import os from "node:os";
-import path from "node:path";
 import nodemailer from "nodemailer";
 import config from "../src/config.js";
-import { buildMagicLinkEmail, magicLinkMessage, dkimOptions } from "../src/lib/mailer.js";
+import { buildMagicLinkEmail, magicLinkMessage } from "../src/lib/mailer.js";
 
 const LINK = "https://shelf.example.org/api/auth/verify?token=abc123";
 const saved = { ...config };
@@ -112,54 +108,5 @@ describe("login email", () => {
     expect(headers).toMatch(/^X-Auto-Response-Suppress: All$/m);
     // Transactional, so no bulk-mail headers
     expect(headers).not.toMatch(/^(Precedence|List-Unsubscribe|X-Mailer):/im);
-  });
-});
-
-describe("DKIM signing", () => {
-  let dir;
-  const { privateKey } = crypto.generateKeyPairSync("rsa", {
-    modulusLength: 2048,
-    privateKeyEncoding: { type: "pkcs8", format: "pem" },
-    publicKeyEncoding: { type: "spki", format: "pem" },
-  });
-
-  beforeEach(() => {
-    dir = fs.mkdtempSync(path.join(os.tmpdir(), "hs-dkim-"));
-  });
-  afterEach(() => {
-    Object.assign(config, saved);
-    fs.rmSync(dir, { recursive: true, force: true });
-  });
-
-  it("is off unless domain, selector and key are all set", () => {
-    Object.assign(config, { dkimDomain: "shelf.example.org", dkimSelector: "", dkimPrivateKey: privateKey });
-    expect(dkimOptions()).toBeNull();
-    Object.assign(config, { dkimSelector: "mail", dkimPrivateKey: "", dkimPrivateKeyFile: "" });
-    expect(dkimOptions()).toBeNull();
-  });
-
-  it("reads the key from the setting (\\n for line breaks) or a file", () => {
-    Object.assign(config, {
-      dkimDomain: "shelf.example.org",
-      dkimSelector: "mail",
-      dkimPrivateKey: privateKey.replace(/\n/g, "\\n"),
-    });
-    expect(dkimOptions()).toEqual({ domainName: "shelf.example.org", keySelector: "mail", privateKey });
-
-    const file = path.join(dir, "dkim.pem");
-    fs.writeFileSync(file, privateKey);
-    Object.assign(config, { dkimPrivateKey: "", dkimPrivateKeyFile: file });
-    expect(dkimOptions().privateKey).toBe(privateKey);
-  });
-
-  it("signs the message for the From domain", async () => {
-    Object.assign(config, {
-      fromEmail: "login@shelf.example.org",
-      dkimDomain: "shelf.example.org",
-      dkimSelector: "mail",
-      dkimPrivateKey: privateKey,
-    });
-    const message = await raw(magicLinkMessage("dana@example.net", LINK), { dkim: dkimOptions() });
-    expect(message).toMatch(/^DKIM-Signature: v=1; a=rsa-sha256;[\s\S]*d=shelf\.example\.org;[\s\S]*s=mail;/m);
   });
 });

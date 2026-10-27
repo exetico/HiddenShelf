@@ -9,13 +9,10 @@
  *   nothing looks like a disguised link
  * - From is a plain address on your domain and Message-ID uses that domain
  * - Auto-Submitted marks it as automatic, so out-of-office replies skip it
- * - optional DKIM signing (DKIM_*) for servers that don't sign themselves
- * Whether it lands in the inbox still depends on DNS: see "Email delivery"
- * in the README (SPF, DKIM, DMARC).
+ * The rest (SPF, DKIM, DMARC) is up to the SMTP provider and its DNS setup.
  */
 
 import crypto from "node:crypto";
-import fs from "node:fs";
 import nodemailer from "nodemailer";
 import config from "../config.js";
 
@@ -43,23 +40,8 @@ function getTransporter() {
     opts.tls = { rejectUnauthorized: false };
   }
 
-  const dkim = dkimOptions();
-  if (dkim) opts.dkim = dkim;
-
   transporter = nodemailer.createTransport(opts);
   return transporter;
-}
-
-/** DKIM settings for nodemailer, or null when DKIM_* is not set. */
-export function dkimOptions() {
-  const { dkimDomain, dkimSelector, dkimPrivateKey, dkimPrivateKeyFile } = config;
-  if (!dkimDomain || !dkimSelector) return null;
-  let privateKey = dkimPrivateKey.replace(/\\n/g, "\n");
-  if (!privateKey && dkimPrivateKeyFile) {
-    privateKey = fs.readFileSync(dkimPrivateKeyFile, "utf8");
-  }
-  if (!privateKey) return null;
-  return { domainName: dkimDomain, keySelector: dkimSelector, privateKey };
 }
 
 function escapeHtml(value) {

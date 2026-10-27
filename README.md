@@ -45,7 +45,7 @@ SMTP_USER=you@example.com
 SMTP_PASS=your-password
 # tls (port 587), ssl (port 465) or empty
 SMTP_ENCRYPTION=tls
-# An address on your own domain (see "Email delivery" below)
+# An address your SMTP provider is set up to send for
 FROM_EMAIL=login@links.example.com
 ```
 
@@ -55,21 +55,7 @@ Leave `DEBUG_MODE=false`. The full list of settings is under [Configuration](#co
 
 > If SMTP isn't set, login emails go to smtpbucket.com, a public test inbox anyone can read. The server prints a warning at startup when that happens on a non-localhost `SITE_URL`.
 
-#### Email delivery
-
-The login email is built to pass spam filters: a plain text and an HTML version with the same words, no images, tracking or remote content, one link (to your `SITE_URL`) that is also written out in full, a `Message-ID` on your sender's domain and an `Auto-Submitted` header. Whether it reaches the inbox is mostly decided by DNS for the domain in `FROM_EMAIL`, so set these up before inviting anyone:
-
-| Record | What it does | Example |
-| ------ | ------------ | ------- |
-| **SPF** (TXT on the domain) | Lists the servers allowed to send for the domain | `v=spf1 include:<your SMTP provider> -all` |
-| **DKIM** (TXT on `<selector>._domainkey`) | Public key for the signature on each email | From your SMTP provider, or see `DKIM_*` below |
-| **DMARC** (TXT on `_dmarc`) | Tells receivers what to do when SPF/DKIM fail | `v=DMARC1; p=quarantine; rua=mailto:you@example.com` |
-| **Reverse DNS** (PTR) | Only if you run your own mail server: its IP must point back to its hostname | Set at your hosting provider |
-
-- Use an address on a domain you control in `FROM_EMAIL`, ideally the same domain as `SITE_URL`, and send through an SMTP server that is allowed to send for it (Gmail, Fastmail, Postmark, SES, Mailgun and so on). Sending as `@gmail.com` through another server fails DMARC.
-- Most SMTP providers sign with DKIM for you once you add their DNS records. If your server doesn't, Hidden Shelf can sign itself: set `DKIM_DOMAIN`, `DKIM_SELECTOR` and the private key (`DKIM_PRIVATE_KEY`, or `DKIM_PRIVATE_KEY_FILE` for a file inside the container, e.g. one in `db/` at `/app/db/dkim.pem`), and publish the public key as `<selector>._domainkey.<domain>`.
-- Start DMARC with `p=none` while you check the reports, then move to `quarantine`.
-- To check everything at once, send a login link to the address [mail-tester.com](https://www.mail-tester.com) gives you, or look at "Show original" in Gmail: SPF, DKIM and DMARC should all say `PASS`.
+Login emails go out through your SMTP provider, so use a `FROM_EMAIL` it is set up to send for (with the SPF/DKIM records it asks you to add), or they may land in spam.
 
 ### 3. Start it
 
@@ -164,12 +150,8 @@ Set these in `.env`. Docker Compose passes them to the container. When running N
 | `SMTP_USER`            | ``                                    | SMTP username                           |
 | `SMTP_PASS`            | ``                                    | SMTP password                           |
 | `SMTP_ENCRYPTION`      | ``                                    | `tls` or `ssl` or empty                 |
-| `FROM_EMAIL`           | `noreply@example.com`                 | Sender email, on a domain you control (see [Email delivery](#email-delivery)) |
+| `FROM_EMAIL`           | `noreply@example.com`                 | Sender email                            |
 | `FROM_NAME`            | `Hidden Shelf`                        | Sender name                             |
-| `DKIM_DOMAIN`          | ``                                    | Optional: sign login emails with DKIM for this domain |
-| `DKIM_SELECTOR`        | ``                                    | DKIM selector, as in `<selector>._domainkey.<domain>` |
-| `DKIM_PRIVATE_KEY`     | ``                                    | DKIM private key (PEM, `\n` for line breaks) |
-| `DKIM_PRIVATE_KEY_FILE`| ``                                    | Or: path to the key file inside the container |
 | `DEBUG_MODE`           | `false`                               | Log magic links instead of emailing them, show detailed errors. Dev only |
 | `SIGNUP_ENABLED`       | `true`                                | Allow new user registration             |
 | `EMAIL_LOGIN_ENABLED`  | `true`                                | `false`: no magic link login and no email at all; Google sign-in only |
