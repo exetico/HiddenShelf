@@ -109,4 +109,26 @@ describe("TagManager", () => {
       categories.find('[data-testid="add-category"]').classes(),
     );
   });
+
+  it("filters a long list of tags by name", async () => {
+    const many = ["infra", "home", "work", "recipes", "finance", "family", "Infra-lab"].map(
+      (name, i) => ({ id: i + 1, name, usage_count: 1 }),
+    );
+    const wrapper = mountManager(many);
+    await wrapper.find('[data-testid="manager-filter"]').setValue("INFRA");
+    expect(wrapper.findAll('[data-testid="tag-row"]').map((r) => r.text().split("\n")[0])).toEqual([
+      expect.stringContaining("#infra"),
+      expect.stringContaining("#Infra-lab"),
+    ]);
+    await wrapper.find('[data-testid="manager-filter"]').setValue("zzz");
+    expect(wrapper.text()).toContain('No tags match "zzz"');
+  });
+
+  it("has no filter box for a short list", () => {
+    expect(mountManager().find('[data-testid="manager-filter"]').exists()).toBe(false);
+  });
+
+  it("links each tag to its filtered list", () => {
+    expect(mountManager().find('[data-testid="tag-filter"]').attributes("href")).toBe("/edit?tag=9");
+  });
 });

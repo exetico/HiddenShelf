@@ -403,3 +403,31 @@ describe("app store hidden categories", () => {
     expect(linksApi.list).not.toHaveBeenCalled();
   });
 });
+
+describe("app store sorting", () => {
+  beforeEach(() => {
+    setActivePinia(createPinia());
+    vi.clearAllMocks();
+    localStorage.clear();
+  });
+
+  it("sends the sort and remembers it for next time", async () => {
+    const store = useAppStore();
+    store.settingsLoaded = true;
+    linksApi.list.mockResolvedValue({ links: [], pagination: { offset: 0, limit: 20, total: 0 } });
+    store.setSort("title");
+    await store.loadLinks({ reset: true });
+    expect(linksApi.list).toHaveBeenLastCalledWith(expect.objectContaining({ sort: "title" }));
+    setActivePinia(createPinia());
+    expect(useAppStore().sort).toBe("title");
+  });
+
+  it("falls back to your own order for unknown values", () => {
+    const store = useAppStore();
+    store.setSort("drop table");
+    expect(store.sort).toBe("");
+    localStorage.setItem("hiddenshelf_sort", "nonsense");
+    setActivePinia(createPinia());
+    expect(useAppStore().sort).toBe("");
+  });
+});

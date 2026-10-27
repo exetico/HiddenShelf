@@ -1,6 +1,7 @@
 <script setup>
-import { nextTick, ref } from "vue";
+import { computed, nextTick, ref } from "vue";
 import BaseModal from "@/components/common/BaseModal.vue";
+import ManagerFilter from "@/components/common/ManagerFilter.vue";
 import { useDialogStore } from "@/stores/dialog";
 import { linkCount } from "@/lib/linkCount";
 import { filterHref, isPlainClick } from "@/lib/filterLinks";
@@ -8,7 +9,7 @@ import { filterHref, isPlainClick } from "@/lib/filterLinks";
 // Same look as the categories manager: an "Add" button that opens a form,
 // then one row per tag with its link count, Edit and Delete. The name
 // shows the links with that tag.
-defineProps({
+const props = defineProps({
   open: Boolean,
   tags: {
     type: Array,
@@ -23,6 +24,14 @@ const showCreateForm = ref(false);
 const createInput = ref(null);
 
 const editingId = ref(null);
+
+// Filter box, shown once there are enough tags to need it
+const FILTER_FROM = 6;
+const query = ref("");
+const shownTags = computed(() => {
+  const q = query.value.trim().toLowerCase();
+  return q ? props.tags.filter((t) => t.name.toLowerCase().includes(q)) : props.tags;
+});
 const editName = ref("");
 
 async function openCreateForm() {
@@ -114,9 +123,21 @@ async function promptDelete(tag) {
       >
         No tags yet. Add one here, or while editing a link.
       </p>
-      <ul v-else class="space-y-2 max-h-[50dvh] overflow-auto">
+      <template v-else>
+      <ManagerFilter
+        v-if="tags.length >= FILTER_FROM"
+        v-model="query"
+        label="Filter tags"
+      />
+      <p
+        v-if="!shownTags.length"
+        class="text-sm text-center text-gray-500 dark:text-brand-400 py-4"
+      >
+        No tags match "{{ query.trim() }}".
+      </p>
+      <ul class="space-y-2 max-h-[50dvh] overflow-auto">
         <li
-          v-for="tag in tags"
+          v-for="tag in shownTags"
           :key="tag.id"
           class="border border-gray-200 dark:border-brand-800 rounded-md p-3"
           data-testid="tag-row"
@@ -181,6 +202,7 @@ async function promptDelete(tag) {
           </form>
         </li>
       </ul>
+      </template>
     </div>
   </BaseModal>
 </template>

@@ -1,4 +1,5 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
+import { nextTick } from "vue";
 import { mount } from "@vue/test-utils";
 import { createPinia, setActivePinia } from "pinia";
 import { useAppStore } from "@/stores/app";
@@ -292,6 +293,23 @@ describe("ViewLinksView", () => {
     appStore.sharedCategories = [{ id: 50, name: "Team", owner_email: "x@y.z" }];
     const cards = mountView().findAllComponents({ name: "LinkCardView" });
     expect(cards.every((c) => c.props("reorderable") === false)).toBe(true);
+  });
+
+  it("turns dragging off while the list is sorted, and back on for your own order", async () => {
+    const appStore = useAppStore();
+    appStore.links = [
+      { id: 8, title: "S1", category_id: 1, url: "https://s.com" },
+      { id: 9, title: "S2", category_id: 1, url: "https://t.com" },
+    ];
+    appStore.categories = [{ id: 1, name: "Work" }];
+    appStore.sort = "title";
+    const wrapper = mountView();
+    const draggable = () =>
+      wrapper.findAllComponents({ name: "LinkCardView" }).map((c) => c.props("reorderable"));
+    expect(draggable()).toEqual([false, false]);
+    appStore.sort = "";
+    await nextTick();
+    expect(draggable()).toEqual([true, true]);
   });
 
   describe("favorites", () => {

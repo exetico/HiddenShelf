@@ -790,4 +790,43 @@ describe("Links API", () => {
       expect((await json(await put({ is_hidden: false }))).category.is_hidden).toBe(0);
     });
   });
+
+  // ── Sorting ──
+
+  describe("sorting", () => {
+    beforeEach(async () => {
+      const db = getDb();
+      for (const [title, created, visits] of [
+        ["banana", "2026-01-02", 1],
+        ["Apple", "2026-01-03", 0],
+        ["cherry", "2026-01-01", 3],
+      ]) {
+        const { link } = await createLink({ title, url: `https://${title}.example` });
+        db.prepare("UPDATE links SET created_at = ? WHERE id = ?").run(created, link.id);
+        for (let i = 0; i < visits; i++) {
+          db.prepare("INSERT INTO link_visits (link_id) VALUES (?)").run(link.id);
+        }
+      }
+    });
+    const order = async (sort, extra = "") => {
+      const res = await app.request(`/api/links?limit=20&sort=${sort}${extra}`, {
+        headers: { Cookie: cookie },
+      });
+      return (await json(res)).links.map((l) => l.title);
+    };
+
+    it("sorts by date, title and visits", async () => {
+      expect(await order("newest")).toEqual(["Apple", "banana", "cherry"]);
+      expect(await order("oldest")).toEqual(["cherry", "banana", "Apple"]);
+      expect(await order("title")).toEqual(["Apple", "banana", "cherry"]);
+      expect(await order("title_desc")).toEqual(["cherry", "banana", "Apple"]);
+      expect(await order("visits")).toEqual(["cherry", "banana", "Apple"]);
+    });
+
+    it("sorts within each category when grouped, and ignores unknown sorts", async () => {
+      expect(await order("title", "&group=category")).toEqual(["Apple", "banana", "cherry"]);
+      // Unknown: your own order (newest first without positions)
+      expect(await order("drop table")).toEqual(["Apple", "banana", "cherry"]);
+    });
+  });
 });

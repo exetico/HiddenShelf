@@ -131,6 +131,17 @@ function syncTags(db, linkId, tagNames, userId) {
   }
 }
 
+// ?sort= for lists. The default is your own order (positions you set,
+// then newest); the others ignore positions.
+const VISITS = "(SELECT COUNT(*) FROM link_visits v WHERE v.link_id = l.id)";
+const SORTS = {
+  newest: "l.created_at DESC, l.id DESC",
+  oldest: "l.created_at ASC, l.id ASC",
+  title: "l.title COLLATE NOCASE ASC, l.id ASC",
+  title_desc: "l.title COLLATE NOCASE DESC, l.id DESC",
+  visits: `${VISITS} DESC, l.created_at DESC`,
+};
+
 // Links in your hidden categories only show when you ask for them: pick
 // the category, or pass ?include_hidden=1 (e.g. "show the hidden matches")
 const NOT_HIDDEN = `(l.category_id IS NULL OR l.category_id NOT IN
@@ -330,7 +341,9 @@ links.get("/", optionalAuth(), (c) => {
     .prepare(`SELECT COUNT(*) as total FROM links l WHERE ${whereClause}`)
     .get(...params).total;
 
-  const linkOrder = `CASE WHEN l.display_order IS NULL THEN 1 ELSE 0 END,
+  const linkOrder =
+    SORTS[c.req.query("sort")] ||
+    `CASE WHEN l.display_order IS NULL THEN 1 ELSE 0 END,
        l.display_order ASC,
        l.created_at DESC`;
   const select = `SELECT l.*, c.name as category_name,

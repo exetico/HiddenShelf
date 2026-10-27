@@ -13,6 +13,8 @@ export const linksApi = {
     group = "",
     // Also links in hidden categories
     includeHidden = false,
+    // "", newest, oldest, title, title_desc or visits
+    sort = "",
   } = {}) => {
     const params = new URLSearchParams();
     params.set("offset", String(offset ?? (page - 1) * limit));
@@ -22,6 +24,7 @@ export const linksApi = {
     if (tagId) params.set("tag_id", String(tagId));
     if (group) params.set("group", group);
     if (includeHidden) params.set("include_hidden", "1");
+    if (sort) params.set("sort", sort);
     params.set("include_shared", "1");
     const response = await request(`/api/links?${params.toString()}`);
     return response;

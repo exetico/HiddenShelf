@@ -1,7 +1,8 @@
 <script setup>
 import { appUrl } from "@/lib/appUrl";
-import { ref, reactive } from "vue";
+import { computed, ref, reactive } from "vue";
 import BaseModal from "@/components/common/BaseModal.vue";
+import ManagerFilter from "@/components/common/ManagerFilter.vue";
 import { sharesApi } from "@/services/api/sharesApi";
 import { useToastStore } from "@/stores/toast";
 import { useAppStore } from "@/stores/app";
@@ -21,6 +22,18 @@ const props = defineProps({
 const emit = defineEmits(["close", "create", "update", "remove", "filter"]);
 
 const toastStore = useToastStore();
+
+// Filter box, shown once there are enough categories to need it. The
+// order arrows hide while filtering: moving within a filtered list is
+// confusing.
+const FILTER_FROM = 6;
+const query = ref("");
+const shownCategories = computed(() => {
+  const q = query.value.trim().toLowerCase();
+  return q
+    ? props.categories.filter((c) => c.name.toLowerCase().includes(q))
+    : props.categories;
+});
 const appStore = useAppStore();
 
 const name = ref("");
@@ -286,9 +299,20 @@ const shareBackdrop = backdropClose(() => (showShareModal.value = false));
         top of the View page. The eye hides a category: its links stay out of
         lists and search until you pick it.
       </p>
+      <ManagerFilter
+        v-if="categories.length >= FILTER_FROM"
+        v-model="query"
+        label="Filter categories"
+      />
+      <p
+        v-if="query.trim() && !shownCategories.length"
+        class="text-sm text-center text-gray-500 dark:text-brand-400 py-4"
+      >
+        No categories match "{{ query.trim() }}".
+      </p>
       <ul class="space-y-2 max-h-[50dvh] overflow-auto">
         <li
-          v-for="(category, index) in categories"
+          v-for="(category, index) in shownCategories"
           :key="category.id"
           data-testid="category-row"
           class="border border-gray-200 dark:border-brand-800 rounded-md p-3"
@@ -299,7 +323,7 @@ const shareBackdrop = backdropClose(() => (showShareModal.value = false));
             class="flex items-center justify-between gap-2"
           >
             <div class="flex items-center gap-2 min-w-0">
-              <div class="flex flex-col -my-1 shrink-0">
+              <div v-if="!query.trim()" class="flex flex-col -my-1 shrink-0">
                 <button
                   class="text-gray-400 hover:text-gray-700 dark:text-brand-500 dark:hover:text-brand-200 disabled:opacity-30 leading-none"
                   :disabled="index === 0"
