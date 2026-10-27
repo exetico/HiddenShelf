@@ -101,6 +101,13 @@ app.use(
 // Serve public assets (favicon.png)
 app.use("/public/*", serveStatic({ root: projectRoot }));
 
+// Home screen icons, the web app manifest and the share preview image,
+// copied into the build from frontend/public
+app.use("/icons/*", serveStatic({ root: path.join(projectRoot, "public", "app") }));
+for (const file of ["/manifest.webmanifest", "/og-image.png"]) {
+  app.use(file, serveStatic({ root: path.join(projectRoot, "public", "app") }));
+}
+
 // Serve favicon from root
 app.use(
   "/favicon.png",
