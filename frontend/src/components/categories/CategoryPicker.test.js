@@ -132,6 +132,8 @@ describe("CategoryPicker", () => {
     expect(categoriesApi.update).toHaveBeenCalledWith(1, { is_favorite: true });
   });
 
+});
+
 describe("hidden categories in the pickers", () => {
   let pinia, appStore;
   beforeEach(() => {
