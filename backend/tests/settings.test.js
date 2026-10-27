@@ -32,7 +32,7 @@ describe("Settings API", () => {
       });
       const data = await json(res);
       expect(data.success).toBe(true);
-      expect(data.settings.links_per_page).toBe(20);
+      expect(data.settings.links_per_page).toBe(100); // room for a whole shelf on one page
       expect(data.settings.brand_color).toBe("#687061");
     });
 

@@ -24,7 +24,7 @@ export const useAppStore = defineStore("app", {
     tags: [],
     sharedCategories: [],
     settings: {
-      links_per_page: 20,
+      links_per_page: 100,
       brand_color: "#687061",
     },
     appConfig: {

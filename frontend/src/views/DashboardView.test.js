@@ -184,7 +184,9 @@ describe("DashboardView", () => {
       appStore.tags = [{ id: 7, name: "recipes", usage_count: 3 }];
       appStore.search = "old";
       const wrapper = mountDashboard();
-      const tag = wrapper.findAll("button").find((b) => b.text().includes("#recipes"));
+      const tag = wrapper.findAll("a").find((b) => b.text().includes("#recipes"));
+      // A real link, for Ctrl/⌘-click and copying
+      expect(tag.attributes("href")).toBe("/view?tag=7");
       await tag.trigger("click");
       await flushPromises();
       expect(appStore.filterTag).toBe("7");
@@ -237,7 +239,7 @@ describe("DashboardView", () => {
 
   describe("single-use tags", () => {
     const tagButtons = (wrapper) =>
-      wrapper.findAll("button").filter((b) => b.text().startsWith("#"));
+      wrapper.findAll("a").filter((b) => b.text().startsWith("#"));
 
     it("hides tags used once behind a toggle", async () => {
       const appStore = useAppStore();
@@ -313,7 +315,7 @@ describe("DashboardView", () => {
     const appStore = useAppStore();
     appStore.tags = [{ id: 4, name: "infra", usage_count: 3 }];
     const wrapper = mountDashboard();
-    const tag = wrapper.findAll("button").find((b) => b.text().includes("#infra"));
+    const tag = wrapper.findAll("a").find((b) => b.text().includes("#infra"));
     await tag.trigger("contextmenu", { clientX: 10, clientY: 20 });
     const menu = useContextMenuStore();
     expect(menu.open).toBe(true);

@@ -14,7 +14,7 @@ import { requireAuth } from "../middleware/auth.js";
 const settings = new Hono();
 
 const DEFAULT_SETTINGS = {
-  links_per_page: 20,
+  links_per_page: 100,
   brand_color: "#687061",
 };
 

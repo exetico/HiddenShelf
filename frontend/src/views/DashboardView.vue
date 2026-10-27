@@ -7,6 +7,7 @@ import { useContextMenuStore } from "@/stores/contextMenu";
 import { useDialogStore } from "@/stores/dialog";
 import { useToastStore } from "@/stores/toast";
 import { linksApi } from "@/services/api/linksApi";
+import { filterHref, isPlainClick } from "@/lib/filterLinks";
 
 const appStore = useAppStore();
 const router = useRouter();
@@ -271,18 +272,20 @@ const topVisitedLinks = computed(() =>
           Tap a tag to see every link that has it, across all categories.
         </p>
         <div class="flex flex-wrap items-center gap-2">
-          <button
+          <!-- Real links, so Ctrl/⌘-click opens the list in a new tab -->
+          <a
             v-for="tag in tagCloud"
             :key="tag.id"
+            :href="filterHref('view', { tag: tag.id })"
             class="flex items-center gap-1 px-3 py-1 rounded-full bg-gray-100 dark:bg-brand-800 text-gray-700 dark:text-brand-200 hover:bg-brand-600 hover:text-white transition-colors"
             :class="tag.sizeClass"
             :title="`Show the ${tag.usage_count || 0} links tagged ${tag.name}`"
-            @click="openTag(tag)"
+            @click="isPlainClick($event) && ($event.preventDefault(), openTag(tag))"
             @contextmenu="openTagMenu($event, tag)"
           >
             #{{ tag.name }}
             <span class="text-xs opacity-60">{{ tag.usage_count || 0 }}</span>
-          </button>
+          </a>
           <button
             v-if="hiddenTagCount && commonTags.length"
             class="text-xs text-brand-600 dark:text-brand-300 hover:underline px-1"

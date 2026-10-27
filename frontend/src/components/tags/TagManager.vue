@@ -3,6 +3,7 @@ import { nextTick, ref } from "vue";
 import BaseModal from "@/components/common/BaseModal.vue";
 import { useDialogStore } from "@/stores/dialog";
 import { linkCount } from "@/lib/linkCount";
+import { filterHref, isPlainClick } from "@/lib/filterLinks";
 
 // Same look as the categories manager: an "Add" button that opens a form,
 // then one row per tag with its link count, Edit and Delete. The name
@@ -124,11 +125,12 @@ async function promptDelete(tag) {
             v-if="editingId !== tag.id"
             class="flex items-center justify-between gap-2"
           >
-            <button
+            <a
               class="flex items-center gap-2 min-w-0 text-left group"
+              :href="filterHref('edit', { tag: tag.id })"
               :title="`Show links tagged ${tag.name}`"
               data-testid="tag-filter"
-              @click="emit('filter', tag.id)"
+              @click="isPlainClick($event) && ($event.preventDefault(), emit('filter', tag.id))"
             >
               <i class="mdi mdi-tag-outline text-lg text-brand-600 dark:text-brand-400"></i>
               <span class="min-w-0">
@@ -137,7 +139,7 @@ async function promptDelete(tag) {
                   {{ linkCount(tag.usage_count) }}
                 </span>
               </span>
-            </button>
+            </a>
             <div class="flex items-center gap-3 text-sm shrink-0">
               <button
                 :title="`Rename ${tag.name}`"

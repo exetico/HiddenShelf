@@ -26,12 +26,18 @@ vi.mock("@/services/api/linksApi", () => ({
     }),
   },
 }));
-vi.mock("vue-router", () => ({ useRouter: () => ({ push: vi.fn() }) }));
+const mockRoute = { query: {} };
+const mockReplace = vi.fn((to) => { mockRoute.query = to.query; });
+vi.mock("vue-router", () => ({
+  useRoute: () => mockRoute,
+  useRouter: () => ({ push: vi.fn(), replace: mockReplace }),
+}));
 
 describe("ViewLinksView", () => {
   let pinia;
 
   beforeEach(() => {
+    mockRoute.query = {};
     pinia = createPinia();
     setActivePinia(pinia);
 
