@@ -6,6 +6,7 @@ describe("filter links", () => {
     expect(filterQuery({ category: 3, tag: "", q: "  " })).toEqual({ category: "3" });
     expect(filterPath("view", { tag: 7, q: " grafana " })).toBe("/view?tag=7&q=grafana");
     expect(filterPath("edit", {})).toBe("/edit");
+    expect(filterPath("edit", { sort: "title" })).toBe("/edit?sort=title");
     expect(filterPath("view", { category: "uncategorized" })).toBe("/view?category=uncategorized");
   });
 

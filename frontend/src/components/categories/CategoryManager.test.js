@@ -143,6 +143,18 @@ describe("CategoryManager", () => {
     expect(appStore.toggleHidden).toHaveBeenCalledWith(expect.objectContaining({ id: 2 }));
   });
 
+  it("filters a long list, hiding the order arrows meanwhile", async () => {
+    const many = ["Work", "Home", "Servers", "Friend servers", "Reading", "Family"].map(
+      (name, i) => ({ id: i + 1, name, link_count: 1 }),
+    );
+    const wrapper = mountManager({ categories: many });
+    expect(wrapper.find('[aria-label="Move Work down"]').exists()).toBe(true);
+    await wrapper.find('[data-testid="manager-filter"]').setValue("server");
+    const rows = wrapper.findAll('[data-testid="category-row"]');
+    expect(rows.map((r) => r.find(".font-medium").text())).toEqual(["Servers", "Friend servers"]);
+    expect(wrapper.find('[aria-label^="Move"]').exists()).toBe(false);
+  });
+
   it("says what it is, and picking a category shows its links", async () => {
     const wrapper = mountManager();
     expect(wrapper.text()).toContain("Pick a category to see its links");

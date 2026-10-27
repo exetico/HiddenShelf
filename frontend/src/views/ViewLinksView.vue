@@ -10,6 +10,7 @@ import CategoryFilterBar from "@/components/categories/CategoryFilterBar.vue";
 import CategoryPicker from "@/components/categories/CategoryPicker.vue";
 import SearchField from "@/components/common/SearchField.vue";
 import ActiveTagFilter from "@/components/tags/ActiveTagFilter.vue";
+import SortSelect from "@/components/common/SortSelect.vue";
 import HiddenMatchesNote from "@/components/categories/HiddenMatchesNote.vue";
 import LinkDetailsSheet from "@/components/links/LinkDetailsSheet.vue";
 import LinkPreviewPopover from "@/components/links/LinkPreviewPopover.vue";
@@ -204,14 +205,19 @@ function toggleCategory(key) {
     <ActiveTagFilter />
     <HiddenMatchesNote />
 
-    <!-- Pagination info -->
-    <p
+    <!-- Count and sort -->
+    <div
       v-if="appStore.total > 0"
-      class="text-xs sm:text-sm text-gray-500 dark:text-brand-400"
-      data-testid="link-count"
+      class="flex items-center justify-between gap-2"
     >
-      Showing {{ appStore.links.length }} of {{ appStore.total }} links
-    </p>
+      <p
+        class="text-xs sm:text-sm text-gray-500 dark:text-brand-400"
+        data-testid="link-count"
+      >
+        Showing {{ appStore.links.length }} of {{ appStore.total }} links
+      </p>
+      <SortSelect />
+    </div>
 
     <!-- Two columns on wide screens when there's more than one category -->
     <section
@@ -279,7 +285,10 @@ function toggleCategory(key) {
                 :link="link"
                 :group-key="group.key"
                 :reorderable="
-                  !group.owner && !group.fixedOrder && group.links.length > 1
+                  !group.owner &&
+                  !group.fixedOrder &&
+                  !appStore.sort &&
+                  group.links.length > 1
                 "
                 @context-action="handleContextAction"
                 @details="openDetails"

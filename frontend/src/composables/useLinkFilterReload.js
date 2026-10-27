@@ -33,6 +33,7 @@ export function useLinkFilterReload({ delay = 300 } = {}) {
     },
   );
   watch(() => appStore.filterCategory, reload);
+  watch(() => appStore.sort, reload);
 
   onUnmounted(() => clearTimeout(timer));
 }

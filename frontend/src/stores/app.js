@@ -14,6 +14,24 @@ import { useDialogStore } from "@/stores/dialog";
 let linksInFlight = null;
 let linksRequestId = 0;
 
+export const SORT_OPTIONS = [
+  { value: "", label: "Your order" },
+  { value: "newest", label: "Newest first" },
+  { value: "oldest", label: "Oldest first" },
+  { value: "title", label: "Title A–Z" },
+  { value: "title_desc", label: "Title Z–A" },
+  { value: "visits", label: "Most visited" },
+];
+const SORT_KEY = "hiddenshelf_sort";
+function readSort() {
+  try {
+    const value = localStorage.getItem(SORT_KEY) || "";
+    return SORT_OPTIONS.some((o) => o.value === value) ? value : "";
+  } catch {
+    return "";
+  }
+}
+
 export const useAppStore = defineStore("app", {
   state: () => ({
     loading: false,
@@ -50,6 +68,8 @@ export const useAppStore = defineStore("app", {
     // and whether the person asked to see them anyway
     hiddenMatches: 0,
     showHidden: false,
+    // How lists are sorted; "" is your own order. Remembered per browser.
+    sort: readSort(),
   }),
   getters: {
     hasMore: (state) => state.links.length < state.total,
@@ -159,6 +179,7 @@ export const useAppStore = defineStore("app", {
         tagId: this.filterTag,
         group: this.linkGrouping,
         includeHidden: this.showHidden,
+        sort: this.sort,
       });
       // A newer reset started meanwhile; its result is the one to show
       if (id !== linksRequestId) return;
@@ -317,6 +338,16 @@ export const useAppStore = defineStore("app", {
       await this.loadCategories();
       const toastStore = useToastStore();
       toastStore.success("Category updated");
+    },
+    // The list reloads through useLinkFilterReload, which watches this
+    setSort(value) {
+      this.sort = SORT_OPTIONS.some((o) => o.value === value) ? value : "";
+      try {
+        if (this.sort) localStorage.setItem(SORT_KEY, this.sort);
+        else localStorage.removeItem(SORT_KEY);
+      } catch {
+        // private mode: the choice lasts for this visit
+      }
     },
     // Show the matches in hidden categories for the current search or tag
     async revealHidden(show = true) {

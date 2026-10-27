@@ -14,6 +14,7 @@ import TagManager from "@/components/tags/TagManager.vue";
 import TrashModal from "@/components/links/TrashModal.vue";
 import SearchField from "@/components/common/SearchField.vue";
 import ActiveTagFilter from "@/components/tags/ActiveTagFilter.vue";
+import SortSelect from "@/components/common/SortSelect.vue";
 import HiddenMatchesNote from "@/components/categories/HiddenMatchesNote.vue";
 
 const route = useRoute();
@@ -227,14 +228,19 @@ async function handleDelete(id) {
     <ActiveTagFilter />
     <HiddenMatchesNote />
 
-    <!-- Pagination info -->
-    <p
+    <!-- Count and sort -->
+    <div
       v-if="appStore.total > 0"
-      class="text-xs sm:text-sm text-gray-500 dark:text-brand-400"
-      data-testid="link-count"
+      class="flex items-center justify-between gap-2"
     >
-      Showing {{ appStore.links.length }} of {{ appStore.total }} links
-    </p>
+      <p
+        class="text-xs sm:text-sm text-gray-500 dark:text-brand-400"
+        data-testid="link-count"
+      >
+        Showing {{ appStore.links.length }} of {{ appStore.total }} links
+      </p>
+      <SortSelect />
+    </div>
 
     <div
       v-if="appStore.links.length"
