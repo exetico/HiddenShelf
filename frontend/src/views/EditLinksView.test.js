@@ -327,4 +327,19 @@ describe("EditLinksView", () => {
     const options = mountEdit().findAll('[data-testid="category-filter"] option').map((o) => o.text());
     expect(options).toEqual(["All Categories", "Work", "Friend (hidden)"]);
   });
+
+  it("keeps the category filter and every button in one bar, in order", () => {
+    const bar = mountEdit().find('[data-testid="edit-toolbar"]');
+    const ids = bar
+      .findAll("[data-testid]")
+      .map((el) => el.attributes("data-testid"))
+      .filter((id) => ["category-filter", "add-link", "open-categories", "open-tags", "open-trash"].includes(id));
+    expect(ids).toEqual(["category-filter", "add-link", "open-categories", "open-tags", "open-trash"]);
+    // Trash looks like the managers: outlined, no fill, pushed to the end
+    const trash = bar.find('[data-testid="open-trash"]').classes();
+    const tags = bar.find('[data-testid="open-tags"]').classes();
+    expect(trash).toEqual(expect.arrayContaining([...tags, "ml-auto"]));
+    expect(tags).toContain("border");
+    expect(tags.some((c) => c.startsWith("bg-"))).toBe(false);
+  });
 });
