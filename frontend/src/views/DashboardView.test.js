@@ -319,6 +319,13 @@ describe("DashboardView", () => {
     expect(mockPush).not.toHaveBeenCalled();
   });
 
+  it("links to the help page", async () => {
+    const link = mountDashboard().find('[data-testid="help-link"]');
+    expect(link.attributes("href")).toBe("/help");
+    await link.trigger("click");
+    expect(mockPush).toHaveBeenCalledWith({ name: "help" });
+  });
+
   it("draws tile art without blurred blobs", () => {
     const tile = mountDashboard().find('[data-testid="stat-links"]');
     expect(tile.find(".blur-md").exists()).toBe(false);

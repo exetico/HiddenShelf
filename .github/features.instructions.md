@@ -121,6 +121,25 @@ This document provides a comprehensive overview of all features, functionality, 
 - **Visit stats section**: Shows total visits and top 5 most-visited links for the last 30 days (loaded via `appStore.loadVisitStats()` on mount); section is hidden when no visits have occurred
 - **4 quick action buttons**: View links → `/view`, Edit links → `/edit`, Profile → `/profile`, Import Data → `/profile`
 - **Theme toggle section**: Shows current mode label ("Light mode" / "Dark mode") with sun/moon icon toggle button
+- **Tags**: Tag cloud of real links (`/view?tag=ID`), so Ctrl/⌘-click opens a new tab
+- **Tools card**: One link per tool (`TOOLS` in `lib/urlTools.js`) to `/tools?tool=KEY`
+- **Features and FAQ link**: At the bottom, to `/help`
+
+#### Tools (`ToolsView.vue`, `/tools`)
+
+- Linked from the dashboard and the toolbox button in the top bar (`nav-tools-page`)
+- The open tool is in the address (`?tool=encode|clean|inspect`; none means QR)
+- Everything runs in the browser (`lib/urlTools.js`); nothing is sent to the server
+- **QR code**: For any address or text (`LinkQrCode`, with a `hint` prop). Addresses over `LONG_QR_URL` (80) characters show a hint to save the link and use its public link, with "Add link" (`editor.create({ url })`)
+- **Encode / decode**: `encodeURIComponent` (a query value) or `encodeURI` (a whole address); decoding reads `+` as a space and explains invalid input
+- **Clean link**: `cleanTracking()` removes `utm_*`, `pk_*`, `mtm_*`, `fbclid`, `gclid`, `msclkid` and other tracking parameters, lists them, and offers copy or "Add link"
+- **Inspect link**: `urlParts()` shows protocol, host, port, path, fragment and query parameters (tracking ones marked)
+
+#### Help (`HelpView.vue`, `/help`)
+
+- Every feature (grouped) and the FAQ, from `frontend/src/content/features.js`
+- Public (`meta.public`), and inside the app shell when signed in (`meta.shellWhenSignedIn`, `lib/routeShell.js`)
+- The login page shows the features marked `front: true` and links here
 
 #### View Mode (`ViewLinksView.vue`)
 
@@ -133,6 +152,8 @@ This document provides a comprehensive overview of all features, functionality, 
 - **Shared category owner badge**: Shows owner email next to shared category headers
 - **Empty state**: `mdi-link-off` icon with "No links yet" message when no links exist
 - **Link count per group**: Category headers show count of links in that group
+- **Sorting** (`SortSelect.vue`): Your order, Newest first, Oldest first, Title A–Z, Title Z–A, Most visited. Stored in `appStore.sort` and localStorage (`hiddenshelf_sort`), sent as `?sort=` to `GET /api/links`. Drag to reorder is off while a sort is on
+- **Filters in the address** (`useFilterQuery`, `lib/filterLinks.js`): `?category=`, `?tag=`, `?q=` and `?sort=` sync with the store both ways, so filtered lists can be bookmarked and linked to
 
 #### Edit Mode (`EditLinksView.vue`)
 
@@ -143,7 +164,15 @@ This document provides a comprehensive overview of all features, functionality, 
 - **Link cards** (`LinkCardEdit.vue`): Edit-mode cards with public/private emoji, edit/delete actions
 - **Empty state**: `mdi-link-off` icon with "No links yet" message
 - **Pagination**: "Load more" button
-- **Modal management**: `LinkFormModal`, `CategoryManager`, `TagManager` opened via boolean refs
+- **Modal management**: `CategoryManager`, `TagManager` opened via boolean refs; links open in the shared editor
+- **Sorting and filters in the address**: Same as View mode
+- **Manager filter box** (`ManagerFilter.vue`): The tag and category managers show a filter box from 6 entries; Esc clears it first. Manager rows link to `/edit?tag=ID` / `/edit?category=ID`
+
+#### Shared link editor (`stores/linkEditor.js`, `LinkEditorHost.vue`)
+
+- One `LinkFormModal`, mounted in `App.vue`, so "Add link" (top bar, N) and Edit open over the current page
+- `create(prefill)` takes the category and tag from the current filters
+- **Unsaved changes**: Closing (Esc, backdrop, Cancel) with changes asks "Discard your changes?" first
 
 #### Profile (`ProfileView.vue`)
 
@@ -250,6 +279,7 @@ This document provides a comprehensive overview of all features, functionality, 
 - **Direct Redirect**: Optional server-side redirect; `?stay` shows the page instead
 - **Visit Tracking**: Analytics via `/api/link_visits`
 - **Share URL Format**: `/h/{hash}`; old `/public/view.html?hash={hash}` URLs redirect there
+- **Public link dialog** (`PublicLinkDialog.vue`): The short link to copy, its QR code, and "Embed on a website" (color choice, live preview, iframe code from `lib/embed.js`)
 
 ## Category System
 
@@ -523,6 +553,13 @@ This document provides a comprehensive overview of all features, functionality, 
 - **Visit Logging**: The page posts to `/api/link_visits`
 - **Error Handling**: Invalid/private link messages
 - **Dark mode**: Follows the app's theme setting
+
+### Embeddable card (`/h/{hash}/embed`)
+
+- A small server-rendered card (`renderEmbedCard` in `publicLink.js`): icon, title, two-line description, host, and an Open button to `/h/{hash}` in a new tab
+- No JavaScript; CSP `default-src 'none'; style-src 'unsafe-inline'; img-src data:; frame-ancestors *`, so any site may frame it
+- `?theme=light|dark` fixes the colors; otherwise it follows `prefers-color-scheme`
+- Showing it isn't a visit; 404 for private, deleted or invalid links
 
 ### URL Routing
 

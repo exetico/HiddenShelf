@@ -10,6 +10,8 @@ import { linksApi } from "@/services/api/linksApi";
 import { filterHref, isPlainClick } from "@/lib/filterLinks";
 import { TOOLS, toolHref, toolQuery } from "@/lib/urlTools";
 
+const helpHref = `${import.meta.env.BASE_URL.replace(/\/$/, "")}/help`;
+
 const appStore = useAppStore();
 const router = useRouter();
 const { isDark, toggleTheme } = useTheme();
@@ -381,8 +383,18 @@ const topVisitedLinks = computed(() =>
       </button>
     </div>
 
-    <!-- Easter egg -->
-    <p class="text-center pt-2 pb-4">
+    <!-- Easter egg, and the way to the help page -->
+    <p class="flex items-center justify-center gap-4 pt-2 pb-4">
+      <a
+        :href="helpHref"
+        class="text-xs text-gray-400 dark:text-brand-600 hover:text-brand-600 dark:hover:text-brand-300 transition-colors"
+        title="What Hidden Shelf can do, and answers to common questions"
+        data-testid="help-link"
+        @click="isPlainClick($event) && ($event.preventDefault(), router.push({ name: 'help' }))"
+      >
+        <i class="mdi mdi-help-circle-outline" aria-hidden="true"></i>
+        Features and FAQ
+      </a>
       <button
         type="button"
         class="text-xs text-gray-400 dark:text-brand-600 hover:text-brand-600 dark:hover:text-brand-300 transition-colors disabled:opacity-50"

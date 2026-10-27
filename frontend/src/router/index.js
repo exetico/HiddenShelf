@@ -4,6 +4,7 @@ import ViewLinksView from "@/views/ViewLinksView.vue";
 import EditLinksView from "@/views/EditLinksView.vue";
 import ProfileView from "@/views/ProfileView.vue";
 import ToolsView from "@/views/ToolsView.vue";
+import HelpView from "@/views/HelpView.vue";
 import LoginView from "@/views/LoginView.vue";
 import { useAuthStore } from "@/stores/auth";
 import { useToastStore } from "@/stores/toast";
@@ -28,6 +29,13 @@ const routes = [
   { path: "/edit", name: "edit", component: EditLinksView },
   { path: "/profile", name: "profile", component: ProfileView },
   { path: "/tools", name: "tools", component: ToolsView },
+  // Open to everyone; inside the app when you're signed in
+  {
+    path: "/help",
+    name: "help",
+    component: HelpView,
+    meta: { public: true, shellWhenSignedIn: true },
+  },
   // Catch-all: redirect unknown routes to dashboard with a toast notification
   { path: "/:pathMatch(.*)*", name: "not-found", redirect: "/dashboard" },
 ];
