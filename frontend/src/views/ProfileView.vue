@@ -10,6 +10,7 @@ import { useDialogStore } from "@/stores/dialog";
 import { sharesApi } from "@/services/api/sharesApi";
 import { accountApi } from "@/services/api/accountApi";
 import ImportExportModal from "@/components/common/ImportExportModal.vue";
+import { backdropClose } from "@/lib/backdropClose";
 
 const authStore = useAuthStore();
 const appStore = useAppStore();
@@ -235,6 +236,10 @@ async function confirmDeleteEverything() {
     toastStore.error("Failed to delete all data: " + error.message);
   }
 }
+
+// Closes on a backdrop click, but not when a text selection ends there
+const joinBackdrop = backdropClose(() => cancelJoinShare());
+const deleteBackdrop = backdropClose(() => (showDeleteModal.value = false));
 </script>
 
 <template>
@@ -587,7 +592,7 @@ async function confirmDeleteEverything() {
       <div
         v-if="showJoinModal && joinPreview"
         class="fixed inset-0 bg-black/50 flex items-center justify-center z-60 p-4"
-        @click.self="cancelJoinShare"
+        v-on="joinBackdrop"
       >
         <div
           class="bg-white dark:bg-brand-900 rounded-lg shadow-xl max-w-sm w-full p-6"
@@ -640,7 +645,7 @@ async function confirmDeleteEverything() {
       <div
         v-if="showDeleteModal"
         class="fixed inset-0 bg-black/50 flex items-center justify-center z-60 p-4"
-        @click.self="showDeleteModal = false"
+        v-on="deleteBackdrop"
       >
         <div
           class="bg-white dark:bg-brand-900 rounded-lg shadow-xl max-w-md w-full p-6"

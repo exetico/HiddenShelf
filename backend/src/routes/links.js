@@ -26,6 +26,7 @@ import { getDb } from "../lib/database.js";
 import {
   sanitize,
   isValidUrl,
+  withScheme,
   generateHash,
   successResponse,
   errorResponse,
@@ -86,7 +87,7 @@ function attachTagsAndVisits(db, rows) {
  */
 export function normalizeUrl(value) {
   try {
-    const url = new URL(String(value).trim());
+    const url = new URL(withScheme(value));
     const host = url.host.toLowerCase().replace(/^www\./, "");
     const path = url.pathname.replace(/\/+$/, "");
     return `${host}${path}${url.search}`;
@@ -383,7 +384,7 @@ links.post("/", requireAuth(), async (c) => {
   const db = getDb();
   const input = await c.req.json().catch(() => ({}));
 
-  const url = sanitize(input.url || "");
+  const url = withScheme(sanitize(input.url || ""));
   const title = sanitize(input.title || "");
   const description = sanitize(input.description || "");
   const icon = sanitize(input.icon || "");
@@ -518,7 +519,7 @@ links.put("/", requireAuth(), async (c) => {
 
   const input = await c.req.json().catch(() => ({}));
 
-  const url = sanitize(input.url ?? existing.url);
+  const url = withScheme(sanitize(input.url ?? existing.url));
   const title = sanitize(input.title ?? existing.title);
   const description = sanitize(input.description ?? existing.description);
   const icon = sanitize(input.icon ?? existing.icon);

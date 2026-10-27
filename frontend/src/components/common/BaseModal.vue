@@ -1,5 +1,6 @@
 <script setup>
 import { ref, watch, nextTick, onUnmounted } from "vue";
+import { backdropClose } from "@/lib/backdropClose";
 
 const props = defineProps({
   open: {
@@ -38,6 +39,9 @@ watch(
 onUnmounted(() => {
   document.removeEventListener("keydown", handleKeydown);
 });
+
+// Closes on a backdrop click, but not when a text selection ends there
+const backdrop = backdropClose(() => emit("close"));
 </script>
 
 <template>
@@ -49,7 +53,7 @@ onUnmounted(() => {
       aria-modal="true"
       :aria-label="title"
       class="fixed inset-0 z-40 bg-black/40 flex items-end sm:items-center justify-center sm:p-4"
-      @click.self="$emit('close')"
+      v-on="backdrop"
     >
       <div
         ref="modalRef"

@@ -6,6 +6,7 @@ import { linksApi } from "@/services/api/linksApi";
 import { categoriesApi } from "@/services/api/categoriesApi";
 import { tagsApi } from "@/services/api/tagsApi";
 import BaseModal from "@/components/common/BaseModal.vue";
+import { backdropClose } from "@/lib/backdropClose";
 
 defineProps({
   open: Boolean,
@@ -313,6 +314,9 @@ function resetImport() {
   importPreview.value = false;
   validatedImportData = null;
 }
+
+// Closes on a backdrop click, but not when a text selection ends there
+const confirmBackdrop = backdropClose(() => (showImportConfirmModal.value = false));
 </script>
 
 <template>
@@ -426,7 +430,7 @@ function resetImport() {
         <div
           v-if="showImportConfirmModal"
           class="fixed inset-0 bg-black/50 flex items-center justify-center z-80 p-4"
-          @click.self="showImportConfirmModal = false"
+          v-on="confirmBackdrop"
         >
           <div
             class="bg-white dark:bg-brand-900 rounded-lg shadow-xl max-w-sm w-full p-6"

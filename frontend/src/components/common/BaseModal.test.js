@@ -35,4 +35,11 @@ describe("BaseModal", () => {
     await wrapper.find('[role="dialog"]').trigger("click");
     expect(wrapper.emitted("close")).toHaveLength(2);
   });
+
+  it("stays open when a text selection is let go outside it", async () => {
+    const wrapper = mountModal();
+    await wrapper.find("section").trigger("mousedown");
+    await wrapper.find('[role="dialog"]').trigger("click");
+    expect(wrapper.emitted("close")).toBeFalsy();
+  });
 });

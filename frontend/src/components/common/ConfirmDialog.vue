@@ -1,6 +1,7 @@
 <script setup>
 import { ref, watch, nextTick, onUnmounted } from "vue";
 import { useDialogStore } from "@/stores/dialog";
+import { backdropClose } from "@/lib/backdropClose";
 
 // Renders the dialog from the dialog store; see stores/dialog.js
 const dialog = useDialogStore();
@@ -34,6 +35,9 @@ watch(
 onUnmounted(() =>
   window.removeEventListener("keydown", handleKeydown, true),
 );
+
+// Closes on a backdrop click, but not when a text selection ends there
+const backdrop = backdropClose(() => dialog.close(false));
 </script>
 
 <template>
@@ -46,7 +50,7 @@ onUnmounted(() =>
       aria-labelledby="confirm-dialog-title"
       aria-describedby="confirm-dialog-message"
       class="fixed inset-0 z-[95] bg-black/50 flex items-end sm:items-center justify-center sm:p-4"
-      @click.self="dialog.close(false)"
+      v-on="backdrop"
     >
       <div
         class="w-full sm:max-w-sm bg-white dark:bg-brand-900 rounded-t-2xl sm:rounded-xl shadow-xl border border-gray-200 dark:border-brand-800 p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] sm:pb-5"

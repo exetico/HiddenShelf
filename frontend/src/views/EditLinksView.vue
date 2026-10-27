@@ -63,7 +63,7 @@ onMounted(async () => {
 // &url=…&title=… for the page it was clicked on
 function openCreateFromRoute() {
   openCreate();
-  activeLink.value = quickAddFromQuery(route.query);
+  activeLink.value = { ...activeLink.value, ...quickAddFromQuery(route.query) };
   router.replace({ name: "edit" });
 }
 watch(
@@ -84,8 +84,15 @@ watch(
 appStore.setLinkGrouping("");
 useLinkFilterReload();
 
+// A new link starts in the category and with the tag the list is
+// filtered by, so it shows up in the list you're looking at
 function openCreate() {
-  activeLink.value = null;
+  const category = Number(appStore.filterCategory) || "";
+  const tag = appStore.tags.find((t) => String(t.id) === appStore.filterTag);
+  activeLink.value = {
+    category_id: appStore.categories.some((c) => c.id === category) ? category : "",
+    tags: tag ? [{ name: tag.name }] : [],
+  };
   showLinkModal.value = true;
 }
 
@@ -101,6 +108,34 @@ async function handleSave(payload) {
     await appStore.createLink(payload);
   }
   showLinkModal.value = false;
+}
+
+// The managers show link counts, which editing links changes
+function openCategories() {
+  showCategoryModal.value = true;
+  appStore.loadCategories().catch(() => {});
+}
+function openTags() {
+  showTagModal.value = true;
+  appStore.loadTags().catch(() => {});
+}
+
+async function runTagAction(action) {
+  try {
+    await action();
+  } catch (error) {
+    toastStore.error(error.message || "Couldn't change the tag");
+  }
+}
+
+// Picking a category or tag in its manager shows its links here
+function filterByCategory(id) {
+  showCategoryModal.value = false;
+  localFilterCategory.value = id;
+}
+function filterByTag(id) {
+  showTagModal.value = false;
+  appStore.filterByTag(id);
 }
 
 // Asks, then moves it to the trash; the toast has Undo
@@ -127,21 +162,24 @@ async function handleDelete(id) {
       >
         + Add link
       </button>
+      <!-- Both managers open the same way and look the same -->
       <button
-        title="Create, edit, order and share categories"
-        class="px-3 py-1.5 sm:px-4 sm:py-2 text-sm sm:text-base rounded-md bg-brand-600 text-white hover:bg-brand-700"
+        title="Manage categories: add, rename, order, share and delete"
+        class="flex items-center gap-1.5 px-3 py-1.5 sm:px-4 sm:py-2 text-sm sm:text-base rounded-md border border-gray-300 dark:border-brand-700 text-gray-700 dark:text-brand-200 hover:bg-gray-100 dark:hover:bg-brand-800"
         data-testid="open-categories"
-        @click="showCategoryModal = true"
+        @click="openCategories"
       >
-        Categories
+        <i class="mdi mdi-folder-cog-outline" aria-hidden="true"></i>
+        <span class="sm:hidden">Categories</span><span class="max-sm:hidden">Manage categories</span>
       </button>
       <button
-        title="Create and delete tags"
-        class="px-3 py-1.5 sm:px-4 sm:py-2 text-sm sm:text-base rounded-md bg-brand-600 text-white hover:bg-brand-700"
+        title="Manage tags: add, rename and delete"
+        class="flex items-center gap-1.5 px-3 py-1.5 sm:px-4 sm:py-2 text-sm sm:text-base rounded-md border border-gray-300 dark:border-brand-700 text-gray-700 dark:text-brand-200 hover:bg-gray-100 dark:hover:bg-brand-800"
         data-testid="open-tags"
-        @click="showTagModal = true"
+        @click="openTags"
       >
-        Tags
+        <i class="mdi mdi-tag-multiple-outline" aria-hidden="true"></i>
+        <span class="sm:hidden">Tags</span><span class="max-sm:hidden">Manage tags</span>
       </button>
       <button
         title="Deleted links: restore them or delete them for good"
@@ -243,6 +281,7 @@ async function handleDelete(id) {
       @create="appStore.createCategory"
       @update="(id, payload) => appStore.updateCategory(id, payload)"
       @remove="appStore.deleteCategory"
+      @filter="filterByCategory"
     />
 
     <TrashModal :open="showTrash" @close="showTrash = false" />
@@ -252,7 +291,9 @@ async function handleDelete(id) {
       :tags="appStore.tags"
       @close="showTagModal = false"
       @create="appStore.createTag"
-      @remove="appStore.deleteTag"
+      @rename="(id, name) => runTagAction(() => appStore.renameTag(id, name))"
+      @remove="(id) => runTagAction(() => appStore.deleteTag(id))"
+      @filter="filterByTag"
     />
   </section>
 </template>

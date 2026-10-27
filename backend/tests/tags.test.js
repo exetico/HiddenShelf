@@ -142,4 +142,50 @@ describe("Tags API", () => {
       expect(res.status).toBe(404);
     });
   });
+
+  // ── PUT /api/tags?id= ──
+
+  describe("PUT /api/tags?id=", () => {
+    function addTag(name, owner = userId) {
+      return getDb()
+        .prepare("INSERT INTO tags (name, user_id) VALUES (?, ?)")
+        .run(name, owner).lastInsertRowid;
+    }
+    function rename(id, name) {
+      return app.request(`/api/tags?id=${id}`, {
+        method: "PUT",
+        headers: { Cookie: cookie, "Content-Type": "application/json" },
+        body: JSON.stringify({ name }),
+      });
+    }
+
+    it("renames a tag", async () => {
+      const id = addTag("old");
+      const res = await rename(id, "  new  ");
+      const data = await json(res);
+      expect(data.success).toBe(true);
+      expect(data.tag).toMatchObject({ id: Number(id), name: "new" });
+    });
+
+    it("refuses a name another of your tags has", async () => {
+      addTag("taken");
+      const id = addTag("mine");
+      const res = await rename(id, "taken");
+      expect(res.status).toBe(409);
+      expect((await json(res)).error).toContain('"taken"');
+    });
+
+    it("refuses an empty name", async () => {
+      const res = await rename(addTag("x"), "  ");
+      expect(res.status).toBe(400);
+    });
+
+    it("can't rename another user's tag", async () => {
+      const other = getDb()
+        .prepare("INSERT INTO users (email) VALUES (?)")
+        .run("someone@example.com").lastInsertRowid;
+      const res = await rename(addTag("theirs", other), "mine now");
+      expect(res.status).toBe(404);
+    });
+  });
 });

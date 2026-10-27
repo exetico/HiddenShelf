@@ -74,6 +74,20 @@ describe("Links API", () => {
       expect(data.error).toBeDefined();
     });
 
+    it("accepts an address typed without http://", async () => {
+      for (const [typed, saved] of [
+        ["192.168.1.10:8123", "http://192.168.1.10:8123"],
+        ["example.org/page", "https://example.org/page"],
+      ]) {
+        const res = await app.request("/api/links", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Cookie: cookie },
+          body: JSON.stringify({ url: typed, title: "Typed" }),
+        });
+        expect((await json(res)).link.url).toBe(saved);
+      }
+    });
+
     it("rejects invalid URL", async () => {
       const res = await app.request("/api/links", {
         method: "POST",

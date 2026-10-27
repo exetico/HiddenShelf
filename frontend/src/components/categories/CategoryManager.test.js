@@ -113,6 +113,28 @@ describe("CategoryManager", () => {
     expect(wrapper.emitted("remove")).toBeTruthy();
   });
 
+  it("says how many links become uncategorized before deleting", async () => {
+    const wrapper = mountManager({
+      categories: [...testCategories, { id: 3, name: "Empty", link_count: 0 }],
+    });
+    const deletes = wrapper.findAll("button").filter((b) => b.text() === "Delete");
+    await deletes[0].trigger("click");
+    const dialog = useDialogStore();
+    expect(dialog.current.message).toContain("Its 5 links stay on your shelf as uncategorized");
+    dialog.close(false);
+    await flushPromises();
+    await deletes[2].trigger("click");
+    expect(dialog.current.message).toContain("It has no links");
+    dialog.close(false);
+  });
+
+  it("says what it is, and picking a category shows its links", async () => {
+    const wrapper = mountManager();
+    expect(wrapper.text()).toContain("Pick a category to see its links");
+    await wrapper.find('[title="Show links in Personal"]').trigger("click");
+    expect(wrapper.emitted("filter")).toEqual([[2]]);
+  });
+
   it("keeps the category when the delete is cancelled", async () => {
     const wrapper = mountManager();
     await wrapper
