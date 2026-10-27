@@ -39,7 +39,7 @@ describe("useLinkMenu", () => {
       "Open in new tab",
       "Copy URL",
       "Copy public link",
-      "QR code",
+      "QR code and embed",
       "—",
       "Edit",
       "Add to favorites",
@@ -75,9 +75,9 @@ describe("useLinkMenu", () => {
 
   it("opens the QR code for a public link", () => {
     const { items } = useLinkMenu();
-    items(link()).find((i) => i.label === "QR code").action();
+    items(link()).find((i) => i.label === "QR code and embed").action();
     expect(usePublicShareStore().link).toMatchObject({ id: 3 });
-    expect(labels(link({ is_public: 0 }))).not.toContain("QR code");
+    expect(labels(link({ is_public: 0 }))).not.toContain("QR code and embed");
   });
 
   it("stars and unstars a link", () => {

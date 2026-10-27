@@ -127,7 +127,7 @@ describe("LinkDetailsSheet", () => {
   });
 
   it("opens the QR code for a public link", async () => {
-    await wrapper.find('[title="Show a QR code for the public link"]').trigger("click");
+    await wrapper.find('[title="Show a QR code and embed code for the public link"]').trigger("click");
     expect(usePublicShareStore().link).toMatchObject({ id: 1 });
     wrapper.unmount();
   });
@@ -137,7 +137,7 @@ describe("LinkDetailsSheet", () => {
       id: 9,
     });
     await flushPromises();
-    expect(wrapper.find('[title="Show a QR code for the public link"]').exists()).toBe(false);
+    expect(wrapper.find('[title="Show a QR code and embed code for the public link"]').exists()).toBe(false);
     expect(wrapper.find('[title="Edit this link"]').exists()).toBe(false);
     expect(wrapper.find('[aria-label="Move to trash"]').exists()).toBe(false);
     expect(wrapper.find('[data-testid="details-favorite"]').exists()).toBe(false);

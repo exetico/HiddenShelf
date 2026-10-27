@@ -97,7 +97,7 @@ export function useLinkMenu({ onEdit, onDetails } = {}) {
         action: () => copy(appUrl(`/h/${link.hash}`), "Public link copied"),
       },
       {
-        label: "QR code",
+        label: "QR code and embed",
         icon: "mdi-qrcode",
         hidden: !link.is_public || !link.hash,
         action: () => publicShare.open(link),

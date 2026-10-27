@@ -196,7 +196,7 @@ function onClick(event) {
         v-if="link.is_public"
         type="button"
         class="hidden md:inline-flex items-center gap-0.5 px-1.5 rounded-full border border-green-300 text-green-700 bg-green-50 hover:bg-green-100 dark:border-green-700 dark:bg-green-900/30 dark:text-green-300 dark:hover:bg-green-900/60 text-xs shrink-0 opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity"
-        title="Public link: copy it or show a QR code"
+        title="Public link: copy it, show a QR code or embed it"
         aria-label="Share the public link"
         data-testid="public-copy"
         @click.stop.prevent="publicShare.open(link)"
