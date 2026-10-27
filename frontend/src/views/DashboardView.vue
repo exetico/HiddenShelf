@@ -179,7 +179,7 @@ const topVisitedLinks = computed(() =>
 </script>
 
 <template>
-  <section class="space-y-4 sm:space-y-6">
+  <section class="space-y-4 sm:space-y-6" data-testid="dashboard-page">
     <!-- One line: a greeting, not a banner -->
     <header class="flex flex-wrap items-baseline gap-x-3" data-testid="welcome">
       <h1 class="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">

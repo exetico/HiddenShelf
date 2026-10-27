@@ -141,21 +141,51 @@ describe("EditLinksView", () => {
     expect(wrapper.text()).not.toContain("Load more");
   });
 
-  it("debounces search input to store", async () => {
+  it("searches once typing pauses, not on every key", async () => {
     vi.useFakeTimers();
     const appStore = useAppStore();
     const wrapper = mountEdit();
+    await flushPromises();
+    appStore.loadLinks.mockClear();
 
     const searchInput = wrapper.find('input[type="search"]');
-    await searchInput.setValue("test query");
-
-    // Not synced yet (debounce)
-    expect(appStore.search).toBe("");
-
+    for (const text of ["g", "gi", "git"]) {
+      await searchInput.setValue(text);
+      vi.advanceTimersByTime(100);
+    }
+    // The box and the top bar share the text right away...
+    expect(appStore.search).toBe("git");
+    // ...but nothing is fetched until 300ms after the last key
+    expect(appStore.loadLinks).not.toHaveBeenCalled();
     vi.advanceTimersByTime(300);
-    expect(appStore.search).toBe("test query");
+    expect(appStore.loadLinks).toHaveBeenCalledTimes(1);
 
+    // Trailing spaces give the same results: no request
+    await searchInput.setValue("git ");
+    vi.advanceTimersByTime(300);
+    expect(appStore.loadLinks).toHaveBeenCalledTimes(1);
+
+    // Clearing shows everything again at once
+    await searchInput.setValue("");
+    expect(appStore.loadLinks).toHaveBeenCalledTimes(2);
+
+    wrapper.unmount();
     vi.useRealTimers();
+  });
+
+  it("leaves the first load to start-up until settings are in", async () => {
+    const appStore = useAppStore();
+    appStore.links = [];
+    appStore.settingsLoaded = false;
+    mountEdit();
+    await flushPromises();
+    // Start-up loads with the user's page size; loading here would use 20
+    expect(appStore.loadLinks).not.toHaveBeenCalled();
+
+    appStore.settingsLoaded = true;
+    mountEdit();
+    await flushPromises();
+    expect(appStore.loadLinks).toHaveBeenCalledWith({ reset: true });
   });
 
   it("syncs category filter immediately to store", async () => {
@@ -175,6 +205,17 @@ describe("EditLinksView", () => {
     const form = wrapper.findComponent({ name: "LinkFormModal" });
     expect(form.props("open")).toBe(true);
     expect(form.props("model")).toBeNull();
+    mockRoute.query = {};
+  });
+
+  it("fills in the page the bookmarklet was clicked on", async () => {
+    mockRoute.query = { new: "1", url: "https://news.example/a", title: "News" };
+    const wrapper = mountEdit();
+    await flushPromises();
+    const form = wrapper.findComponent({ name: "LinkFormModal" });
+    expect(form.props("open")).toBe(true);
+    // No id: it's still a new link, just filled in
+    expect(form.props("model")).toEqual({ url: "https://news.example/a", title: "News" });
     mockRoute.query = {};
   });
 

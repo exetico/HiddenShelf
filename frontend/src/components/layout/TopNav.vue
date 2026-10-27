@@ -59,11 +59,19 @@ function addLink() {
   router.push({ name: "edit", query: { new: "1" } });
 }
 
-// "/" jumps to the search box, unless you're already typing somewhere
+// "/" jumps to the search box and "n" adds a link, unless you're already
+// typing somewhere or a dialog is open
 function onKeydown(event) {
-  if (event.key !== "/" || event.ctrlKey || event.metaKey || event.altKey) return;
+  if (event.ctrlKey || event.metaKey || event.altKey) return;
+  if (event.key !== "/" && event.key !== "n") return;
   const target = event.target;
   if (target?.closest?.("input, textarea, select, [contenteditable='true']")) return;
+  if (document.querySelector("[role='dialog']")) return;
+  if (event.key === "n") {
+    event.preventDefault();
+    addLink();
+    return;
+  }
   const input = searchField.value?.input;
   if (!input || !input.offsetParent) return; // hidden (phone)
   event.preventDefault();
@@ -110,7 +118,7 @@ function pickMode(name) {
         <button
           type="button"
           class="shrink-0 px-3 py-1.5 rounded-md bg-brand-600 text-white text-sm hover:bg-brand-700"
-          title="Add a new link"
+          title="Add a new link (N)"
           data-testid="nav-add"
           @click="addLink"
         >

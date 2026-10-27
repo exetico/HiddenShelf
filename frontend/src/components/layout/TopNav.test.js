@@ -164,5 +164,28 @@ describe("TopNav", () => {
       other.remove();
       wrapper.unmount();
     });
+
+    it("adds a link on N, but not while typing or with a dialog open", async () => {
+      const wrapper = mountNav();
+      mockPush.mockClear();
+      window.dispatchEvent(new KeyboardEvent("keydown", { key: "n", cancelable: true }));
+      expect(mockPush).toHaveBeenCalledWith({ name: "edit", query: { new: "1" } });
+
+      mockPush.mockClear();
+      const input = document.createElement("input");
+      document.body.appendChild(input);
+      input.dispatchEvent(new KeyboardEvent("keydown", { key: "n", bubbles: true }));
+      input.remove();
+
+      const dialog = document.createElement("div");
+      dialog.setAttribute("role", "dialog");
+      document.body.appendChild(dialog);
+      window.dispatchEvent(new KeyboardEvent("keydown", { key: "n" }));
+      dialog.remove();
+
+      window.dispatchEvent(new KeyboardEvent("keydown", { key: "n", ctrlKey: true }));
+      expect(mockPush).not.toHaveBeenCalled();
+      wrapper.unmount();
+    });
   });
 });

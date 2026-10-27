@@ -47,6 +47,7 @@ function rowClass(active) {
 
 <template>
   <button
+    data-testid="category-picker"
     :title="`Category: ${current.name}. Tap to choose another`"
     type="button"
     class="sm:hidden flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-gray-300 dark:border-brand-700 dark:bg-brand-800 text-sm max-w-[45%] shrink-0"
@@ -64,6 +65,7 @@ function rowClass(active) {
 
   <Teleport to="body">
     <div
+      data-testid="category-picker-menu"
       v-if="open"
       class="fixed inset-0 z-[90] bg-black/50 flex items-end"
       role="dialog"

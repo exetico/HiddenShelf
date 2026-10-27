@@ -1,6 +1,8 @@
 <script setup>
 import { useInfiniteScroll } from "@/composables/useInfiniteScroll";
-import { onMounted, onUnmounted, ref, watch } from "vue";
+import { useLinkFilterReload } from "@/composables/useLinkFilterReload";
+import { quickAddFromQuery } from "@/lib/quickAdd";
+import { onMounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useAppStore } from "@/stores/app";
 import { useToastStore } from "@/stores/toast";
@@ -30,29 +32,7 @@ const showTrash = ref(false);
 const activeLink = ref(null);
 
 // Search + filter
-const localSearch = ref(appStore.search);
 const localFilterCategory = ref(appStore.filterCategory);
-let searchTimeout = null;
-
-watch(localSearch, (val) => {
-  clearTimeout(searchTimeout);
-  searchTimeout = setTimeout(() => {
-    appStore.search = val;
-  }, 300);
-});
-
-onUnmounted(() => {
-  clearTimeout(searchTimeout);
-});
-
-// The top bar's search (desktop) sets the store directly
-watch(
-  () => appStore.search,
-  (val) => {
-    if (val !== localSearch.value) localSearch.value = val;
-  },
-);
-
 watch(localFilterCategory, (val) => {
   appStore.filterCategory = val;
 });
@@ -69,7 +49,8 @@ function openEditById(editId) {
 }
 
 onMounted(async () => {
-  if (!appStore.links.length) {
+  // Before start-up is done, its own load (in the right page size) is coming
+  if (!appStore.links.length && appStore.settingsLoaded) {
     await appStore.loadLinks({ reset: true });
   }
   if (route.query.editId) {
@@ -78,9 +59,11 @@ onMounted(async () => {
   if (route.query.new) openCreateFromRoute();
 });
 
-// "Add link" in the top bar comes here with ?new=1
+// "Add link" in the top bar comes here with ?new=1; the bookmarklet adds
+// &url=…&title=… for the page it was clicked on
 function openCreateFromRoute() {
   openCreate();
+  activeLink.value = quickAddFromQuery(route.query);
   router.replace({ name: "edit" });
 }
 watch(
@@ -97,13 +80,7 @@ watch(
   },
 );
 
-// Reload links when search/filter changes
-watch(
-  () => [appStore.search, appStore.filterCategory],
-  async () => {
-    await appStore.loadLinks({ reset: true });
-  },
-);
+useLinkFilterReload();
 
 function openCreate() {
   activeLink.value = null;
@@ -137,12 +114,13 @@ async function handleDelete(id) {
 </script>
 
 <template>
-  <section class="space-y-3 sm:space-y-4">
-    <div class="flex flex-wrap gap-2">
+  <section class="space-y-3 sm:space-y-4" data-testid="edit-page">
+    <div class="flex flex-wrap gap-2" data-testid="edit-toolbar">
       <!-- From md up, "Add link" is in the top bar -->
       <button
         title="Add a new link"
         class="md:hidden px-3 py-1.5 sm:px-4 sm:py-2 text-sm sm:text-base rounded-md bg-brand-600 text-white hover:bg-brand-700"
+        data-testid="add-link"
         @click="openCreate"
       >
         + Add link
@@ -150,6 +128,7 @@ async function handleDelete(id) {
       <button
         title="Create, edit, order and share categories"
         class="px-3 py-1.5 sm:px-4 sm:py-2 text-sm sm:text-base rounded-md bg-brand-600 text-white hover:bg-brand-700"
+        data-testid="open-categories"
         @click="showCategoryModal = true"
       >
         Categories
@@ -157,6 +136,7 @@ async function handleDelete(id) {
       <button
         title="Create and delete tags"
         class="px-3 py-1.5 sm:px-4 sm:py-2 text-sm sm:text-base rounded-md bg-brand-600 text-white hover:bg-brand-700"
+        data-testid="open-tags"
         @click="showTagModal = true"
       >
         Tags
@@ -175,16 +155,18 @@ async function handleDelete(id) {
     <!-- Search and category filter -->
     <div
       class="bg-white dark:bg-brand-900 rounded-lg border border-gray-200 dark:border-brand-800 p-2 sm:p-3 flex gap-2"
+      data-testid="edit-filters"
     >
       <div class="md:hidden flex flex-1 min-w-0">
         <SearchField
-          v-model="localSearch"
+          v-model="appStore.search"
           placeholder="Search links..."
           data-testid="page-search"
         />
       </div>
       <select
         v-model="localFilterCategory"
+        data-testid="category-filter"
         class="max-w-[40%] sm:max-w-none md:max-w-xs px-2 sm:px-3 py-1.5 sm:py-2 rounded-md border border-gray-300 dark:border-brand-700 dark:bg-brand-800"
       >
         <option value="">All Categories</option>
@@ -204,6 +186,7 @@ async function handleDelete(id) {
     <p
       v-if="appStore.total > 0"
       class="text-xs sm:text-sm text-gray-500 dark:text-brand-400"
+      data-testid="link-count"
     >
       Showing {{ appStore.links.length }} of {{ appStore.total }} links
     </p>
@@ -211,6 +194,7 @@ async function handleDelete(id) {
     <div
       v-if="appStore.links.length"
       class="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2 lg:grid-cols-3"
+      data-testid="link-grid"
     >
       <LinkCardEdit
         v-for="link in appStore.links"
@@ -221,15 +205,20 @@ async function handleDelete(id) {
       />
     </div>
 
-    <div v-else class="py-10 text-center text-gray-500 dark:text-brand-400">
+    <div
+      v-else
+      class="py-10 text-center text-gray-500 dark:text-brand-400"
+      data-testid="no-links"
+    >
       <i class="mdi mdi-link-off text-6xl block mb-2"></i>
       No links yet. Add your first link!
     </div>
 
-    <div ref="sentinel" aria-hidden="true"></div>
+    <div ref="sentinel" aria-hidden="true" data-testid="scroll-sentinel"></div>
     <div v-if="appStore.hasMore" class="text-center">
       <button
         title="Load more links"
+        data-testid="load-more"
         class="px-4 py-2 rounded-md bg-brand-600 text-white hover:bg-brand-700"
         @click="appStore.loadMore()"
       >

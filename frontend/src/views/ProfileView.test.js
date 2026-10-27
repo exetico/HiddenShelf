@@ -85,6 +85,18 @@ describe("ProfileView", () => {
     });
   }
 
+  it("offers a bookmarklet that opens this app's add form", async () => {
+    const wrapper = mountProfile();
+    const link = wrapper.find('[data-testid="bookmarklet"]');
+    const href = link.attributes("href");
+    expect(href.startsWith("javascript:")).toBe(true);
+    expect(href).toContain(`"${window.location.origin}/edit?new=1"`);
+    // Clicking it inside the app explains instead of running it
+    await link.trigger("click");
+    const { useToastStore } = await import("@/stores/toast");
+    expect(useToastStore().items.at(-1).message).toMatch(/bookmarks bar/);
+  });
+
   it("shows beta notice", () => {
     const wrapper = mountProfile();
     expect(wrapper.text()).toContain("Beta notice");

@@ -28,15 +28,15 @@ import { categoriesApi } from "@/services/api/categoriesApi";
 
 // Fake server holding `count` links, paged like GET /api/links
 function serveLinks(count) {
-  linksApi.list.mockImplementation(async ({ page, limit }) => {
-    const start = (page - 1) * limit;
+  linksApi.list.mockImplementation(async ({ offset, limit }) => {
+    const start = offset;
     const links = Array.from(
       { length: Math.max(0, Math.min(limit, count - start)) },
       (_, i) => ({ id: start + i + 1 }),
     );
     return {
       links,
-      pagination: { page, limit, total: count, pages: Math.ceil(count / limit) },
+      pagination: { offset, limit, total: count, pages: Math.ceil(count / limit) },
     };
   });
 }
@@ -90,19 +90,47 @@ describe("app store pagination", () => {
     expect(store.hasMore).toBe(false);
   });
 
-  it("loads the next page after the first one, if asked while it loads", async () => {
-    // Infinite scroll asks for more while the start-up page is in flight;
-    // dropping that request left the list stuck at the first page
+  it("asking for more while a load runs only waits for it", async () => {
+    // Infinite scroll measures again afterwards; fetching a second page
+    // here loaded links nobody had scrolled to
     serveLinks(52);
     const store = useAppStore();
     const first = store.loadLinks({ reset: true });
-    const more = store.loadMore();
-    await Promise.all([first, more]);
+    await store.loadMore();
+    await first;
+    expect(store.links).toHaveLength(20);
+    expect(linksApi.list).toHaveBeenCalledTimes(1);
 
-    expect(store.links).toHaveLength(40);
-    expect(store.links.map((l) => l.id)).toEqual(
-      Array.from({ length: 40 }, (_, i) => i + 1),
-    );
+    await store.loadMore();
+    expect(store.links.map((l) => l.id)).toEqual(Array.from({ length: 40 }, (_, i) => i + 1));
+  });
+
+  it("a reset wins over a load started with the old page size", async () => {
+    // The view's first load (default 20) raced the start-up load that knows
+    // the user's 100 per page; the old answer must not stick at 20 or 40
+    serveLinks(67);
+    const store = useAppStore();
+    const early = store.loadLinks({ reset: true });
+    store.settings.links_per_page = 100;
+    const proper = store.loadLinks({ reset: true });
+    await Promise.all([early, proper]);
+
+    expect(store.links).toHaveLength(67);
+    expect(store.hasMore).toBe(false);
+  });
+
+  it("continues by offset after the page size changes", async () => {
+    serveLinks(67);
+    const store = useAppStore();
+    await store.loadLinks({ reset: true });
+    expect(store.links).toHaveLength(20);
+    store.settings.links_per_page = 100;
+
+    await store.loadMore();
+
+    expect(linksApi.list).toHaveBeenLastCalledWith(expect.objectContaining({ offset: 20, limit: 100 }));
+    expect(store.links.map((l) => l.id)).toEqual(Array.from({ length: 67 }, (_, i) => i + 1));
+    expect(store.hasMore).toBe(false);
   });
 });
 
