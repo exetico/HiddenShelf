@@ -187,5 +187,26 @@ describe("TopNav", () => {
       expect(mockPush).not.toHaveBeenCalled();
       wrapper.unmount();
     });
+
+    it("slides away on scroll down and back on scroll up", async () => {
+      const wrapper = mountNav();
+      const bar = wrapper.find('[data-testid="top-nav"]');
+      const scroll = async (y) => {
+        window.scrollY = y;
+        window.dispatchEvent(new Event("scroll"));
+        await new Promise((r) => requestAnimationFrame(r));
+        await wrapper.vm.$nextTick();
+      };
+      await scroll(500);
+      expect(bar.classes()).toContain("-translate-y-full");
+      await scroll(450);
+      expect(bar.classes()).not.toContain("-translate-y-full");
+      await scroll(900);
+      // Tabbing into it brings it back
+      await bar.trigger("focusin");
+      expect(bar.classes()).not.toContain("-translate-y-full");
+      window.scrollY = 0;
+      wrapper.unmount();
+    });
   });
 });
