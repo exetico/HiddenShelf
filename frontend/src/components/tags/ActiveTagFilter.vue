@@ -12,6 +12,7 @@ const tag = computed(() =>
 
 <template>
   <div
+    data-testid="active-tag-filter"
     v-if="appStore.filterTag"
     role="status"
     class="flex items-center justify-between gap-2 rounded-lg border-2 border-brand-500 bg-brand-100 dark:bg-brand-800/70 px-3 py-2 text-sm text-brand-900 dark:text-brand-100"

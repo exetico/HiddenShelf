@@ -343,6 +343,7 @@ function clearRememberedEmail() {
         </div>
 
         <form
+          data-testid="login-form"
           @submit.prevent="sendMagicLink"
           class="space-y-4"
           v-if="emailLogin && (!rememberedEmail || email !== rememberedEmail) && !sent"

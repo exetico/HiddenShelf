@@ -39,6 +39,7 @@ onUnmounted(() =>
 <template>
   <Teleport to="body">
     <div
+      data-testid="confirm-dialog"
       v-if="dialog.current"
       role="alertdialog"
       aria-modal="true"

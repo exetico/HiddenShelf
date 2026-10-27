@@ -165,8 +165,10 @@ describe("ViewLinksView", () => {
         { id: 2, name: "Home", is_favorite: 0 },
       ];
       const wrapper = mountView();
-      const chips = wrapper.findAll("button.rounded-full");
+      const strip = wrapper.find('[data-testid="favorite-categories"]');
+      const chips = strip.findAll("button");
       expect(chips.map((c) => c.text())).toEqual(["Work"]);
+      expect(chips[0].attributes("data-testid")).toBe("favorite-category-1");
 
       await chips[0].trigger("click");
       expect(appStore.filterCategory).toBe("1");
@@ -176,7 +178,17 @@ describe("ViewLinksView", () => {
 
     it("has no favorite chip row without favorites", () => {
       const wrapper = mountView();
-      expect(wrapper.findAll("button.rounded-full")).toHaveLength(0);
+      expect(wrapper.find('[data-testid="favorite-categories"]').exists()).toBe(false);
+    });
+
+    it("names its main parts, so they can be referred to", () => {
+      const appStore = useAppStore();
+      appStore.total = 40;
+      const wrapper = mountView();
+      for (const id of ["view-page", "page-search", "link-count", "link-groups", "scroll-sentinel", "load-more"]) {
+        expect(wrapper.find(`[data-testid="${id}"]`).exists(), id).toBe(true);
+      }
+      expect(wrapper.find('[data-testid="link-group-1"]').exists()).toBe(true);
     });
   });
 

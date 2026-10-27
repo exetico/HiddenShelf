@@ -1,6 +1,7 @@
 <script setup>
 import { useInfiniteScroll } from "@/composables/useInfiniteScroll";
-import { ref, computed, watch } from "vue";
+import { useLinkFilterReload } from "@/composables/useLinkFilterReload";
+import { ref, computed } from "vue";
 import { useAppStore } from "@/stores/app";
 import LinkCardView from "@/components/links/LinkCardView.vue";
 import CategoryFilterBar from "@/components/categories/CategoryFilterBar.vue";
@@ -47,12 +48,7 @@ async function onReorder({ groupKey, ...move }) {
 // Collapse state
 const collapsedCategories = ref({});
 
-watch(
-  () => [appStore.search, appStore.filterCategory, appStore.filterTag],
-  async () => {
-    await appStore.loadLinks({ reset: true });
-  },
-);
+useLinkFilterReload();
 
 const filtering = computed(
   () => Boolean(appStore.search || appStore.filterCategory || appStore.filterTag),
@@ -135,7 +131,7 @@ function toggleCategory(key) {
 </script>
 
 <template>
-  <section class="space-y-3 sm:space-y-4">
+  <section class="space-y-3 sm:space-y-4" data-testid="view-page">
     <!-- Category Filter Bar (sm+; on mobile the picker sits beside search) -->
     <CategoryFilterBar class="hidden sm:block" />
 
@@ -152,12 +148,14 @@ function toggleCategory(key) {
     <div
       v-if="appStore.favoriteCategories.length"
       class="sm:hidden flex gap-1.5 overflow-x-auto scrollbar-hide -mt-1"
+      data-testid="favorite-categories"
     >
       <button
         :title="`Show links in ${category.name}`"
         v-for="category in appStore.favoriteCategories"
         :key="category.id"
         class="flex items-center gap-1 px-2.5 py-1 rounded-full text-xs whitespace-nowrap shrink-0"
+        :data-testid="`favorite-category-${category.id}`"
         :class="
           String(appStore.filterCategory) === String(category.id)
             ? 'bg-brand-600 text-white'
@@ -184,6 +182,7 @@ function toggleCategory(key) {
     <p
       v-if="appStore.total > 0"
       class="text-xs sm:text-sm text-gray-500 dark:text-brand-400"
+      data-testid="link-count"
     >
       Showing {{ appStore.links.length }} of {{ appStore.total }} links
     </p>
@@ -200,10 +199,12 @@ function toggleCategory(key) {
         v-for="group in groupedCategories"
         :key="group.key"
         class="break-inside-avoid mb-3 sm:mb-6"
+        :data-testid="`link-group-${group.key}`"
       >
         <button
           :title="collapsedCategories[group.key] ? 'Expand' : 'Collapse'"
           class="flex items-center gap-2 mb-1 sm:mb-2 w-full text-left group"
+          data-testid="link-group-toggle"
           @click="toggleCategory(group.key)"
         >
           <i
@@ -259,15 +260,20 @@ function toggleCategory(key) {
       </article>
     </section>
 
-    <div v-else class="py-10 text-center text-gray-500 dark:text-brand-400">
+    <div
+      v-else
+      class="py-10 text-center text-gray-500 dark:text-brand-400"
+      data-testid="no-links"
+    >
       <i class="mdi mdi-link-off text-6xl block mb-2"></i>
       No links found.
     </div>
 
-    <div ref="sentinel" aria-hidden="true"></div>
+    <div ref="sentinel" aria-hidden="true" data-testid="scroll-sentinel"></div>
     <div v-if="appStore.hasMore" class="text-center">
       <button
         title="Load more links"
+        data-testid="load-more"
         class="px-4 py-2 rounded-md bg-brand-600 text-white hover:bg-brand-700"
         @click="appStore.loadMore()"
       >

@@ -336,6 +336,26 @@ describe("Links API", () => {
       expect(data.pagination.total).toBe(25);
       expect(data.pagination.pages).toBe(2);
     });
+
+    it("continues from an offset, whatever the page size", async () => {
+      for (let i = 1; i <= 25; i++) {
+        await createLink({ title: `Link ${i}`, url: `https://example${i}.com` });
+      }
+      const get = async (q) =>
+        json(await app.request(`/api/links?${q}`, { headers: { Cookie: cookie } }));
+
+      const first = await get("limit=20");
+      // 20 already loaded, then the page size changes to 100
+      const rest = await get("offset=20&limit=100");
+      expect(rest.pagination.offset).toBe(20);
+      expect(rest.links).toHaveLength(5);
+      const ids = [...first.links, ...rest.links].map((l) => l.id);
+      expect(new Set(ids).size).toBe(25);
+
+      // A bad offset falls back to the page
+      const bad = await get("offset=-3&page=2&limit=20");
+      expect(bad.pagination.offset).toBe(20);
+    });
   });
 
   // ── GET /api/links?id= (single) ──

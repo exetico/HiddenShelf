@@ -43,6 +43,7 @@ onUnmounted(() => {
 <template>
   <Teleport to="body">
     <div
+      data-testid="modal"
       v-if="open"
       role="dialog"
       aria-modal="true"

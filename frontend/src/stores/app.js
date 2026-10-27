@@ -9,8 +9,10 @@ import { linkVisitsApi } from "@/services/api/linkVisitsApi";
 import { useToastStore } from "@/stores/toast";
 import { useDialogStore } from "@/stores/dialog";
 
-// The links request running now, so later callers can wait for it
+// The links request running now, so later callers can wait for it, and
+// a counter so an answer that a newer reset has replaced is dropped
 let linksInFlight = null;
+let linksRequestId = 0;
 
 export const useAppStore = defineStore("app", {
   state: () => ({
@@ -34,8 +36,10 @@ export const useAppStore = defineStore("app", {
       days: 30,
       summary: [],
     },
-    page: 1,
     total: 0,
+    // True once the user's settings (page size) are in; until then the
+    // start-up load is on its way and views shouldn't fetch on their own
+    settingsLoaded: false,
     search: "",
     filterCategory: "",
     filterTag: "",
@@ -85,13 +89,14 @@ export const useAppStore = defineStore("app", {
     },
     async loadSettings() {
       this.settings = await settingsApi.get();
+      this.settingsLoaded = true;
       this.applyBrandColor(this.settings.brand_color);
     },
     async updateSettings(payload) {
       const previousPerPage = this.settings.links_per_page;
       this.settings = await settingsApi.update(payload);
       if (payload.brand_color) this.applyBrandColor(payload.brand_color);
-      // Pages are counted in the old size; start over so "Load more" lines up
+      // Start over in the new size
       if (this.settings.links_per_page !== previousPerPage) {
         await this.loadLinks({ reset: true });
       }
@@ -119,27 +124,35 @@ export const useAppStore = defineStore("app", {
       set("--brand-900", r - 65, g - 65, b - 65);
       set("--brand-950", r - 85, g - 85, b - 85);
     },
+    // Loads the first page (reset) or the next one. Pages are fetched by
+    // offset (how many are loaded), so a page-size change can't skip links.
+    // A reset always starts a fresh request and wins over one still
+    // running (e.g. the views' first load racing the start-up load); a
+    // "next page" while one is running just waits for that one.
     async loadLinks({ reset = false } = {}) {
-      if (this._loadingLinks) return linksInFlight;
+      if (!reset && linksInFlight) return linksInFlight;
+      const id = ++linksRequestId;
       this._loadingLinks = true;
-      linksInFlight = this._fetchLinks(reset).finally(() => {
+      const run = this._fetchLinks(reset, id).finally(() => {
+        if (id !== linksRequestId) return;
         this._loadingLinks = false;
         linksInFlight = null;
       });
-      return linksInFlight;
+      linksInFlight = run;
+      return run;
     },
-    async _fetchLinks(reset) {
-      if (reset) {
-        this.page = 1;
-      }
+    async _fetchLinks(reset, id) {
+      const offset = reset ? 0 : this.links.length;
       const response = await linksApi.list({
-        page: this.page,
+        offset,
         limit: this.settings.links_per_page,
         categoryId:
           this.filterCategory === "uncategorized" ? "" : this.filterCategory,
-        search: this.search,
+        search: this.search.trim(),
         tagId: this.filterTag,
       });
+      // A newer reset started meanwhile; its result is the one to show
+      if (id !== linksRequestId) return;
 
       this.links = reset
         ? response.links
@@ -148,17 +161,18 @@ export const useAppStore = defineStore("app", {
       // changed in between (e.g. a link deleted elsewhere)
       const lastPage =
         response.links.length < response.pagination.limit ||
-        response.pagination.page >= response.pagination.pages;
+        offset + response.links.length >= response.pagination.total;
       this.total = lastPage ? this.links.length : response.pagination.total;
     },
+    // Infinite scroll and "Load more". While a load is running this only
+    // waits for it: the caller looks again afterwards, so nothing is
+    // fetched ahead of need
     async loadMore() {
-      // Wait out a load already running (e.g. the first page on start-up)
-      // instead of dropping the request, or infinite scroll can stall
-      while (this._loadingLinks && linksInFlight) {
+      if (linksInFlight) {
         await linksInFlight.catch(() => {});
+        return;
       }
-      if (!this.hasMore || this._loadingLinks) return;
-      this.page += 1;
+      if (!this.hasMore) return;
       await this.loadLinks();
     },
     async loadFavorites() {

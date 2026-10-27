@@ -94,6 +94,7 @@ function stopDrag() {
 
 <template>
   <div
+    data-testid="category-filter-bar"
     class="bg-white dark:bg-brand-900 rounded-lg shadow-xs p-2 sm:p-3 transition-colors"
   >
     <div

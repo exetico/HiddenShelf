@@ -1,5 +1,6 @@
 <script setup>
 import { appUrl } from "@/lib/appUrl";
+import { bookmarkletHref } from "@/lib/quickAdd";
 import { ref, reactive, onMounted, nextTick } from "vue";
 import { useRoute } from "vue-router";
 import { useAuthStore } from "@/stores/auth";
@@ -13,6 +14,13 @@ import ImportExportModal from "@/components/common/ImportExportModal.vue";
 const authStore = useAuthStore();
 const appStore = useAppStore();
 const toastStore = useToastStore();
+
+// Bookmarklets only work from the bookmarks bar; clicking it here would
+// just add this page
+const bookmarklet = bookmarkletHref(appUrl("/edit?new=1"));
+function onBookmarkletClick() {
+  toastStore.success("Drag the button to your bookmarks bar, then click it on any page.");
+}
 
 const form = reactive({
   links_per_page: appStore.settings.links_per_page,
@@ -230,7 +238,7 @@ async function confirmDeleteEverything() {
 </script>
 
 <template>
-  <section class="max-w-3xl space-y-6">
+  <section class="max-w-3xl space-y-6" data-testid="profile-page">
     <article
       class="bg-white dark:bg-brand-900 rounded-lg border border-gray-200 dark:border-brand-800 p-5"
     >
@@ -298,6 +306,30 @@ async function confirmDeleteEverything() {
       >
         Save settings
       </button>
+    </article>
+
+    <!-- Bookmarklet: save the page you're on, from any site -->
+    <article
+      class="bg-white dark:bg-brand-900 rounded-lg border border-gray-200 dark:border-brand-800 p-5 space-y-3"
+      data-testid="quick-add"
+    >
+      <h2 class="text-lg font-semibold">Save links from anywhere</h2>
+      <p class="text-sm text-gray-600 dark:text-brand-400">
+        Drag this button to your bookmarks bar. On any page, click it to add
+        that page here, with its address and title filled in. Press
+        <kbd class="px-1.5 rounded border border-gray-300 dark:border-brand-600 text-xs font-sans">N</kbd>
+        in the app to add a link by hand.
+      </p>
+      <a
+        :href="bookmarklet"
+        class="inline-flex items-center gap-1.5 px-4 py-2 rounded-md border-2 border-dashed border-brand-400 text-brand-700 dark:text-brand-200 cursor-grab"
+        title="Drag me to your bookmarks bar"
+        data-testid="bookmarklet"
+        @click.prevent="onBookmarkletClick"
+      >
+        <i class="mdi mdi-bookmark-plus-outline" aria-hidden="true"></i>
+        Save to {{ appStore.appConfig.site_name || "Hidden Shelf" }}
+      </a>
     </article>
 
     <!-- Import / Export -->

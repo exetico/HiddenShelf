@@ -3,13 +3,15 @@ import { request } from "@/lib/httpClient";
 export const linksApi = {
   list: async ({
     page = 1,
+    // How many the caller already has; wins over page when given
+    offset = null,
     limit = 20,
     categoryId = "",
     search = "",
     tagId = "",
   } = {}) => {
     const params = new URLSearchParams();
-    params.set("page", String(page));
+    params.set("offset", String(offset ?? (page - 1) * limit));
     params.set("limit", String(limit));
     if (categoryId) params.set("category_id", String(categoryId));
     if (search) params.set("search", search);

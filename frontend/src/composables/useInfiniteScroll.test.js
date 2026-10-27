@@ -12,94 +12,142 @@ class FakeObserver {
   disconnect() {}
 }
 
+// Where the sentinel sits, in px from the top of a 800px window
+let sentinelTop;
+
 function mountWith(options) {
   return mount(
     defineComponent({
       setup() {
         const { sentinel } = useInfiniteScroll(options);
-        return () => h("div", { ref: sentinel });
+        return () =>
+          h("div", {
+            ref: (el) => {
+              if (el) el.getBoundingClientRect = () => ({ top: sentinelTop() });
+              sentinel.value = el;
+            },
+          });
       },
     }),
+    { attachTo: document.body },
   );
 }
 
+// Lets loads, re-renders and animation frames run out
+async function settle() {
+  for (let i = 0; i < 8; i++) {
+    await flushPromises();
+    await new Promise((r) => setTimeout(r, 20));
+  }
+}
+
 describe("useInfiniteScroll", () => {
+  let wrapper;
   beforeEach(() => {
     globalThis.IntersectionObserver = FakeObserver;
+    window.innerHeight = 800;
   });
   afterEach(() => {
+    wrapper?.unmount();
     delete globalThis.IntersectionObserver;
   });
 
-  it("loads pages while the bottom is in view and there is more", async () => {
-    let items = 20;
+  it("loads one page when the bottom comes into view, then stops once it's pushed away", async () => {
+    // Each page of 20 items is 2000px tall, so one page fills the screen
+    const items = ref(20);
+    sentinelTop = () => items.value * 100;
     const loadMore = vi.fn(async () => {
-      items += 20;
+      items.value += 20;
     });
-    mountWith({ hasMore: () => items < 60, loadMore, count: () => items });
+    wrapper = mountWith({ hasMore: () => items.value < 200, loadMore, count: () => items.value });
+
+    sentinelTop = () => 700; // scrolled to the bottom
     observerCallback([{ isIntersecting: true }]);
     await flushPromises();
-    // 20 -> 40 -> 60, then nothing more to load
+    sentinelTop = () => 2700; // the new page pushed it down
+    await settle();
+    expect(loadMore).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps loading while short pages leave the bottom on screen", async () => {
+    // 20px per item: 20 items don't fill an 800px window
+    const items = ref(20);
+    sentinelTop = () => items.value * 20;
+    const loadMore = vi.fn(async () => {
+      items.value += 20;
+    });
+    wrapper = mountWith({ hasMore: () => items.value < 200, loadMore, count: () => items.value });
+    observerCallback([{ isIntersecting: true }]);
+    await settle();
+    // 20 -> 40 -> 60 (top 1200, past 800 + 200), then it stops
+    expect(items.value).toBe(60);
     expect(loadMore).toHaveBeenCalledTimes(2);
   });
 
   it("does nothing while the bottom is out of view", async () => {
+    sentinelTop = () => 5000;
     const loadMore = vi.fn();
-    mountWith({ hasMore: () => true, loadMore, count: () => 20 });
+    wrapper = mountWith({ hasMore: () => true, loadMore, count: () => 20 });
     observerCallback([{ isIntersecting: false }]);
-    await flushPromises();
+    await settle();
     expect(loadMore).not.toHaveBeenCalled();
   });
 
   it("stops when a page adds nothing, instead of looping", async () => {
+    sentinelTop = () => 100;
     const loadMore = vi.fn(async () => {});
-    mountWith({ hasMore: () => true, loadMore, count: () => 20 });
+    wrapper = mountWith({ hasMore: () => true, loadMore, count: () => 20 });
     observerCallback([{ isIntersecting: true }]);
-    await flushPromises();
+    await settle();
     expect(loadMore).toHaveBeenCalledTimes(1);
   });
 
   it("stops after a failed page", async () => {
+    sentinelTop = () => 100;
     const loadMore = vi.fn().mockRejectedValue(new Error("offline"));
-    mountWith({ hasMore: () => true, loadMore, count: () => 20 });
+    wrapper = mountWith({ hasMore: () => true, loadMore, count: () => 20 });
     observerCallback([{ isIntersecting: true }]);
-    await flushPromises();
+    await settle();
     expect(loadMore).toHaveBeenCalledTimes(1);
   });
 
-  it("carries on when the list grows while the bottom stays in view", async () => {
-    // The first page is still loading when the sentinel shows, so the first
-    // pull adds nothing. When that page lands, loading must go on by itself,
-    // because the observer will not fire again while nothing moves
+  it("checks again when the first page lands under a sentinel that stayed on screen", async () => {
+    // Nothing loaded yet when the observer fires; the first page is short
     const items = ref(0);
-    let firstPageDone = false;
+    sentinelTop = () => items.value * 20;
     const loadMore = vi.fn(async () => {
-      if (firstPageDone) items.value += 20;
+      items.value += 20;
     });
-    mountWith({
-      hasMore: () => items.value < 60,
+    wrapper = mountWith({
+      hasMore: () => items.value > 0 && items.value < 60,
       loadMore,
       count: () => items.value,
     });
     observerCallback([{ isIntersecting: true }]);
-    await flushPromises();
-    expect(loadMore).toHaveBeenCalledTimes(1);
+    await settle();
+    expect(loadMore).not.toHaveBeenCalled();
 
-    firstPageDone = true;
-    items.value = 20;
-    await flushPromises();
-    // 20 -> 40 -> 60
+    items.value = 20; // the start-up load lands
+    await settle();
     expect(items.value).toBe(60);
-    expect(loadMore).toHaveBeenCalledTimes(3);
   });
 
-  it("does not load on list changes while the bottom is out of view", async () => {
-    const items = ref(20);
-    const loadMore = vi.fn(async () => {});
-    mountWith({ hasMore: () => true, loadMore, count: () => items.value });
-    observerCallback([{ isIntersecting: false }]);
-    items.value = 40;
-    await flushPromises();
+  it("does not load ahead on mobile when the first page already fills the screen", async () => {
+    // The observer fires before the first page; once it lands, the sentinel
+    // is far below a phone screen, so no second page is fetched
+    const items = ref(0);
+    sentinelTop = () => items.value * 120;
+    const loadMore = vi.fn(async () => {
+      items.value += 20;
+    });
+    wrapper = mountWith({
+      hasMore: () => items.value > 0 && items.value < 200,
+      loadMore,
+      count: () => items.value,
+    });
+    observerCallback([{ isIntersecting: true }]);
+    items.value = 20;
+    await settle();
     expect(loadMore).not.toHaveBeenCalled();
   });
 });

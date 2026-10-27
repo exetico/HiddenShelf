@@ -108,6 +108,7 @@ function onClick(event) {
     }"
     style="-webkit-touch-callout: none"
     :data-link-id="link.id"
+    data-testid="link-card-view"
     @contextmenu="onContextMenu"
     @dragstart="onDragStart"
     @dragover="drag.over($event, link, groupKey)"

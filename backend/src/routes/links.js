@@ -237,7 +237,11 @@ links.get("/", optionalAuth(), (c) => {
   const validLimits = [20, 50, 100, 250, 500];
   let limit = parseInt(c.req.query("limit") || String(config.linksPerPage), 10);
   if (!validLimits.includes(limit)) limit = config.linksPerPage;
-  const offset = (page - 1) * limit;
+  // ?offset= counts from what the client already has, so a page-size
+  // change between requests can't skip or repeat links; ?page= still works
+  const rawOffset = parseInt(c.req.query("offset") ?? "", 10);
+  const offset =
+    Number.isInteger(rawOffset) && rawOffset >= 0 ? rawOffset : (page - 1) * limit;
 
   const categoryId = c.req.query("category_id") || null;
   const search = c.req.query("search") || null;
@@ -318,6 +322,7 @@ links.get("/", optionalAuth(), (c) => {
     pagination: {
       page,
       limit,
+      offset,
       total,
       pages: Math.ceil(total / limit),
     },

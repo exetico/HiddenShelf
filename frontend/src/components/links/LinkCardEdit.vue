@@ -32,6 +32,8 @@ const iconColor = computed(() => {
 <template>
   <article
     class="bg-white dark:bg-brand-900 border border-gray-200 dark:border-brand-800 rounded-lg p-3 sm:p-4 min-w-0"
+    data-testid="link-card-edit"
+    :data-link-id="link.id"
     @contextmenu="linkMenu.open($event, link)"
   >
     <div class="flex items-start justify-between gap-3">
@@ -74,6 +76,7 @@ const iconColor = computed(() => {
         <button
           class="text-brand-600 dark:text-brand-400"
           :title="`Edit ${link.title}`"
+          data-testid="edit-link"
           @click="$emit('edit', link)"
         >
           Edit
@@ -81,6 +84,7 @@ const iconColor = computed(() => {
         <button
           class="text-red-600 dark:text-red-400"
           :title="`Move ${link.title} to the trash`"
+          data-testid="trash-link"
           @click="$emit('delete', link.id)"
         >
           Delete
