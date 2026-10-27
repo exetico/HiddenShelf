@@ -5,12 +5,20 @@ import { useAuthStore } from "@/stores/auth";
 import { useAppStore } from "@/stores/app";
 import SearchField from "@/components/common/SearchField.vue";
 import { useTheme } from "@/composables/useTheme";
+import { useHideOnScroll } from "@/composables/useHideOnScroll";
 
 const route = useRoute();
 const router = useRouter();
 const authStore = useAuthStore();
 const appStore = useAppStore();
 const { mode: theme, toggleTheme } = useTheme();
+
+// Out of the way while you scroll down the list, back on any scroll up.
+// Never hidden while you're typing in its search box.
+const header = ref(null);
+const { hidden: barHidden, show: showBar } = useHideOnScroll({
+  keepVisible: () => header.value?.contains(document.activeElement) ?? false,
+});
 
 // The View/Edit switch always shows one side selected. Off those pages
 // (dashboard, profile) it shows the mode you used last, dimmed.
@@ -92,7 +100,12 @@ function pickMode(name) {
 
 <template>
   <header
-    class="sticky top-0 z-30 bg-white/90 dark:bg-brand-900/90 backdrop-blur-md border-b border-gray-200 dark:border-brand-800 transition-colors"
+    ref="header"
+    class="sticky top-0 z-30 bg-white/90 dark:bg-brand-900/90 backdrop-blur-md border-b border-gray-200 dark:border-brand-800 transition-[transform,background-color,border-color] duration-200 ease-out motion-reduce:transition-none"
+    :class="{ '-translate-y-full': barHidden }"
+    data-testid="top-nav"
+    :data-hidden="barHidden ? 'true' : null"
+    @focusin="showBar"
   >
     <div
       class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-12 sm:h-16 flex items-center justify-between gap-2 sm:gap-4"
