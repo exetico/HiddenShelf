@@ -50,6 +50,9 @@ vi.mock("@/services/api/configApi", () => ({
 vi.mock("@/services/api/accountApi", () => ({
   accountApi: { deleteAllData: vi.fn() },
 }));
+vi.mock("@/services/api/updatesApi", () => ({
+  updatesApi: { status: vi.fn().mockResolvedValue({ success: true, available: { count: 0, commits: [] } }) },
+}));
 vi.mock("@/services/api/linkVisitsApi", () => ({
   linkVisitsApi: { getSummary: vi.fn().mockResolvedValue({ total_visits: 0, days: 30, summary: [] }) },
 }));
@@ -99,6 +102,12 @@ describe("ProfileView", () => {
     await link.trigger("click");
     const { useToastStore } = await import("@/stores/toast");
     expect(useToastStore().items.at(-1).message).toMatch(/bookmarks bar/);
+  });
+
+  it("shows server updates to admins only", async () => {
+    expect(mountProfile().find('[data-testid="server-updates"]').exists()).toBe(false);
+    useAuthStore().canUpdate = true;
+    expect(mountProfile().find('[data-testid="server-updates"]').exists()).toBe(true);
   });
 
   it("shows beta notice", () => {

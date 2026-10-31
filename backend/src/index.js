@@ -35,6 +35,9 @@ import linkVisitsRoutes from "./routes/linkVisits.js";
 import configRoutes from "./routes/config.js";
 import accountRoutes from "./routes/account.js";
 import { publicLinkRoutes } from "./routes/publicLink.js";
+import updatesRoutes from "./routes/updates.js";
+import healthRoutes from "./routes/health.js";
+import { syncResults, updatesEnabled } from "./lib/updates.js";
 
 // ─── Initialise database ────────────────────────────────────────
 
@@ -73,6 +76,8 @@ app.route("/api/user_settings", settingsRoutes);
 app.route("/api/link_visits", linkVisitsRoutes);
 app.route("/api/config", configRoutes);
 app.route("/api/account", accountRoutes);
+app.route("/api/updates", updatesRoutes);
+app.route("/api/health", healthRoutes);
 
 // ─── Resolve project root (one level above backend/) ─────────────
 
@@ -145,6 +150,19 @@ app.onError((err, c) => {
 // ─── Start server ────────────────────────────────────────────────
 
 if (process.env.NODE_ENV !== "test") {
+  // Pick up the result of an update that restarted this app, and email admins
+  if (updatesEnabled()) {
+    const sync = () => {
+      try {
+        syncResults();
+      } catch (err) {
+        console.error("[updates]", err.message);
+      }
+    };
+    setTimeout(sync, 5_000).unref();
+    setInterval(sync, 60_000).unref();
+  }
+
   serve({ fetch: app.fetch, port: config.port }, (info) => {
     console.log(
       `[server] Hidden Shelf running on http://localhost:${info.port}`,

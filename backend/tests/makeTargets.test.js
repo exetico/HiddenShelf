@@ -67,7 +67,10 @@ describe.skipIf(!hasMake)("Makefile data targets", () => {
   }
 
   function calls() {
-    return fs.existsSync(log) ? fs.readFileSync(log, "utf8").trim().split("\n") : [];
+    // "git rev-parse HEAD" only reads the commit to label the image with
+    return fs.existsSync(log)
+      ? fs.readFileSync(log, "utf8").trim().split("\n").filter((l) => l && l !== "git rev-parse HEAD")
+      : [];
   }
 
   function titles(file) {

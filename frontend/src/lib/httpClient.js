@@ -42,7 +42,10 @@ export async function request(path, options = {}) {
   }
 
   if (!response.ok || !payload.success) {
-    throw new Error(payload.error || `Request failed (${response.status})`);
+    const error = new Error(payload.error || `Request failed (${response.status})`);
+    error.status = response.status;
+    error.data = payload;
+    throw error;
   }
 
   return payload;

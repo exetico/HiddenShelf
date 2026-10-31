@@ -26,6 +26,7 @@ import {
   returnToUrl,
 } from "../lib/helpers.js";
 import { requireAuth } from "../middleware/auth.js";
+import { isUpdateAdmin } from "../lib/updates.js";
 import config from "../config.js";
 
 const auth = new Hono();
@@ -175,6 +176,8 @@ auth.get("/verify", async (c) => {
   c.session.set("user_email", email);
   // The app greets once after login (read and cleared by /me)
   c.session.set("welcome", isNewUser ? "new" : "back");
+  // When this sign-in happened; admin updates ask for a recent one
+  c.session.set("login_at", Date.now());
   c.session.regenerate();
 
   // Determine redirect
@@ -209,7 +212,7 @@ auth.get("/me", requireAuth(), (c) => {
   const welcome = c.session.get("welcome") || null;
   if (welcome) c.session.delete("welcome");
 
-  return successResponse(c, { user, welcome });
+  return successResponse(c, { user, welcome, can_update: isUpdateAdmin(user.id) });
 });
 
 // ─── GET /google — initiate Google OAuth ─────────────────────────
@@ -288,6 +291,11 @@ auth.get("/google/callback", async (c) => {
       },
     );
     const googleUser = await userInfoRes.json();
+    // An unverified Google address proves nothing about who owns it, and
+    // emails decide account linking and who may update the app
+    if (!googleUser.email || googleUser.verified_email !== true) {
+      return c.redirect(`${loginUrl}?error=oauth_failed`);
+    }
     const email = googleUser.email;
     const googleId = googleUser.id;
 
@@ -327,6 +335,8 @@ auth.get("/google/callback", async (c) => {
     c.session.set("user_id", user.id);
     c.session.set("user_email", email);
     c.session.set("welcome", isNewUser ? "new" : "back");
+    // When this sign-in happened; admin updates ask for a recent one
+    c.session.set("login_at", Date.now());
     c.session.regenerate();
 
     // Redirect

@@ -88,6 +88,24 @@ const config = {
     process.env.GOOGLE_REDIRECT_URI ||
     `${process.env.SITE_URL || "http://localhost:3000"}/api/auth/google/callback`,
 
+  // In-app updates: who may press Update / Roll back (comma-separated
+  // emails, empty = nobody), how recent their sign-in must be, and where
+  // the host updater's inbox and status folders are mounted
+  updateAdminEmails: (process.env.UPDATE_ADMIN_EMAILS || "")
+    .split(",")
+    .map((e) => e.trim().toLowerCase())
+    .filter(Boolean),
+  updateReauthMinutes: Math.max(
+    1,
+    parseInt(process.env.UPDATE_REAUTH_MINUTES || "10", 10) || 10,
+  ),
+  updateControlDir: process.env.UPDATE_CONTROL_DIR || "./control",
+
+  // The commit the image was built from (Docker build arg)
+  gitCommit: /^[0-9a-f]{40}$/.test(process.env.GIT_COMMIT || "")
+    ? process.env.GIT_COMMIT
+    : "",
+
   // App version
   appVersion: process.env.APP_VERSION || "2.0.0",
 };

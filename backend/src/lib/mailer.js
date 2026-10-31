@@ -197,3 +197,26 @@ export async function sendMagicLink(email, token, redirectOrigin = null) {
 
   return true;
 }
+
+/**
+ * Send a short plain-text notice (used for update notices to admins).
+ * Skipped when email login is off, since SMTP may not be set up then.
+ */
+export async function sendNotice(to, subject, text) {
+  if (config.debugMode || !config.emailLoginEnabled) {
+    console.log(`[mailer] Notice to ${to}: ${subject}`);
+    return false;
+  }
+  await getTransporter().sendMail({
+    from: { name: config.fromName, address: config.fromEmail },
+    to,
+    subject,
+    text,
+    messageId: `<${crypto.randomUUID()}@${domainOf(config.fromEmail)}>`,
+    headers: {
+      "Auto-Submitted": "auto-generated",
+      "X-Auto-Response-Suppress": "All",
+    },
+  });
+  return true;
+}

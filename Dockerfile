@@ -26,6 +26,11 @@ RUN cd frontend && npm run build
 # Create db directory with proper permissions
 RUN mkdir -p /app/db && chown -R node:node /app/db
 
+# The commit this image was built from (make and the updater pass it).
+# Last, so a new commit doesn't invalidate the cached layers above.
+ARG GIT_COMMIT=""
+ENV GIT_COMMIT=$GIT_COMMIT
+
 # Set non-root user
 USER node
 
