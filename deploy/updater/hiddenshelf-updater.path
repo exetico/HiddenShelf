@@ -1,0 +1,10 @@
+# Starts the updater when the app drops a request file
+[Unit]
+Description=Hidden Shelf updater: watch for update requests
+
+[Path]
+PathExists=@DIR@/control/inbox/request
+Unit=hiddenshelf-updater.service
+
+[Install]
+WantedBy=multi-user.target

@@ -107,6 +107,35 @@ To keep upgrades conflict-free, don't edit tracked files such as `docker-compose
 
 To go back to an earlier version, check out its commit or tag and run `make up`. If the newer version changed the database, restore the backup made before the upgrade (see below).
 
+### Updating from the app
+
+Admins can update from **Profile → Server updates** instead of the terminal. It lists the new commits on `main`, and offers **Update** and **Roll back** buttons. Set it up once on the server:
+
+```bash
+# 1. Who may update (comma-separated). Empty means nobody, and the panel is hidden.
+echo "UPDATE_ADMIN_EMAILS=you@example.com" >> .env
+# 2. Install the host updater as systemd units, running as you (asks for sudo once)
+make install-updater
+# 3. Restart the app so it picks up the setting
+make up
+```
+
+What happens when an admin clicks Update:
+
+1. The app checks that they are in `UPDATE_ADMIN_EMAILS`, that they signed in within the last `UPDATE_REAUTH_MINUTES` (10 by default, otherwise it asks them to sign in again), and that the request comes from the app itself. It saves who asked, when and from where, and emails every admin.
+2. It drops a random request id in `control/inbox/`. That is all the app can do: it has no Docker socket, no git and no GitHub token, and the admin can't type or upload anything.
+3. The updater on the host (`deploy/updater/hiddenshelf-updater.sh`, started by systemd) looks up that id in the database and checks that `origin/main` is still the commit the admin saw and is a fast-forward. Then it builds the new image while the old one keeps serving, backs up the database to `db/backups/pre-update-<date>.sqlite`, and swaps the container. The site is offline for a few seconds.
+4. If the new version doesn't pass `/api/health` within 60 seconds, the updater puts the old image and the database backup back on its own.
+5. **Roll back** goes one step back to the version before the last update. If that update changed the database, the database goes back too, after a safety copy (`pre-rollback-<date>.sqlite`). The page warns about this before you confirm.
+
+The updater refuses to run if tracked files in the checkout were changed by hand or less than 1 GB of disk is free. It checks for new commits every hour. `make upgrade` from the terminal still works as before. To turn the feature off, empty `UPDATE_ADMIN_EMAILS`, or run `make remove-updater` to stop it on the host.
+
+No systemd? Run `deploy/updater/hiddenshelf-updater.sh watch` under any supervisor, as the user that runs Docker.
+
+**Base image.** The in-app update rebuilds on the Node base image the server already has, so a click never brings in a new Node or Alpine version. To move to the newest `node:22-alpine` patch, run `make refresh-base` from the terminal.
+
+Anyone who can push to `main` can change what gets deployed, so protect the branch on GitHub (pull requests only, no force-push).
+
 ## Your data
 
 Everything Hidden Shelf stores is one SQLite database, `db/database.sqlite`, next to `docker-compose.yml`:
@@ -159,6 +188,8 @@ Set these in `.env`. Docker Compose passes them to the container. When running N
 | `GOOGLE_CLIENT_ID`     | ``                                    | Google OAuth client ID                  |
 | `GOOGLE_CLIENT_SECRET` | ``                                    | Google OAuth client secret              |
 | `GOOGLE_REDIRECT_URI`  | `{SITE_URL}/api/auth/google/callback` | OAuth redirect. Leave empty; the server warns if it doesn't end in `/api/auth/google/callback` |
+| `UPDATE_ADMIN_EMAILS`  | ``                                    | Comma-separated emails that may update the app from Profile. Empty: nobody (see [Updating from the app](#updating-from-the-app)) |
+| `UPDATE_REAUTH_MINUTES`| `10`                                  | How recent an admin's sign-in must be to update or roll back |
 
 ### Subpath deployment
 
@@ -456,6 +487,13 @@ Clean URLs (`/dashboard`, `/edit`, etc.). The backend serves the app for these r
 ### Config
 
 - `GET /api/config` - Public app config (version, site name, features)
+
+### Updates and health
+
+- `GET /api/health` - `{ ok: true }` when the app and its database answer
+- `GET /api/updates` - Admins only: running version, new commits, last result, history
+- `POST /api/updates/update` - Admins only: `{ commit }`, the target shown; needs a recent sign-in
+- `POST /api/updates/rollback` - Admins only: back to the version before the last update
 
 ### Account
 

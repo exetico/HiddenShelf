@@ -4,7 +4,12 @@ export const authApi = {
   /** The signed-in user, and "new"/"back" right after a login (else null) */
   me: async () => {
     const response = await request("/api/auth/me");
-    return { user: response.user, welcome: response.welcome || null };
+    return {
+      user: response.user,
+      welcome: response.welcome || null,
+      // Listed in UPDATE_ADMIN_EMAILS on the server
+      canUpdate: response.can_update === true,
+    };
   },
   logout: async () => request("/api/auth/logout", { method: "POST" }),
   sendMagicLink: async (email) => {

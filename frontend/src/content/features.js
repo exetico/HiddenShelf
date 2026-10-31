@@ -161,6 +161,10 @@ export const FAQ = [
     a: "Press / to search and N to add a link. Esc closes dialogs; if a link form has unsaved changes, it asks first.",
   },
   {
+    q: "I run my own Hidden Shelf. Can I update it from the app?",
+    a: "Yes, once it's set up on the server (see the README). Admins then get Server updates on their profile, with the new changes listed and Update and Roll back buttons. The database is backed up before every update, and a version that doesn't start is undone by itself.",
+  },
+  {
     q: "Can I get my data out?",
     a: "Yes. Profile → Import / export downloads all your links, categories and tags as JSON. You can also delete everything from your profile.",
   },

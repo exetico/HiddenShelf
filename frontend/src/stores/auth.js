@@ -6,6 +6,8 @@ export const useAuthStore = defineStore("auth", {
   state: () => ({
     ready: false,
     user: null,
+    // May update the app from Profile (server-side admin allowlist)
+    canUpdate: false,
   }),
   getters: {
     isAuthenticated: (state) => Boolean(state.user),
@@ -25,8 +27,9 @@ export const useAuthStore = defineStore("auth", {
   actions: {
     async bootstrap() {
       try {
-        const { user, welcome } = await authApi.me();
+        const { user, welcome, canUpdate } = await authApi.me();
         this.user = user;
+        this.canUpdate = Boolean(canUpdate);
         if (welcome) {
           useToastStore().success(
             welcome === "new" ? "Welcome to Hidden Shelf!" : "Welcome back!",
@@ -34,6 +37,7 @@ export const useAuthStore = defineStore("auth", {
         }
       } catch {
         this.user = null;
+        this.canUpdate = false;
       } finally {
         this.ready = true;
       }

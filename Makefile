@@ -1,4 +1,8 @@
-.PHONY: help up down restart logs dev build-frontend test test-backend test-frontend clean install backup restore upgrade
+.PHONY: help up down restart logs dev build-frontend test test-backend test-frontend clean install backup restore upgrade control-dirs install-updater remove-updater refresh-base
+
+# The commit the image is built from, shown next to the Update button
+GIT_COMMIT = $(shell git rev-parse HEAD 2>/dev/null)
+export GIT_COMMIT
 
 # Default target
 help:
@@ -9,6 +13,9 @@ help:
 	@echo "  make upgrade         - Back up the database, pull the latest code, rebuild"
 	@echo "  make backup          - Copy the database to db/backups/ (OUT=path also copies it there)"
 	@echo "  make restore FILE=.. - Replace the database with a backup from db/"
+	@echo "  make install-updater - Let admins update from the app (asks for sudo once)"
+	@echo "  make remove-updater  - Turn the in-app updater off again"
+	@echo "  make refresh-base    - Rebuild on the newest Node 22 Alpine base image"
 	@echo "  make dev             - Start dev mode (backend + Vue HMR)"
 	@echo "  make build-frontend  - Build Vue frontend for production"
 	@echo "  make test-frontend   - Run frontend tests in Docker"
@@ -26,7 +33,7 @@ help:
 # cron jobs have no terminal, so they are never asked and never pull.
 # PULL=yes updates without asking, PULL=no skips the check.
 PULL ?=
-up:
+up: control-dirs
 	@pull="$(PULL)"; \
 	if [ -z "$$pull" ]; then if [ -t 0 ]; then pull=ask; else pull=no; fi; fi; \
 	if [ "$$pull" = ask ] && git rev-parse --is-inside-work-tree >/dev/null 2>&1; then \
@@ -92,6 +99,29 @@ upgrade:
 	fi
 	git pull --ff-only
 	docker compose up -d --build web
+	@if [ -x deploy/updater/hiddenshelf-updater.sh ] && [ -d control/state ]; then \
+		deploy/updater/hiddenshelf-updater.sh check || true; \
+	fi
+
+# Folders shared with the in-app updater (see deploy/updater/). The app may
+# drop a file in control/inbox (write only, no listing) and read control/status.
+control-dirs:
+	@mkdir -p control/inbox control/status
+	@chmod 1733 control/inbox 2>/dev/null || echo "Note: could not set permissions on control/inbox"
+
+# Install the host updater as systemd units, run as you (needs sudo once).
+# Admins listed in UPDATE_ADMIN_EMAILS then get Update and Roll back buttons.
+install-updater: control-dirs
+	sudo deploy/updater/install.sh
+
+remove-updater:
+	sudo deploy/updater/install.sh --remove
+
+# Pull the newest node:22-alpine and rebuild on it. The in-app update keeps
+# the base image it has, so this stays a deliberate step from the terminal.
+refresh-base:
+	docker compose build --pull web
+	docker compose up -d web
 
 # Start dev mode with Vue HMR (magic links are logged, not emailed)
 dev:

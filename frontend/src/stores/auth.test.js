@@ -31,6 +31,14 @@ describe("auth store", () => {
 
     expect(store.user.email).toBe("test@example.com");
     expect(store.isAuthenticated).toBe(true);
+    expect(store.canUpdate).toBe(false);
+  });
+
+  it("knows when the user may update the app", async () => {
+    authApi.me.mockResolvedValue({ user: { email: "a@example.com" }, welcome: null, canUpdate: true });
+    const store = useAuthStore();
+    await store.bootstrap();
+    expect(store.canUpdate).toBe(true);
   });
 
   it("greets once right after a login", async () => {

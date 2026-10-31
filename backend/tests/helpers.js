@@ -23,6 +23,8 @@ import linkVisitsRoutes from "../src/routes/linkVisits.js";
 import configRoutes from "../src/routes/config.js";
 import accountRoutes from "../src/routes/account.js";
 import { publicLinkRoutes } from "../src/routes/publicLink.js";
+import updatesRoutes from "../src/routes/updates.js";
+import healthRoutes from "../src/routes/health.js";
 import { appShellRoutes } from "../src/routes/appShell.js";
 
 const linkTemplatePath = fileURLToPath(
@@ -67,6 +69,8 @@ export function createTestApp() {
   app.route("/api/link_visits", linkVisitsRoutes);
   app.route("/api/config", configRoutes);
   app.route("/api/account", accountRoutes);
+  app.route("/api/updates", updatesRoutes);
+  app.route("/api/health", healthRoutes);
   app.route("/", publicLinkRoutes({ templatePath: linkTemplatePath }));
   app.route("/", appShellRoutes({ indexPath: appIndexPath }));
 
@@ -76,7 +80,7 @@ export function createTestApp() {
 /**
  * Create a user directly in the database and return an authenticated session cookie.
  */
-export function createAuthenticatedUser(email = "test@example.com") {
+export function createAuthenticatedUser(email = "test@example.com", { loginAt } = {}) {
   const db = getDb();
   const existingUser = db
     .prepare("SELECT * FROM users WHERE email = ?")
@@ -92,7 +96,7 @@ export function createAuthenticatedUser(email = "test@example.com") {
   // Create a session manually
   const sessionId = crypto.randomBytes(32).toString("hex");
   sessions.set(sessionId, {
-    data: { user_id: userId, user_email: email },
+    data: { user_id: userId, user_email: email, ...(loginAt ? { login_at: loginAt } : {}) },
     expiresAt: Date.now() + 86400000,
   });
 

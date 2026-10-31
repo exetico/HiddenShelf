@@ -1,6 +1,12 @@
 services:
   web:
-    build: .
+    build:
+      context: .
+      args:
+        # Set by make and the updater; shown next to the Update button
+        GIT_COMMIT: ${GIT_COMMIT:-}
+    # Fixed name, so the updater can keep the previous build for a rollback
+    image: hiddenshelf:latest
     container_name: hiddenshelf
     ports:
       # HOST_PORT in .env, e.g. 127.0.0.1:3000 to only allow a proxy on this host
@@ -8,6 +14,10 @@ services:
     volumes:
       # The database lives on the host, outside the container and the image
       - ./db:/app/db
+      # In-app updates (deploy/updater/): the app can only drop a request
+      # file in inbox/ and read the updater's status/. No Docker socket.
+      - ./control/inbox:/app/control/inbox
+      - ./control/status:/app/control/status:ro
     # Each ${NAME} is read from .env next to this file (see .env.example).
     # A setting has to be listed here to reach the app.
     environment:
@@ -35,6 +45,9 @@ services:
       - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET:-}
       # Empty: derived from SITE_URL
       - GOOGLE_REDIRECT_URI=${GOOGLE_REDIRECT_URI:-}
+      # Comma-separated emails that may update the app. Empty: off.
+      - UPDATE_ADMIN_EMAILS=${UPDATE_ADMIN_EMAILS:-}
+      - UPDATE_REAUTH_MINUTES=${UPDATE_REAUTH_MINUTES:-10}
     restart: unless-stopped
     networks:
       - hiddenshelf-network

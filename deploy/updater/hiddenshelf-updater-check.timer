@@ -1,0 +1,12 @@
+# Checks for new versions shortly after boot and then every hour
+[Unit]
+Description=Hidden Shelf updater: hourly check for new versions
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=1h
+RandomizedDelaySec=5min
+Persistent=true
+
+[Install]
+WantedBy=timers.target
