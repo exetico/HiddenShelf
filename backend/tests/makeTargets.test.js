@@ -24,6 +24,8 @@ const hasMake = spawnSync("make", ["--version"]).status === 0;
 
 const FAKE_DOCKER = `#!/bin/sh
 echo "docker $*" >> "$FAKE_LOG"
+# The commit a build is labelled with
+if [ -n "$GIT_COMMIT" ]; then echo "$GIT_COMMIT" > "$FAKE_LOG.commit"; fi
 if [ "$1 $2" = "compose ps" ]; then [ -n "$FAKE_RUNNING" ] && echo web; exit 0; fi
 while [ $# -gt 0 ]; do
   if [ "$1" = "-c" ]; then
@@ -50,6 +52,8 @@ echo "git $*" >> "$FAKE_LOG"
 case "$1" in
   fetch) [ -z "$FAKE_OFFLINE" ] ;;
   rev-list) echo "\${FAKE_BEHIND:-0}" ;;
+  rev-parse) if [ "$2" = HEAD ]; then cat "$FAKE_LOG.head" 2>/dev/null; fi; true ;;
+  pull) echo "pulled-commit" > "$FAKE_LOG.head" ;;
 esac
 `;
 
@@ -229,6 +233,8 @@ describe.skipIf(!hasMake)("Makefile data targets", () => {
       expect(res.output).toContain("3 new commit(s) available. Back up and update before starting? [Y/n]");
       expect(pulled()).toBe(true);
       expect(calls().at(-1)).toBe("docker compose up -d --build web");
+      // The new image is labelled with the pulled commit, not the old one
+      expect(fs.readFileSync(`${log}.commit`, "utf8").trim()).toBe("pulled-commit");
     });
 
     it("updates when Enter is pressed (yes is the default)", () => {
