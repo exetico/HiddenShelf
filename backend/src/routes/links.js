@@ -1,8 +1,13 @@
 /**
- * Links routes — CRUD for links with tags, pagination, search.
+ * Links routes — CRUD for links with tags, search.
+ *
+ * The app loads the whole shelf in one list request and searches, filters
+ * and sorts it in the browser (see frontend/src/lib/shelf.js), so the list
+ * has no paging. It carries an ETag: reloading an unchanged shelf is a 304
+ * with no body (see middleware/revalidate.js).
  *
  * Endpoint mapping:
- *   GET    /api/links                → list (paginated, searchable)
+ *   GET    /api/links                → list: every match, no paging (ETag)
  *   GET    /api/links?id=            → single link (auth)
  *   GET    /api/links?hash=          → public link by hash
  *   GET    /api/links?duplicate_of=  → own links with the same URL (auth)
@@ -33,7 +38,7 @@ import {
   MAX_LENGTHS,
 } from "../lib/helpers.js";
 import { requireAuth, optionalAuth } from "../middleware/auth.js";
-import config from "../config.js";
+import { revalidate } from "../middleware/revalidate.js";
 
 const links = new Hono();
 
@@ -149,7 +154,7 @@ const NOT_HIDDEN = `(l.category_id IS NULL OR l.category_id NOT IN
 
 // ─── GET /api/links ──────────────────────────────────────────────
 
-links.get("/", optionalAuth(), (c) => {
+links.get("/", optionalAuth(), revalidate(), (c) => {
   const db = getDb();
   const id = c.req.query("id");
   const hash = c.req.query("hash");
@@ -252,25 +257,11 @@ links.get("/", optionalAuth(), (c) => {
     return successResponse(c, { link });
   }
 
-  // ── List (paginated) ──
-  const page = Math.max(1, parseInt(c.req.query("page") || "1", 10));
-  const validLimits = [20, 50, 100, 250, 500];
-  let limit = parseInt(c.req.query("limit") || String(config.linksPerPage), 10);
-  if (!validLimits.includes(limit)) limit = config.linksPerPage;
-  // ?offset= counts from what the client already has, so a page-size
-  // change between requests can't skip or repeat links; ?page= still works
-  const rawOffset = parseInt(c.req.query("offset") ?? "", 10);
-  const offset =
-    Number.isInteger(rawOffset) && rawOffset >= 0 ? rawOffset : (page - 1) * limit;
-
+  // ── List: everything that matches, in one go ──
   const categoryId = c.req.query("category_id") || null;
   const search = c.req.query("search") || null;
   const tagId = c.req.query("tag_id") || null;
   const includeShared = c.req.query("include_shared") !== "0";
-  // ?group=category: in the View page's order (uncategorized, your
-  // categories, then shared ones), and a page always ends on a whole
-  // category, so a category is never shown with only part of its links
-  const byCategory = c.req.query("group") === "category";
   const includeHidden = c.req.query("include_hidden") === "1";
 
   const where = ["l.deleted_at IS NULL"];
@@ -337,70 +328,22 @@ links.get("/", optionalAuth(), (c) => {
 
   const whereClause = where.join(" AND ");
 
-  const total = db
-    .prepare(`SELECT COUNT(*) as total FROM links l WHERE ${whereClause}`)
-    .get(...params).total;
-
   const linkOrder =
     SORTS[c.req.query("sort")] ||
     `CASE WHEN l.display_order IS NULL THEN 1 ELSE 0 END,
        l.display_order ASC,
        l.created_at DESC`;
-  const select = `SELECT l.*, c.name as category_name,
-            CASE WHEN l.user_id != ? THEN 1 ELSE 0 END as is_from_shared_category`;
 
-  let linksRows;
-  if (!byCategory) {
-    linksRows = db
-      .prepare(
-        `${select}
+  const linksRows = db
+    .prepare(
+      `SELECT l.*, c.name as category_name,
+            CASE WHEN l.user_id != ? THEN 1 ELSE 0 END as is_from_shared_category
      FROM links l
      LEFT JOIN categories c ON l.category_id = c.id
      WHERE ${whereClause}
-     ORDER BY ${linkOrder}
-     LIMIT ? OFFSET ?`,
-      )
-      .all(c.userId, ...params, limit, offset);
-  } else {
-    // Number the links in View order, then take the page plus the rest of
-    // the category the page would otherwise cut in half
-    linksRows = db
-      .prepare(
-        `WITH ordered AS (
-       ${select},
-            COALESCE(l.category_id, 0) AS grp,
-            ROW_NUMBER() OVER (ORDER BY
-              CASE WHEN l.category_id IS NULL THEN 0
-                   WHEN c.user_id = ? THEN 1 ELSE 2 END,
-              CASE WHEN c.user_id = ? THEN c.position END ASC,
-              CASE WHEN c.user_id = ? THEN c.created_at END DESC,
-              csm.accepted_at ASC,
-              l.category_id ASC,
-              ${linkOrder}) AS rn
-     FROM links l
-     LEFT JOIN categories c ON l.category_id = c.id
-     LEFT JOIN category_share_members csm
-       ON csm.category_id = l.category_id AND csm.user_id = ?
-     WHERE ${whereClause}
-   )
-   SELECT * FROM ordered
-   WHERE rn > ?
-     AND (rn <= ? OR grp = (SELECT grp FROM ordered WHERE rn = ?))
-   ORDER BY rn`,
-      )
-      .all(
-        c.userId,
-        c.userId,
-        c.userId,
-        c.userId,
-        c.userId,
-        ...params,
-        offset,
-        offset + limit,
-        offset + limit,
-      )
-      .map(({ grp, rn, ...link }) => link);
-  }
+     ORDER BY ${linkOrder}`,
+    )
+    .all(c.userId, ...params);
 
   // Batch-fetch tags and visit counts for all links (avoids N+1)
   attachTagsAndVisits(db, linksRows);
@@ -408,13 +351,7 @@ links.get("/", optionalAuth(), (c) => {
   return successResponse(c, {
     links: linksRows,
     hidden_matches: hiddenMatches,
-    pagination: {
-      page,
-      limit,
-      offset,
-      total,
-      pages: Math.ceil(total / limit),
-    },
+    total: linksRows.length,
   });
 });
 

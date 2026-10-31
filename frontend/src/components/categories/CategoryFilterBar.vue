@@ -66,9 +66,7 @@ const orderedCategories = computed(() => {
   ];
 });
 
-const uncategorizedCount = computed(() => {
-  return (appStore.linksByCategory.get("uncategorized") || []).length;
-});
+const uncategorizedCount = computed(() => appStore.uncategorizedCount);
 
 function selectCategory(id) {
   if (hasDragged.value) return;

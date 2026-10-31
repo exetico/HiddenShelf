@@ -17,7 +17,13 @@ describe("HiddenMatchesNote", () => {
   });
 
   it("offers the matches from hidden categories", async () => {
-    appStore.hiddenMatches = 2;
+    // A search with two matches in a hidden category
+    appStore.categories = [{ id: 5, is_hidden: 1 }];
+    appStore.allLinks = [
+      { id: 1, title: "nas one", category_id: 5 },
+      { id: 2, title: "nas two", category_id: 5 },
+    ];
+    appStore.search = "nas";
     const wrapper = mount(HiddenMatchesNote);
     expect(wrapper.text()).toMatch(/2 more matches\s+in hidden categories/);
     await wrapper.find('[data-testid="toggle-hidden-matches"]').trigger("click");
@@ -25,7 +31,7 @@ describe("HiddenMatchesNote", () => {
   });
 
   it("can leave them out again", async () => {
-    appStore.showHidden = true;
+    appStore.revealedFor = appStore.filterKey;
     const wrapper = mount(HiddenMatchesNote);
     expect(wrapper.text()).toContain("Including hidden categories");
     await wrapper.find('[data-testid="toggle-hidden-matches"]').trigger("click");

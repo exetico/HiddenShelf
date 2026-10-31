@@ -7,8 +7,7 @@ import { filterQuery } from "@/lib/filterLinks";
  * Keeps the list filters and the address bar in step on View and Edit:
  * ?category=3, ?tag=7, ?q=text and ?sort=title. Opening such an address applies them;
  * changing a filter updates the address (replace, so Back still leaves the
- * page). Call it before useLinkFilterReload, so the first load already
- * uses the filters from the address.
+ * page).
  */
 export function useFilterQuery() {
   const route = useRoute();
@@ -39,11 +38,7 @@ export function useFilterQuery() {
     appStore.filterCategory = wanted.category || "";
     if ((wanted.q || "") !== appStore.search.trim()) appStore.search = wanted.q || "";
     if ((wanted.sort || "") !== appStore.sort) appStore.setSort(wanted.sort || "");
-    // filterByTag reloads; set it directly when nothing has loaded yet
-    if (tagChanged) {
-      if (appStore.settingsLoaded) appStore.filterByTag(wanted.tag || "");
-      else appStore.filterTag = wanted.tag || "";
-    }
+    if (tagChanged) appStore.filterByTag(wanted.tag || "");
   }
 
   // Arriving without filters in the address keeps the current ones (e.g.

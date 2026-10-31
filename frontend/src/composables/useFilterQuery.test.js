@@ -26,8 +26,10 @@ describe("useFilterQuery", () => {
   beforeEach(() => {
     setActivePinia(createPinia());
     appStore = useAppStore();
-    appStore.filterByTag = vi.fn((id) => {
-      appStore.filterTag = id ? String(id) : "";
+    // `this`, not appStore: a page mounted by an earlier test keeps its
+    // own store
+    appStore.filterByTag = vi.fn(function (id) {
+      this.filterTag = id ? String(id) : "";
     });
     route.query = {};
     replace.mockClear();
@@ -63,7 +65,6 @@ describe("useFilterQuery", () => {
   });
 
   it("follows the address on Back/Forward or a link to the same page", async () => {
-    appStore.settingsLoaded = true;
     mount(Host);
     route.query = { tag: "9" };
     await nextTick();

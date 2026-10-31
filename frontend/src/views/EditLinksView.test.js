@@ -44,7 +44,7 @@ vi.mock("@/services/api/linksApi", () => ({
   linksApi: {
     list: vi
       .fn()
-      .mockResolvedValue({ links: [], pagination: { total: 0 }, page: 1 }),
+      .mockResolvedValue({ links: [] }),
     create: vi.fn(),
     update: vi.fn(),
     remove: vi.fn(),
@@ -61,7 +61,7 @@ describe("EditLinksView", () => {
     const appStore = useAppStore();
     // Prevent loadLinks from actually calling the API when watchers fire
     vi.spyOn(appStore, "loadLinks").mockResolvedValue();
-    appStore.links = [
+    appStore.allLinks = [
       { id: 1, title: "Alpha", url: "https://alpha.com", category_id: 1 },
       { id: 2, title: "Beta", url: "https://beta.com", category_id: 2 },
       { id: 3, title: "Gamma", url: "https://gamma.com", category_id: null },
@@ -71,7 +71,7 @@ describe("EditLinksView", () => {
       { id: 2, name: "Personal" },
     ];
     appStore.tags = [];
-    appStore.total = 3;
+    appStore.linksLoaded = true;
     appStore.search = "";
     appStore.filterCategory = "";
   });
@@ -101,9 +101,12 @@ describe("EditLinksView", () => {
     expect(wrapper.text()).toContain("Personal");
   });
 
-  it("shows pagination info", () => {
+  it("counts the shelf, and what the filters show of it", async () => {
     const wrapper = mountEdit();
-    expect(wrapper.text()).toContain("Showing 3 of 3 links");
+    expect(wrapper.find('[data-testid="link-count"]').text()).toBe("3 links");
+    await wrapper.find("select").setValue("1");
+    expect(wrapper.find('[data-testid="link-count"]').text()).toBe("Showing 1 of 3 links");
+    expect(wrapper.findAll(".link-card").map((c) => c.text())).toEqual(["Alpha"]);
   });
 
   it("renders action buttons", () => {
@@ -122,72 +125,47 @@ describe("EditLinksView", () => {
 
   it("shows empty state when no links", () => {
     const appStore = useAppStore();
-    appStore.links = [];
-    appStore.total = 0;
+    appStore.allLinks = [];
 
     const wrapper = mountEdit();
     expect(wrapper.text()).toContain("No links yet");
     expect(wrapper.find(".mdi-link-off").exists()).toBe(true);
   });
 
-  it("shows Load More button when more links available", () => {
+  it("says when nothing matches, rather than inviting a first link", async () => {
     const appStore = useAppStore();
-    appStore.total = 100;
-
     const wrapper = mountEdit();
-    expect(wrapper.text()).toContain("Load more");
-  });
-
-  it("hides Load More when all links loaded", () => {
-    const wrapper = mountEdit();
+    appStore.search = "nothing like this";
+    await flushPromises();
+    expect(wrapper.text()).toContain("No links found.");
     expect(wrapper.text()).not.toContain("Load more");
   });
 
-  it("searches once typing pauses, not on every key", async () => {
-    vi.useFakeTimers();
+  it("searches as you type, without asking the server", async () => {
     const appStore = useAppStore();
     const wrapper = mountEdit();
     await flushPromises();
     appStore.loadLinks.mockClear();
 
-    const searchInput = wrapper.find('input[type="search"]');
-    for (const text of ["g", "gi", "git"]) {
-      await searchInput.setValue(text);
-      vi.advanceTimersByTime(100);
-    }
-    // The box and the top bar share the text right away...
-    expect(appStore.search).toBe("git");
-    // ...but nothing is fetched until 300ms after the last key
+    await wrapper.find('input[type="search"]').setValue("gam");
+    expect(wrapper.findAll(".link-card").map((c) => c.text())).toEqual(["Gamma"]);
     expect(appStore.loadLinks).not.toHaveBeenCalled();
-    vi.advanceTimersByTime(300);
-    expect(appStore.loadLinks).toHaveBeenCalledTimes(1);
-
-    // Trailing spaces give the same results: no request
-    await searchInput.setValue("git ");
-    vi.advanceTimersByTime(300);
-    expect(appStore.loadLinks).toHaveBeenCalledTimes(1);
-
-    // Clearing shows everything again at once
-    await searchInput.setValue("");
-    expect(appStore.loadLinks).toHaveBeenCalledTimes(2);
-
-    wrapper.unmount();
-    vi.useRealTimers();
   });
 
-  it("leaves the first load to start-up until settings are in", async () => {
+  it("opens ?editId= once the shelf has loaded", async () => {
     const appStore = useAppStore();
-    appStore.links = [];
-    appStore.settingsLoaded = false;
+    const shelf = appStore.allLinks;
+    appStore.allLinks = [];
+    appStore.linksLoaded = false;
+    mockRoute.query = { editId: "2" };
     mountEdit();
     await flushPromises();
-    // Start-up loads with the user's page size; loading here would use 20
-    expect(appStore.loadLinks).not.toHaveBeenCalled();
-
-    appStore.settingsLoaded = true;
-    mountEdit();
+    expect(useLinkEditorStore().link).toBeFalsy();
+    appStore.allLinks = shelf;
+    appStore.linksLoaded = true;
     await flushPromises();
-    expect(appStore.loadLinks).toHaveBeenCalledWith({ reset: true });
+    expect(useLinkEditorStore().link).toMatchObject({ id: 2, title: "Beta" });
+    mockRoute.query = {};
   });
 
   it("syncs category filter immediately to store", async () => {

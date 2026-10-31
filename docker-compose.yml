@@ -26,7 +26,6 @@ services:
       - MAGIC_LINK_EXPIRY=${MAGIC_LINK_EXPIRY:-900}
       - SESSION_NAME=${SESSION_NAME:-hiddenshelf_session}
       - SESSION_LIFETIME=${SESSION_LIFETIME:-2592000}
-      - LINKS_PER_PAGE=${LINKS_PER_PAGE:-100}
       # Debug mode logs magic links instead of emailing them; dev only
       - DEBUG_MODE=${DEBUG_MODE:-false}
       - SIGNUP_ENABLED=${SIGNUP_ENABLED:-true}

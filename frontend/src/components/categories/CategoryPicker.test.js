@@ -27,7 +27,7 @@ describe("CategoryPicker", () => {
       { id: 1, name: "Work", link_count: 3, is_favorite: 0 },
       { id: 2, name: "Home", link_count: 2, is_favorite: 1 },
     ];
-    appStore.total = 5;
+    appStore.allLinks = Array.from({ length: 5 }, (_, i) => ({ id: i + 1 }));
     vi.clearAllMocks();
   });
 
@@ -158,7 +158,6 @@ describe("hidden categories in the pickers", () => {
   });
 
   it("hides and shows a category from its menu", async () => {
-    appStore.refreshLinks = vi.fn();
     const wrapper = mount(CategoryFilterBar, { global: { plugins: [pinia] } });
     const mine = wrapper.findAll("div.group")[0];
     await mine.trigger("contextmenu", { clientX: 1, clientY: 1 });
@@ -167,7 +166,6 @@ describe("hidden categories in the pickers", () => {
     await flushPromises();
     expect(categoriesApi.update).toHaveBeenCalledWith(2, { is_hidden: true });
     expect(appStore.categories[1].is_hidden).toBe(1);
-    expect(appStore.refreshLinks).toHaveBeenCalled();
   });
 
   it("gives hidden categories their own section in the phone sheet", async () => {

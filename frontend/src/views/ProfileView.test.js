@@ -33,10 +33,10 @@ vi.mock("@/services/api/settingsApi", () => ({
   settingsApi: {
     get: vi
       .fn()
-      .mockResolvedValue({ links_per_page: 20, brand_color: "#687061" }),
+      .mockResolvedValue({ brand_color: "#687061" }),
     update: vi
       .fn()
-      .mockResolvedValue({ links_per_page: 20, brand_color: "#687061" }),
+      .mockResolvedValue({ brand_color: "#687061" }),
   },
 }));
 vi.mock("@/services/api/configApi", () => ({
@@ -65,9 +65,13 @@ describe("ProfileView", () => {
     const authStore = useAuthStore();
     authStore.user = { email: "test@example.com" };
     const appStore = useAppStore();
-    appStore.settings = { links_per_page: 20, brand_color: "#687061" };
+    appStore.settings = { brand_color: "#687061" };
     appStore.appConfig = { app_version: "1.2.3", site_name: "Hidden Shelf" };
-    appStore.total = 10;
+    // 10 links of your own; a shared one doesn't count towards deleting
+    appStore.allLinks = [
+      ...Array.from({ length: 10 }, (_, i) => ({ id: i + 1 })),
+      { id: 99, is_from_shared_category: 1 },
+    ];
     appStore.categories = [{ id: 1, name: "Cat" }];
     appStore.tags = [{ id: 1, name: "Tag" }];
     appStore.sharedCategories = [];

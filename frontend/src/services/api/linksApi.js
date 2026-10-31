@@ -1,34 +1,11 @@
-import { request } from "@/lib/httpClient";
+import { request, revalidated } from "@/lib/httpClient";
 
 export const linksApi = {
-  list: async ({
-    page = 1,
-    // How many the caller already has; wins over page when given
-    offset = null,
-    limit = 20,
-    categoryId = "",
-    search = "",
-    tagId = "",
-    // "category": View's order, pages end on a whole category
-    group = "",
-    // Also links in hidden categories
-    includeHidden = false,
-    // "", newest, oldest, title, title_desc or visits
-    sort = "",
-  } = {}) => {
-    const params = new URLSearchParams();
-    params.set("offset", String(offset ?? (page - 1) * limit));
-    params.set("limit", String(limit));
-    if (categoryId) params.set("category_id", String(categoryId));
-    if (search) params.set("search", search);
-    if (tagId) params.set("tag_id", String(tagId));
-    if (group) params.set("group", group);
-    if (includeHidden) params.set("include_hidden", "1");
-    if (sort) params.set("sort", sort);
-    params.set("include_shared", "1");
-    const response = await request(`/api/links?${params.toString()}`);
-    return response;
-  },
+  // The whole shelf: your links and those in categories shared with you,
+  // hidden categories included. The app searches and filters it itself.
+  // Sends the last answer's ETag, so an unchanged shelf comes back as a
+  // 304 with no body.
+  list: async () => revalidated("/api/links?include_shared=1&include_hidden=1"),
   create: async (payload) => {
     const response = await request("/api/links", {
       method: "POST",
@@ -61,10 +38,6 @@ export const linksApi = {
   },
   // Moves the link to the trash
   remove: async (id) => request(`/api/links?id=${id}`, { method: "DELETE" }),
-  favorites: async () => {
-    const response = await request("/api/links?favorites=1");
-    return response.links || [];
-  },
   trash: async () => request("/api/links?trash=1"),
   restore: async (id) =>
     request(`/api/links/restore?id=${id}`, { method: "POST" }),

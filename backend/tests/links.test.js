@@ -231,8 +231,8 @@ describe("Links API", () => {
       const data = await json(res);
       expect(data.success).toBe(true);
       expect(data.links).toHaveLength(2);
-      expect(data.pagination).toBeDefined();
-      expect(data.pagination.total).toBe(2);
+      expect(data.total).toBe(2);
+      expect(data.pagination).toBeUndefined();
     });
 
     it("requires authentication for listing", async () => {
@@ -334,104 +334,55 @@ describe("Links API", () => {
       expect(data.links[0].total_visits).toBe(0);
     });
 
-    it("supports pagination", async () => {
-      for (let i = 1; i <= 25; i++) {
-        await createLink({
-          title: `Link ${i}`,
-          url: `https://example${i}.com`,
-        });
-      }
-
-      const res = await app.request("/api/links?page=1&limit=20", {
-        headers: { Cookie: cookie },
-      });
-      const data = await json(res);
-      expect(data.links).toHaveLength(20);
-      expect(data.pagination.total).toBe(25);
-      expect(data.pagination.pages).toBe(2);
-    });
-
-    it("continues from an offset, whatever the page size", async () => {
-      for (let i = 1; i <= 25; i++) {
+    it("returns the whole shelf in one answer, whatever limit is asked for", async () => {
+      for (let i = 1; i <= 120; i++) {
         await createLink({ title: `Link ${i}`, url: `https://example${i}.com` });
       }
       const get = async (q) =>
         json(await app.request(`/api/links?${q}`, { headers: { Cookie: cookie } }));
 
-      const first = await get("limit=20");
-      // 20 already loaded, then the page size changes to 100
-      const rest = await get("offset=20&limit=100");
-      expect(rest.pagination.offset).toBe(20);
-      expect(rest.links).toHaveLength(5);
-      const ids = [...first.links, ...rest.links].map((l) => l.id);
-      expect(new Set(ids).size).toBe(25);
-
-      // A bad offset falls back to the page
-      const bad = await get("offset=-3&page=2&limit=20");
-      expect(bad.pagination.offset).toBe(20);
+      const all = await get("");
+      expect(all.links).toHaveLength(120);
+      expect(all.total).toBe(120);
+      // Old clients' paging parameters are ignored
+      expect((await get("page=2&limit=20&offset=20")).links).toHaveLength(120);
     });
 
-    it("with group=category, pages in View order and never split a category", async () => {
-      const post = async (path, body) =>
-        json(
-          await app.request(path, {
-            method: "POST",
-            headers: { "Content-Type": "application/json", Cookie: cookie },
-            body: JSON.stringify(body),
-          }),
-        );
-      const cats = [];
-      for (const name of ["A", "B", "C"]) cats.push((await post("/api/categories", { name })).category);
-      // Uncategorized 3, A 15, B 30, C 5 (created mixed, to check grouping)
-      const plan = [[null, 3], [cats[0].id, 15], [cats[1].id, 30], [cats[2].id, 5]];
-      let n = 0;
-      for (let round = 0; round < 30; round++) {
-        for (const [categoryId, count] of plan) {
-          if (round < count) {
-            n += 1;
-            await createLink({ title: `L${n}`, url: `https://e${n}.com`, category_id: categoryId });
-          }
-        }
-      }
-      const get = async (q) =>
-        json(await app.request(`/api/links?${q}`, { headers: { Cookie: cookie } }));
-      const categoryList = await json(
-        await app.request("/api/categories", { headers: { Cookie: cookie } }),
-      );
-      const order = categoryList.categories.map((c) => c.id);
+    it("answers 304 with no body when the list hasn't changed", async () => {
+      await createLink({ title: "One" });
+      const first = await app.request("/api/links", { headers: { Cookie: cookie } });
+      const tag = first.headers.get("ETag");
+      expect(tag).toBeTruthy();
+      expect(first.headers.get("Cache-Control")).toBe("private, no-store");
 
-      const pages = [];
-      let offset = 0;
-      for (let i = 0; i < 10; i++) {
-        const page = await get(`group=category&offset=${offset}&limit=20`);
-        if (!page.links.length) break;
-        pages.push(page.links);
-        offset += page.links.length;
-        expect(page.pagination.total).toBe(53);
-      }
-      const all = pages.flat();
-      expect(all).toHaveLength(53);
-      expect(new Set(all.map((l) => l.id)).size).toBe(53);
+      const again = await app.request("/api/links", {
+        headers: { Cookie: cookie, "If-None-Match": tag },
+      });
+      expect(again.status).toBe(304);
+      expect(await again.text()).toBe("");
+      expect(again.headers.get("Cache-Control")).toBe("private, no-store");
 
-      // Each category sits in one page, as one run, in the View order
-      const runs = [];
-      for (const link of all) {
-        const key = link.category_id ?? "none";
-        if (runs.at(-1) !== key) runs.push(key);
-      }
-      expect(runs).toEqual(["none", ...order]);
-      for (const key of runs) {
-        const pagesWithIt = pages.filter((p) => p.some((l) => (l.category_id ?? "none") === key));
-        expect(pagesWithIt).toHaveLength(1);
-      }
-      // 20 would cut the first category; the page runs on to its end instead
-      expect(pages[0].length).toBeGreaterThan(20);
+      // A change gives a new tag, and the full list
+      await createLink({ title: "Two", url: "https://two.example" });
+      const changed = await app.request("/api/links", {
+        headers: { Cookie: cookie, "If-None-Match": tag },
+      });
+      expect(changed.status).toBe(200);
+      expect(changed.headers.get("ETag")).not.toBe(tag);
+      expect((await json(changed)).links).toHaveLength(2);
     });
-  });
 
-  // ── GET /api/links?id= (single) ──
+    it("gives categories, tags and shared categories an ETag too", async () => {
+      for (const path of ["/api/categories", "/api/tags", "/api/category_shares"]) {
+        const res = await app.request(path, { headers: { Cookie: cookie } });
+        expect(res.headers.get("ETag"), path).toBeTruthy();
+        const again = await app.request(path, {
+          headers: { Cookie: cookie, "If-None-Match": res.headers.get("ETag") },
+        });
+        expect(again.status, path).toBe(304);
+      }
+    });
 
-  describe("GET /api/links?id=", () => {
     it("returns a single link by id", async () => {
       const created = await createLink();
       const res = await app.request(`/api/links?id=${created.link.id}`, {
@@ -752,8 +703,7 @@ describe("Links API", () => {
 
     it("keeps their links out of lists and search", async () => {
       expect(titles(await get("limit=20"))).toEqual(["Grafana (mine)", "Loose"]);
-      const grouped = await get("limit=20&group=category");
-      expect(grouped.pagination.total).toBe(2);
+      expect((await get("")).total).toBe(2);
       const search = await get("limit=20&search=grafana");
       expect(titles(search)).toEqual(["Grafana (mine)"]);
       // ...but says how many it left out, so the page can offer them

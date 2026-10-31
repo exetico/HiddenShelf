@@ -109,10 +109,10 @@ describe("useLinkMenu", () => {
   });
 
   it("offers Details and one-step moves where they make sense", () => {
-    appStore.links = [
-      { id: 1, category_id: 5 },
-      link({ category_id: 5 }),
-      { id: 7, category_id: 5 },
+    appStore.allLinks = [
+      { id: 1, category_id: 5, display_order: 1 },
+      link({ category_id: 5, display_order: 2 }),
+      { id: 7, category_id: 5, display_order: 3 },
     ];
     const onDetails = vi.fn();
     const items = useLinkMenu({ onDetails }).items(appStore.links[1]);

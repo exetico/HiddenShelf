@@ -24,13 +24,14 @@ import {
   successResponse,
   errorResponse,
 } from "../lib/helpers.js";
+import { revalidate } from "../middleware/revalidate.js";
 import { requireAuth, optionalAuth } from "../middleware/auth.js";
 
 const shares = new Hono();
 
 // ─── GET /api/category_shares ────────────────────────────────────
 
-shares.get("/", optionalAuth(), (c) => {
+shares.get("/", optionalAuth(), revalidate(), (c) => {
   const db = getDb();
   const categoryId = c.req.query("category_id");
   const shareCode = c.req.query("code");

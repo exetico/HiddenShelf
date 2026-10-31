@@ -22,7 +22,7 @@ export function basePathFromEnv(value) {
 // Secrets are left out of the check; they may contain anything.
 for (const [name, value] of Object.entries(process.env)) {
   if (
-    /^(SITE_|BASE_PATH|SMTP_(HOST|PORT|USER|ENCRYPTION)|FROM_|DEBUG_MODE|SIGNUP_ENABLED|EMAIL_LOGIN_ENABLED|TRUST_PROXY|GOOGLE_(CLIENT_ID|REDIRECT_URI)|LINKS_PER_PAGE|MAGIC_LINK_EXPIRY|SESSION_)/.test(name) &&
+    /^(SITE_|BASE_PATH|SMTP_(HOST|PORT|USER|ENCRYPTION)|FROM_|DEBUG_MODE|SIGNUP_ENABLED|EMAIL_LOGIN_ENABLED|TRUST_PROXY|GOOGLE_(CLIENT_ID|REDIRECT_URI)|MAGIC_LINK_EXPIRY|SESSION_)/.test(name) &&
     /(^|\s)#/.test(value)
   ) {
     console.warn(
@@ -65,8 +65,6 @@ const config = {
     10,
   ), // seconds
 
-  // Pagination
-  linksPerPage: parseInt(process.env.LINKS_PER_PAGE || "100", 10),
 
   // Reverse proxy: "true" always trusts X-Forwarded-For and friends, "false"
   // never does. Unset: trusted only when the request comes from a loopback

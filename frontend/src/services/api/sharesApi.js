@@ -1,8 +1,8 @@
-import { request } from "@/lib/httpClient";
+import { request, revalidated } from "@/lib/httpClient";
 
 export const sharesApi = {
   listSharedCategories: async () => {
-    const response = await request("/api/category_shares");
+    const response = await revalidated("/api/category_shares");
     return response.shared_categories || [];
   },
   listOwnedShares: async () => {

@@ -1,8 +1,8 @@
-import { request } from "@/lib/httpClient";
+import { request, revalidated } from "@/lib/httpClient";
 
 export const tagsApi = {
   list: async () => {
-    const response = await request("/api/tags");
+    const response = await revalidated("/api/tags");
     return response.tags;
   },
   create: async (payload) => {

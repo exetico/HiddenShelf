@@ -13,6 +13,7 @@ import { Hono } from "hono";
 import { serve } from "@hono/node-server";
 import { serveStatic } from "@hono/node-server/serve-static";
 import { cors } from "hono/cors";
+import { compress } from "hono/compress";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -58,6 +59,8 @@ app.use(
 
 app.use("*", sessionMiddleware());
 app.use("/api/*", requireJsonBody());
+// gzip API answers: the whole shelf is one JSON list, and compresses ~10x
+app.use("/api/*", compress());
 
 // ─── API routes ──────────────────────────────────────────────────
 

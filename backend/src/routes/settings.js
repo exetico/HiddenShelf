@@ -14,9 +14,17 @@ import { requireAuth } from "../middleware/auth.js";
 const settings = new Hono();
 
 const DEFAULT_SETTINGS = {
-  links_per_page: 100,
   brand_color: "#687061",
 };
+
+// Settings that no longer exist, dropped when settings are read or saved.
+// links_per_page went when the app started loading the whole shelf at once.
+const RETIRED = ["links_per_page"];
+function withoutRetired(settings) {
+  const clean = { ...settings };
+  for (const key of RETIRED) delete clean[key];
+  return clean;
+}
 
 // ─── GET /api/user_settings ──────────────────────────────────────
 
@@ -35,7 +43,7 @@ settings.get("/", requireAuth(), (c) => {
     return successResponse(c, { settings: { ...DEFAULT_SETTINGS } });
   }
 
-  return successResponse(c, { settings: JSON.parse(row.settings) });
+  return successResponse(c, { settings: withoutRetired(JSON.parse(row.settings)) });
 });
 
 // ─── PUT /api/user_settings ──────────────────────────────────────
@@ -47,20 +55,7 @@ settings.put("/", requireAuth(), async (c) => {
   const row = db
     .prepare("SELECT settings FROM user_settings WHERE user_id = ?")
     .get(c.userId);
-  const current = row ? JSON.parse(row.settings) : { ...DEFAULT_SETTINGS };
-
-  // Validate links_per_page
-  if (input.links_per_page !== undefined) {
-    const validLimits = [20, 50, 100, 250, 500];
-    const val = parseInt(input.links_per_page, 10);
-    if (!validLimits.includes(val)) {
-      return errorResponse(
-        c,
-        `Invalid links_per_page value. Must be one of: ${validLimits.join(", ")}`,
-      );
-    }
-    current.links_per_page = val;
-  }
+  const current = row ? withoutRetired(JSON.parse(row.settings)) : { ...DEFAULT_SETTINGS };
 
   // Validate brand_color
   if (input.brand_color !== undefined) {

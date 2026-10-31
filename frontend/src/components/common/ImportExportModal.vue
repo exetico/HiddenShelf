@@ -38,8 +38,9 @@ const progressPercent = ref(0);
 
 function exportData() {
   // Separate own links from shared-category links
-  const ownLinks = appStore.links.filter((l) => !l.is_from_shared_category);
-  const sharedCount = appStore.links.length - ownLinks.length;
+  // The whole shelf, whatever the search or filters show
+  const ownLinks = appStore.allLinks.filter((l) => !l.is_from_shared_category);
+  const sharedCount = appStore.allLinks.length - ownLinks.length;
 
   const exportPayload = {
     links: ownLinks.map((link) => ({
@@ -99,23 +100,8 @@ async function validateImport() {
       throw new Error("Invalid JSON format");
     }
 
-    // Fetch ALL existing links by paginating
-    let allExistingLinks = [];
-    let page = 1;
-    let hasMore = true;
-    while (hasMore) {
-      const response = await linksApi.list({ page, limit: 500 });
-      if (response.links && response.links.length > 0) {
-        allExistingLinks = allExistingLinks.concat(response.links);
-        if (response.pagination && page < response.pagination.pages) {
-          page++;
-        } else {
-          hasMore = false;
-        }
-      } else {
-        hasMore = false;
-      }
-    }
+    // Every existing link, to spot duplicates
+    const allExistingLinks = (await linksApi.list()).links || [];
 
     const validated = { links: [], categories: [], tags: [] };
 
@@ -294,7 +280,7 @@ async function executeImport() {
     progressPercent.value = 100;
     progressText.value = "Finalizing...";
 
-    await appStore.loadLinks({ reset: true });
+    await appStore.loadLinks();
     await appStore.loadCategories();
     await appStore.loadTags();
 

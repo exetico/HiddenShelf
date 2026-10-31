@@ -1,8 +1,8 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 
-vi.mock("@/lib/httpClient", () => ({ request: vi.fn() }));
+vi.mock("@/lib/httpClient", () => ({ request: vi.fn(), revalidated: vi.fn() }));
 
-import { request } from "@/lib/httpClient";
+import { request, revalidated } from "@/lib/httpClient";
 import { categoriesApi } from "@/services/api/categoriesApi";
 import { sharesApi } from "@/services/api/sharesApi";
 import { linksApi } from "@/services/api/linksApi";
@@ -10,6 +10,7 @@ import { linksApi } from "@/services/api/linksApi";
 describe("API clients", () => {
   beforeEach(() => {
     request.mockReset();
+    revalidated.mockReset();
   });
 
   it("saves category order with PUT /api/categories/order", async () => {
@@ -32,19 +33,12 @@ describe("API clients", () => {
     expect(await sharesApi.listOwnedShares()).toEqual([]);
   });
 
-  it("sends tag_id only when filtering by tag", async () => {
-    request.mockResolvedValue({ links: [] });
-    await linksApi.list({ tagId: 7 });
-    expect(request.mock.calls[0][0]).toContain("tag_id=7");
-    await linksApi.list({});
-    expect(request.mock.calls[1][0]).not.toContain("tag_id");
-  });
-
-  it("asks for hidden categories only when told to", async () => {
-    request.mockResolvedValue({ links: [] });
-    await linksApi.list({ includeHidden: true });
-    expect(request.mock.calls[0][0]).toContain("include_hidden=1");
-    await linksApi.list({});
-    expect(request.mock.calls[1][0]).not.toContain("include_hidden");
+  it("asks for the whole shelf, shared and hidden categories included", async () => {
+    revalidated.mockResolvedValue({ links: [] });
+    await linksApi.list();
+    const url = revalidated.mock.calls[0][0];
+    expect(url).toContain("include_shared=1");
+    expect(url).toContain("include_hidden=1");
+    expect(url).not.toMatch(/limit|offset|page|search|tag_id/);
   });
 });
