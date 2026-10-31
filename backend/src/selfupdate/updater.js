@@ -91,7 +91,8 @@ export function createUpdater({
       timeout,
       maxBuffer: 64 * 1024 * 1024,
     });
-    if (job) {
+    // The log shows what builds print, and anything that failed
+    if (job && (cmd === "npm" || res.status !== 0)) {
       const out = `${res.stdout || ""}${res.stderr || ""}`.trim();
       if (out) fs.appendFileSync(logFile, out.split("\n").slice(-40).join("\n") + "\n");
     }

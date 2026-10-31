@@ -1,8 +1,9 @@
 .PHONY: help up down restart logs dev build-frontend test test-backend test-frontend clean install backup restore upgrade refresh-base
 
-# The commit the image is built from, shown next to the Update button
-GIT_COMMIT = $(shell git rev-parse HEAD 2>/dev/null)
-export GIT_COMMIT
+# Labels a build with the commit it is built from (shown next to the Update
+# button). Read when the command runs, i.e. after a git pull in the same
+# recipe: an exported make variable would be read before it.
+WITH_COMMIT = GIT_COMMIT=$$(git rev-parse HEAD 2>/dev/null)
 
 # Default target
 help:
@@ -53,7 +54,7 @@ up:
 	if [ "$$pull" = yes ]; then \
 		$(MAKE) --no-print-directory upgrade; \
 	else \
-		docker compose up -d --build web; \
+		$(WITH_COMMIT) docker compose up -d --build web; \
 	fi
 
 # Runs a shell command in the app container, running or not. Files go
@@ -96,12 +97,12 @@ upgrade:
 		echo "App is not running, skipping backup"; \
 	fi
 	git pull --ff-only
-	docker compose up -d --build web
+	$(WITH_COMMIT) docker compose up -d --build web
 
 # Pull the newest node:22-alpine and rebuild on it. The in-app update keeps
 # the base image it has, so this stays a deliberate step from the terminal.
 refresh-base:
-	docker compose build --pull web
+	$(WITH_COMMIT) docker compose build --pull web
 	docker compose up -d web
 
 # Start dev mode with Vue HMR (magic links are logged, not emailed)

@@ -52,14 +52,15 @@ async function load() {
     status.value = await updatesApi.status();
     loadError.value = "";
     if (waitingFor.value) {
-      const j = status.value.job;
-      if (j && j.id === waitingFor.value && j.state !== "running") {
+      // The request's own row in the history gets the updater's result
+      const row = status.value.history?.find((h) => h.id === waitingFor.value);
+      if (row?.result) {
         waitingFor.value = null;
-        if (j.state === "succeeded") {
-          toast.success("Update finished. Reloading the app…");
+        if (row.result === "succeeded") {
+          toast.success("Done. Reloading the app…");
           setTimeout(() => window.location.reload(), 1500);
         } else {
-          toast.error(j.message || "The update did not finish.");
+          toast.error(row.message || "The update did not finish.");
         }
       }
     }

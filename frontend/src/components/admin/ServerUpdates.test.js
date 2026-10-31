@@ -84,6 +84,29 @@ describe("ServerUpdates", () => {
     expect(wrapper.find('[data-testid="update-progress"]').exists()).toBe(true);
   });
 
+  it("stops waiting when the request's history row gets a result", async () => {
+    const id = "f".repeat(32);
+    updatesApi.status.mockResolvedValue(status());
+    updatesApi.update.mockResolvedValue({ id });
+    vi.useFakeTimers();
+    const wrapper = mountIt();
+    await flushPromises();
+    await wrapper.find('[data-testid="update-button"]').trigger("click");
+    await answer(true);
+    expect(wrapper.find('[data-testid="update-progress"]').exists()).toBe(true);
+    // The updater's run has its own id; the history row carries the result
+    updatesApi.status.mockResolvedValue(
+      status({
+        available: { target: null, count: 0, commits: [] },
+        job: { id: "9".repeat(32), action: "update", state: "failed", message: "Build failed", finished_at: 2 },
+        history: [{ id, action: "update", target_commit: B, email: "a@example.com", created_at: 1, result: "failed", message: "Build failed" }],
+      }),
+    );
+    await vi.advanceTimersByTimeAsync(3500);
+    await flushPromises();
+    expect(wrapper.find('[data-testid="update-progress"]').exists()).toBe(false);
+  });
+
   it("does nothing when the admin cancels", async () => {
     updatesApi.status.mockResolvedValue(status());
     const wrapper = mountIt();
