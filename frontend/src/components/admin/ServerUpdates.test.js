@@ -80,7 +80,7 @@ describe("ServerUpdates", () => {
     await wrapper.find('[data-testid="update-button"]').trigger("click");
     const asked = await answer(true);
     expect(asked.title).toBe("Update the app?");
-    expect(updatesApi.update).toHaveBeenCalledWith(B);
+    expect(updatesApi.update).toHaveBeenCalledWith();
     expect(wrapper.find('[data-testid="update-progress"]').exists()).toBe(true);
   });
 
@@ -128,7 +128,7 @@ describe("ServerUpdates", () => {
     );
     const wrapper = mountIt();
     await flushPromises();
-    expect(wrapper.find('[data-testid="updater-missing"]').text()).toContain("make install-updater");
+    expect(wrapper.find('[data-testid="updater-missing"]').text()).toContain("hasn't checked in yet");
     expect(wrapper.find('[data-testid="update-button"]').attributes("disabled")).toBeDefined();
   });
 

@@ -3,7 +3,8 @@
  *
  * Endpoints:
  *   GET  /api/updates           → version, what an update would bring, last result, history
- *   POST /api/updates/update    → { commit } the target the admin saw; starts an update
+ *   POST /api/updates/update    → update to the latest main (no body: the
+ *                                 updater decides what to install)
  *   POST /api/updates/rollback  → back to the version before the last update
  *
  * Anyone who isn't an admin gets 404, as if the feature didn't exist.
@@ -73,9 +74,9 @@ function guard(c) {
   return null;
 }
 
-function start(c, action, commit) {
+function start(c, action) {
   try {
-    const { id } = requestUpdate({ action, commit, userId: c.userId, ip: getClientIp(c) });
+    const { id } = requestUpdate({ action, userId: c.userId, ip: getClientIp(c) });
     return c.json({ success: true, message: "Started", id }, 202);
   } catch (err) {
     if (err instanceof UpdateError) return errorResponse(c, err.message, err.status);
@@ -83,17 +84,9 @@ function start(c, action, commit) {
   }
 }
 
-updates.post("/update", async (c) => {
-  const refused = guard(c);
-  if (refused) return refused;
-  const body = await c.req.json().catch(() => ({}));
-  return start(c, "update", typeof body.commit === "string" ? body.commit : "");
-});
+// Neither endpoint reads a request body
+updates.post("/update", (c) => guard(c) || start(c, "update"));
 
-updates.post("/rollback", (c) => {
-  const refused = guard(c);
-  if (refused) return refused;
-  return start(c, "rollback", null);
-});
+updates.post("/rollback", (c) => guard(c) || start(c, "rollback"));
 
 export default updates;

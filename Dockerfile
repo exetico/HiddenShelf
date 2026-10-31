@@ -2,7 +2,9 @@
 FROM node:22-alpine
 
 # Install build tools needed for better-sqlite3 native module
-RUN apk add --no-cache python3 make g++ sqlite
+# Build tools for better-sqlite3; git and the same tools let the in-app
+# updater build new versions inside the container (src/selfupdate/)
+RUN apk add --no-cache python3 make g++ sqlite git
 
 # Set working directory
 WORKDIR /app
@@ -23,10 +25,11 @@ COPY . .
 # Build frontend (the app and the public link page)
 RUN cd frontend && npm run build
 
-# Create db directory with proper permissions
-RUN mkdir -p /app/db && chown -R node:node /app/db
+# Create db directory with proper permissions. var/ holds in-app updates
+# (a volume); the image's own code stays read-only for the app's user.
+RUN mkdir -p /app/db /app/var && chown -R node:node /app/db /app/var
 
-# The commit this image was built from (make and the updater pass it).
+# The commit this image was built from (make passes it).
 # Last, so a new commit doesn't invalidate the cached layers above.
 ARG GIT_COMMIT=""
 ENV GIT_COMMIT=$GIT_COMMIT
@@ -37,5 +40,5 @@ USER node
 # Expose port 3000
 EXPOSE 3000
 
-# Start the Hono server
-CMD ["node", "backend/src/index.js"]
+# The supervisor runs the Hono server, and the in-app updater when enabled
+CMD ["node", "backend/src/supervisor.js"]

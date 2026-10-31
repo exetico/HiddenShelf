@@ -3,8 +3,8 @@
  * Server updates, for admins listed in UPDATE_ADMIN_EMAILS.
  *
  * Shows the running version and what an update would bring in, and starts
- * an update or a rollback. The server does the work through the host
- * updater; this page only asks and then follows its progress.
+ * an update or a rollback. The container updates itself; this page only
+ * asks (sending nothing but the click) and then follows its progress.
  */
 import { ref, computed, onMounted, onBeforeUnmount } from "vue";
 import { updatesApi } from "@/services/api/updatesApi";
@@ -97,7 +97,7 @@ async function start(action) {
     action === "update"
       ? await dialog.confirm({
           title: "Update the app?",
-          message: `This brings in ${s.available.count} change${s.available.count === 1 ? "" : "s"} up to ${short(s.available.target)}. The database is backed up first. The site is offline for a few seconds, and goes back to the current version by itself if the new one doesn't start.`,
+          message: `This installs the latest version on ${s.branch} (${s.available.count} change${s.available.count === 1 ? "" : "s"} when last checked). Building it takes a minute or two while the site stays up. The database is backed up first, the site is offline for a few seconds, and it goes back to the current version by itself if the new one doesn't start.`,
           confirmText: "Update",
         })
       : await dialog.confirm({
@@ -114,7 +114,7 @@ async function start(action) {
   try {
     const { id } =
       action === "update"
-        ? await updatesApi.update(s.available.target)
+        ? await updatesApi.update()
         : await updatesApi.rollback();
     waitingFor.value = id;
     toast.success(action === "update" ? "Update started" : "Rollback started");
@@ -173,15 +173,16 @@ onBeforeUnmount(() => clearTimeout(timer));
         class="text-sm rounded-md bg-amber-50 dark:bg-amber-900/30 text-amber-800 dark:text-amber-200 p-3"
         data-testid="updater-missing"
       >
-        The updater isn't installed on this server yet. Run
-        <code>make install-updater</code> there once.
+        The updater hasn't checked in yet. It starts with the app when
+        <code>UPDATE_ADMIN_EMAILS</code> is set; give it a minute after
+        <code>make up</code>, then reload.
       </p>
       <p
         v-else-if="status.updater_stale"
         class="text-sm rounded-md bg-amber-50 dark:bg-amber-900/30 text-amber-800 dark:text-amber-200 p-3"
       >
-        The updater hasn't checked in for a few hours. It may have stopped
-        on the server (<code>systemctl status hiddenshelf-updater-check.timer</code>).
+        The updater hasn't checked in for a few hours. Check the app's logs
+        on the server (<code>make logs</code>).
       </p>
       <p
         v-if="status.check_error"

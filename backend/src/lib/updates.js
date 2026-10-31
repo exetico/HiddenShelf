@@ -1,10 +1,11 @@
 /**
- * In-app updates — the app's half.
+ * In-app updates — the web app's half.
  *
- * The app never updates itself. An admin's click records a row in
- * update_requests and drops that row's random id in control/inbox/request.
- * The host updater (deploy/updater/hiddenshelf-updater.sh) does the work and
- * writes plain text status files to control/status/, which are read here.
+ * The web app never builds or restarts anything. An admin's click records a
+ * row in update_requests and creates an empty flag file, var/inbox/update or
+ * var/inbox/rollback. The supervisor (src/supervisor.js, the container's main
+ * process) sees the flag, does the work, and writes plain text status files
+ * to var/status/, which are read here.
  * Those files are treated as untrusted text: size-capped, parsed as
  * key=value or tab-separated lines, and only shown as text.
  */
@@ -168,22 +169,30 @@ export function syncResults(status = readStatus()) {
   const db = getDb();
   const job = status.job;
   if (job && FINAL_STATES.has(job.state)) {
-    const row = db
-      .prepare("SELECT id, action, email FROM update_requests WHERE id = ? AND result IS NULL")
-      .get(job.id);
+    // The run that handled a request: the newest waiting one of that kind,
+    // made before the run started, unless this run was already recorded
+    const seen = db.prepare("SELECT 1 FROM update_requests WHERE job_id = ?").get(job.id);
+    const row = seen
+      ? null
+      : db.prepare(
+          `SELECT id, action, email FROM update_requests
+           WHERE result IS NULL AND action = ? AND created_at <= ?
+           ORDER BY created_at DESC LIMIT 1`,
+        ).get(job.action, (job.started_at || now()) + 5);
     if (row) {
-      db.prepare("UPDATE update_requests SET result = ?, message = ?, finished_at = ? WHERE id = ?")
-        .run(job.state, job.message, job.finished_at || now(), row.id);
+      db.prepare("UPDATE update_requests SET result = ?, message = ?, finished_at = ?, job_id = ? WHERE id = ?")
+        .run(job.state, job.message, job.finished_at || now(), job.id, row.id);
       const what = row.action === "rollback" ? "Rollback" : "Update";
       const outcome = { succeeded: "finished", failed: "failed", rolled_back: "failed and was rolled back" }[job.state];
       notifyAdmins(`${what} ${outcome}`, `${what} requested by ${row.email} ${outcome}.\n${job.message}`);
     }
   }
-  const running = job && job.state === "running" ? job.id : "";
-  db.prepare(
-    `UPDATE update_requests SET result = 'failed', message = ?, finished_at = ?
-     WHERE result IS NULL AND created_at < ? AND id != ?`,
-  ).run("The updater did not pick this up. Is it installed and running?", now(), now() - PENDING_TIMEOUT, running);
+  if (!(job && job.state === "running")) {
+    db.prepare(
+      `UPDATE update_requests SET result = 'failed', message = ?, finished_at = ?
+       WHERE result IS NULL AND created_at < ?`,
+    ).run("The updater did not pick this up. Is it running?", now(), now() - PENDING_TIMEOUT);
+  }
 }
 
 export function history(limit = 20) {
@@ -203,16 +212,17 @@ export class UpdateError extends Error {
 }
 
 /**
- * Record a request and hand its id to the updater. Throws UpdateError.
- * @param {{ action: "update"|"rollback", commit?: string, userId: number, ip: string }} opts
+ * Record a request and raise the updater's flag. Throws UpdateError.
+ * Nothing from the admin goes to the updater: the flag is an empty file.
+ * @param {{ action: "update"|"rollback", userId: number, ip: string }} opts
  */
-export function requestUpdate({ action, commit = null, userId, ip }) {
+export function requestUpdate({ action, userId, ip }) {
   const db = getDb();
   const status = readStatus();
   syncResults(status);
 
   if (!status.updater_seen) {
-    throw new UpdateError("The updater isn't installed on this server. Run make install-updater there once.", 503);
+    throw new UpdateError("The updater hasn't started yet. Check that UPDATE_ADMIN_EMAILS is set and the app was restarted with make up.", 503);
   }
   if (status.job && status.job.state === "running") {
     throw new UpdateError("An update is already running.");
@@ -225,44 +235,39 @@ export function requestUpdate({ action, commit = null, userId, ip }) {
   }
 
   if (action === "update") {
-    if (!HEX40.test(commit || "")) throw new UpdateError("Missing the version to update to.", 400);
     if (!status.check_ok) throw new UpdateError(status.check_error || "The server can't be updated from here right now.");
-    if (!status.available.count || status.available.target !== commit) {
-      throw new UpdateError("The list of changes is out of date. Reload and check again.");
-    }
+    if (!status.available.count) throw new UpdateError("You're already on the latest version.");
   } else if (!status.rollback) {
     throw new UpdateError("There is no previous version to go back to.");
   }
 
   const user = db.prepare("SELECT email FROM users WHERE id = ?").get(userId);
   const id = crypto.randomBytes(16).toString("hex");
-  const inbox = controlPath("inbox");
-  const target = path.join(inbox, "request");
-  if (fs.existsSync(target)) throw new UpdateError("An update is already waiting to start.");
+  // Recorded for the audit log only; the updater decides what to install
+  const shown = action === "update" ? status.available.target : status.rollback.commit;
 
   db.prepare(
     `INSERT INTO update_requests (id, action, target_commit, user_id, email, ip, created_at)
      VALUES (?, ?, ?, ?, ?, ?, ?)`,
-  ).run(id, action, action === "update" ? commit : null, userId, user.email, ip, now());
+  ).run(id, action, shown, userId, user.email, ip, now());
 
-  const tmp = path.join(inbox, `.request-${id}`);
   try {
-    fs.writeFileSync(tmp, `${id}\n`, { flag: "wx", mode: 0o644 });
-    fs.renameSync(tmp, target);
+    // Empty, and created only if it isn't there yet
+    fs.writeFileSync(controlPath("inbox", action), "", { flag: "wx", mode: 0o600 });
   } catch (err) {
-    try { fs.unlinkSync(tmp); } catch { /* not there */ }
     db.prepare("UPDATE update_requests SET result = 'failed', message = ?, finished_at = ? WHERE id = ?")
-      .run("Could not reach the updater's inbox.", now(), id);
-    console.error("[updates] Could not write the request:", err.message);
-    throw new UpdateError("Could not reach the updater. Check that control/inbox exists (make up creates it).", 503);
+      .run("Could not reach the updater.", now(), id);
+    if (err.code === "EEXIST") throw new UpdateError("An update is already waiting to start.");
+    console.error("[updates] Could not raise the flag:", err.message);
+    throw new UpdateError("Could not reach the updater.", 503);
   }
 
   const what = action === "rollback"
-    ? `a rollback to ${short(status.rollback.commit)}`
-    : `an update to ${short(commit)} (${status.available.count} change${status.available.count === 1 ? "" : "s"})`;
+    ? `a rollback to ${short(shown)}`
+    : `an update to ${short(shown)} (${status.available.count} change${status.available.count === 1 ? "" : "s"})`;
   notifyAdmins(
     action === "rollback" ? "Rollback started" : "Update started",
-    `${user.email} started ${what} from ${ip}.\nIf this wasn't one of you, remove the updater with "make remove-updater" and check UPDATE_ADMIN_EMAILS.`,
+    `${user.email} started ${what} from ${ip}.\nIf this wasn't one of you, empty UPDATE_ADMIN_EMAILS and run make up.`,
   );
   return { id };
 }

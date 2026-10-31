@@ -89,8 +89,9 @@ const config = {
     `${process.env.SITE_URL || "http://localhost:3000"}/api/auth/google/callback`,
 
   // In-app updates: who may press Update / Roll back (comma-separated
-  // emails, empty = nobody), how recent their sign-in must be, and where
-  // the host updater's inbox and status folders are mounted
+  // emails, empty = nobody), how recent their sign-in must be, where the
+  // updater keeps its builds and status (a Docker volume), and where it
+  // gets new versions from
   updateAdminEmails: (process.env.UPDATE_ADMIN_EMAILS || "")
     .split(",")
     .map((e) => e.trim().toLowerCase())
@@ -99,7 +100,11 @@ const config = {
     1,
     parseInt(process.env.UPDATE_REAUTH_MINUTES || "10", 10) || 10,
   ),
-  updateControlDir: process.env.UPDATE_CONTROL_DIR || "./control",
+  updateControlDir: process.env.UPDATE_VAR_DIR || "./var",
+  updateRepoUrl: process.env.UPDATE_REPO_URL || "https://github.com/exetico/HiddenShelf.git",
+  updateBranch: /^[A-Za-z0-9._\/-]+$/.test(process.env.UPDATE_BRANCH || "")
+    ? process.env.UPDATE_BRANCH
+    : "main",
 
   // The commit the image was built from (Docker build arg)
   gitCommit: /^[0-9a-f]{40}$/.test(process.env.GIT_COMMIT || "")

@@ -49,6 +49,3 @@ db/backups/
 
 # Local Docker Compose changes (kept out of git so upgrades pull cleanly)
 docker-compose.override.yml
-
-# In-app updater: requests, status and host-only state (deploy/updater/)
-control/
