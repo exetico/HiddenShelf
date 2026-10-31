@@ -6,4 +6,6 @@ export const updatesApi = {
   // No body: the server decides what to install
   update: async () => request("/api/updates/update", { method: "POST" }),
   rollback: async () => request("/api/updates/rollback", { method: "POST" }),
+  // Look for a new version now instead of at the next hourly check
+  check: async () => request("/api/updates/check", { method: "POST" }),
 };

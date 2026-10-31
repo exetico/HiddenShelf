@@ -3,7 +3,8 @@
  *
  * The web app never builds or restarts anything. An admin's click records a
  * row in update_requests and creates an empty flag file, var/inbox/update or
- * var/inbox/rollback. The supervisor (src/supervisor.js, the container's main
+ * var/inbox/rollback ("Check for updates" creates var/inbox/check, with no
+ * row: it only looks at GitHub). The supervisor (src/supervisor.js, the container's main
  * process) sees the flag, does the work, and writes plain text status files
  * to var/status/, which are read here.
  * Those files are treated as untrusted text: size-capped, parsed as
@@ -270,4 +271,32 @@ export function requestUpdate({ action, userId, ip }) {
     `${user.email} started ${what} from ${ip}.\nIf this wasn't one of you, empty UPDATE_ADMIN_EMAILS and run make up.`,
   );
   return { id };
+}
+
+/**
+ * Ask the updater to look for a new version now instead of at the next
+ * hourly check. Only an empty flag file: nothing from the admin is passed on.
+ * At most once a minute (the updater enforces this too). Throws UpdateError.
+ */
+export function requestCheck() {
+  const status = readStatus();
+  if (!status.updater_seen) {
+    throw new UpdateError("The updater hasn't started yet. Check that UPDATE_ADMIN_EMAILS is set and the app was restarted with make up.", 503);
+  }
+  if (status.job && status.job.state === "running") {
+    throw new UpdateError("An update is running. It checks again when it's done.");
+  }
+  if (status.checked_at && now() - status.checked_at < MIN_GAP) {
+    throw new UpdateError("Checked less than a minute ago.", 429);
+  }
+  try {
+    fs.writeFileSync(controlPath("inbox", "check"), "", { flag: "wx", mode: 0o600 });
+  } catch (err) {
+    // Already asked and not picked up yet: that check will do
+    if (err.code !== "EEXIST") {
+      console.error("[updates] Could not raise the check flag:", err.message);
+      throw new UpdateError("Could not reach the updater.", 503);
+    }
+  }
+  return { checked_at: status.checked_at };
 }

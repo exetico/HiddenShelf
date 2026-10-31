@@ -5,6 +5,7 @@
  * Shows the running version and what an update would bring in, and starts
  * an update or a rollback. The container updates itself; this page only
  * asks (sending nothing but the click) and then follows its progress.
+ * The server looks for new versions hourly; "Check for updates" asks now.
  */
 import { ref, computed, onMounted, onBeforeUnmount } from "vue";
 import { updatesApi } from "@/services/api/updatesApi";
@@ -21,6 +22,10 @@ const loadError = ref("");
 const busy = ref(false);
 // Set after a click, until the updater reports a result for that request
 const waitingFor = ref(null);
+// Set after "Check for updates", until a newer check result arrives
+const checking = ref(false);
+let checkSince = 0;
+let checkGiveUpAt = 0;
 let timer = null;
 
 const short = (commit) => (commit ? commit.slice(0, 7) : "");
@@ -64,6 +69,18 @@ async function load() {
         }
       }
     }
+    if (checking.value) {
+      if ((status.value.checked_at || 0) > checkSince) {
+        checking.value = false;
+        const n = status.value.available?.count || 0;
+        if (!status.value.check_ok) toast.error(status.value.check_error || "Could not check for updates.");
+        else if (n) toast.success(`${n} new change${n === 1 ? "" : "s"} found.`);
+        else toast.success("You're on the latest version.");
+      } else if (Date.now() > checkGiveUpAt) {
+        checking.value = false;
+        toast.error("The updater didn't answer. Try again in a minute.");
+      }
+    }
   } catch (e) {
     // While the app restarts the server can't answer; keep waiting
     if (!running.value) loadError.value = e.message || "Could not load the update status.";
@@ -73,7 +90,22 @@ async function load() {
 
 function schedule() {
   clearTimeout(timer);
-  timer = setTimeout(load, running.value ? 3000 : 60000);
+  timer = setTimeout(load, running.value || checking.value ? 3000 : 60000);
+}
+
+async function checkNow() {
+  busy.value = true;
+  try {
+    const res = await updatesApi.check();
+    checkSince = res.checked_at || 0;
+    checkGiveUpAt = Date.now() + 60_000;
+    checking.value = true;
+  } catch (e) {
+    toast.error(e.message || "Could not check for updates.");
+  } finally {
+    busy.value = false;
+    schedule();
+  }
 }
 
 async function signInAgain() {
@@ -233,6 +265,17 @@ onBeforeUnmount(() => clearTimeout(timer));
         >
           <i class="mdi mdi-update mr-1" aria-hidden="true"></i>
           Update
+        </button>
+        <button
+          type="button"
+          title="Look for a new version on GitHub now instead of waiting for the hourly check"
+          class="px-4 py-2 rounded-md border border-gray-300 dark:border-brand-700 hover:bg-gray-50 dark:hover:bg-brand-800 disabled:opacity-50 disabled:cursor-not-allowed"
+          :disabled="busy || running || checking || !status.updater_seen"
+          data-testid="check-button"
+          @click="checkNow"
+        >
+          <i class="mdi mr-1" :class="checking ? 'mdi-loading mdi-spin' : 'mdi-refresh'" aria-hidden="true"></i>
+          {{ checking ? "Checking…" : "Check for updates" }}
         </button>
         <button
           v-if="status.rollback"

@@ -151,6 +151,32 @@ describe("In-app updates", () => {
     expect(fs.existsSync(requestFile())).toBe(false);
   });
 
+  it("checks for updates on request: an empty flag, no fresh sign-in, once a minute", async () => {
+    updaterReports();
+    // The last check was just now
+    expect((await post("/api/updates/check", admin.cookie)).status).toBe(429);
+    const longAgo = Math.floor(Date.now() / 1000) - 3600;
+    writeStatus("check", `checked_at=${longAgo}\nok=yes\nerror=\nbranch=main\ntarget=${B}\ncount=0\nmigrations=no\n`);
+    const stale = createAuthenticatedUser("admin@example.com", { loginAt: Date.now() - 60 * 60 * 1000 });
+    const res = await post("/api/updates/check", stale.cookie, { body: { url: "https://evil.example" } });
+    expect(res.status).toBe(202);
+    expect((await json(res)).checked_at).toBe(longAgo);
+    expect(fs.readFileSync(flag("check"), "utf8")).toBe("");
+    // Asking again before the updater picks it up is fine
+    expect((await post("/api/updates/check", admin.cookie)).status).toBe(202);
+    // Not recorded as an update request
+    expect(getDb().prepare("SELECT COUNT(*) AS n FROM update_requests").get().n).toBe(0);
+  });
+
+  it("only lets admins on this site ask for a check", async () => {
+    const longAgo = Math.floor(Date.now() / 1000) - 3600;
+    writeStatus("check", `checked_at=${longAgo}\nok=yes\nerror=\nbranch=main\ntarget=${B}\ncount=0\nmigrations=no\n`);
+    expect((await post("/api/updates/check", user.cookie)).status).toBe(404);
+    expect((await post("/api/updates/check", admin.cookie, { origin: "https://evil.example" })).status).toBe(403);
+    expect((await post("/api/updates/check", admin.cookie, { origin: null })).status).toBe(403);
+    expect(fs.existsSync(flag("check"))).toBe(false);
+  });
+
   it("says so when the updater hasn't started", async () => {
     const res = await post("/api/updates/update", admin.cookie, { body: { commit: B } });
     expect(res.status).toBe(503);

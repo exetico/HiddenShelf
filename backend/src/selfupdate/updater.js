@@ -2,8 +2,9 @@
  * Self-update, Discourse style: the app container updates its own code.
  *
  * Run by the supervisor (src/supervisor.js), never by the web app. It takes
- * no input: an admin's click only creates an empty flag file, var/inbox/update
- * or var/inbox/rollback, which is never read, only checked for and deleted.
+ * no input: an admin's click only creates an empty flag file, var/inbox/update,
+ * var/inbox/rollback or var/inbox/check, which is never read, only checked
+ * for and deleted.
  * What to install is decided here, from the main branch of UPDATE_REPO_URL.
  *
  * Layout of var/ (a Docker volume, so updates survive a restart):
@@ -11,7 +12,7 @@
  *   releases/<commit>/   a built copy of the app at that commit
  *   state/               current, previous (host of the rollback)
  *   status/              plain text files the app shows on the Update panel
- *   inbox/               the two flag files
+ *   inbox/               the flag files
  *
  * The image's own code (/app) is never changed. A release is used only while
  * it is newer than the image, so `make up` after a terminal upgrade wins.
@@ -30,7 +31,9 @@ const HEX40 = /^[0-9a-f]{40}$/;
 const FLAG_MAX_AGE_MS = 10 * 60 * 1000;
 const MIN_FREE_BYTES = 1024 * 1024 * 1024;
 const KEEP_BACKUPS = 10;
-const ACTIONS = ["update", "rollback"];
+const ACTIONS = ["update", "rollback", "check"];
+// "Check for updates" at most this often, however often it is asked
+const MIN_CHECK_GAP_MS = 60 * 1000;
 
 const clean = (s) => String(s ?? "").replace(/[\u0000-\u001f\u007f]/g, "").slice(0, 300);
 const unix = () => Math.floor(Date.now() / 1000);
@@ -57,6 +60,7 @@ export function createUpdater({
   };
   const logFile = path.join(dirs.state, "job.log");
   let job = null;
+  let lastCheckAt = 0;
 
   // ─── Small helpers ─────────────────────────────────────────────
 
@@ -199,6 +203,7 @@ export function createUpdater({
   }
 
   function check() {
+    lastCheckAt = Date.now();
     const result = { ok: true, error: "", target: "", count: 0, migrations: false, list: "" };
     try {
       result.target = fetchMain();
@@ -428,6 +433,10 @@ export function createUpdater({
   async function runPending() {
     const action = takeFlag();
     if (!action) return null;
+    if (action === "check") {
+      if (Date.now() - lastCheckAt >= MIN_CHECK_GAP_MS) check();
+      return action;
+    }
     fs.writeFileSync(logFile, "");
     job = { id: crypto.randomBytes(16).toString("hex"), action, started: unix() };
     try {

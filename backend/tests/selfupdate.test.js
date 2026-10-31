@@ -143,6 +143,24 @@ describe.skipIf(!hasGit)("self-updater", () => {
     expect(kv("current")).toMatchObject({ commit: A, subject: "First version" });
   });
 
+  it("checks again when asked, but at most once a minute", async () => {
+    const u = updater();
+    u.check();
+    const C = commit("README.md", "hi\n", "Docs");
+    fs.writeFileSync(path.join(varDir, "inbox", "check"), "");
+    expect(await u.runPending()).toBe("check");
+    // Too soon after the last check: the flag is dropped, nothing fetched
+    expect(kv("check").target).toBe(B);
+    expect(fs.existsSync(path.join(varDir, "inbox", "check"))).toBe(false);
+    const later = updater();
+    fs.writeFileSync(path.join(varDir, "inbox", "check"), "");
+    expect(await later.runPending()).toBe("check");
+    expect(kv("check")).toMatchObject({ target: C, count: "2" });
+    // A check never starts an update or touches the last run's log
+    expect(controller.starts).toEqual([]);
+    expect(kv("job")).toEqual({});
+  });
+
   it("builds, backs up, switches and remembers the way back", async () => {
     const u = updater();
     request("update");
