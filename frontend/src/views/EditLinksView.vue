@@ -1,11 +1,10 @@
 <script setup>
-import { useInfiniteScroll } from "@/composables/useInfiniteScroll";
-import { useLinkFilterReload } from "@/composables/useLinkFilterReload";
 import { useFilterQuery } from "@/composables/useFilterQuery";
 import { quickAddFromQuery } from "@/lib/quickAdd";
 import { computed, onMounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useAppStore } from "@/stores/app";
+import { shownCount } from "@/lib/linkCount";
 import { useToastStore } from "@/stores/toast";
 import { useLinkEditorStore } from "@/stores/linkEditor";
 import LinkCardEdit from "@/components/links/LinkCardEdit.vue";
@@ -20,14 +19,12 @@ import HiddenMatchesNote from "@/components/categories/HiddenMatchesNote.vue";
 const route = useRoute();
 const router = useRouter();
 const appStore = useAppStore();
-// First, so the first load already uses filters from the address
+// Filters from the address bar (?category=, ?tag=, ?q=, ?sort=). The
+// whole shelf is already loaded, so they apply at once.
 useFilterQuery();
-// Load the next page as you near the bottom; the button stays as a fallback
-const { sentinel } = useInfiniteScroll({
-  hasMore: () => appStore.hasMore,
-  loadMore: () => appStore.loadMore(),
-  count: () => appStore.links.length,
-});
+const filtering = computed(
+  () => Boolean(appStore.search.trim() || appStore.filterCategory || appStore.filterTag),
+);
 const toastStore = useToastStore();
 
 // The bar's secondary buttons: no fill, a visible border
@@ -50,18 +47,14 @@ const localFilterCategory = computed({
 
 function openEditById(editId) {
   const id = Number(editId);
-  const link = appStore.links.find((l) => l.id === id);
+  const link = appStore.allLinks.find((l) => l.id === id);
   if (link) {
     editor.open(link);
     router.replace({ name: "edit" });
   }
 }
 
-onMounted(async () => {
-  // Before start-up is done, its own load (in the right page size) is coming
-  if (!appStore.links.length && appStore.settingsLoaded) {
-    await appStore.loadLinks({ reset: true });
-  }
+onMounted(() => {
   if (route.query.editId) {
     openEditById(route.query.editId);
   }
@@ -79,6 +72,13 @@ watch(
   (isNew) => isNew && openCreateFromRoute(),
 );
 
+// Opened straight from an address: the shelf may still be loading
+watch(
+  () => appStore.linksLoaded,
+  (loaded) => {
+    if (loaded && route.query.editId) openEditById(route.query.editId);
+  },
+);
 watch(
   () => route.query.editId,
   (editId) => {
@@ -87,10 +87,6 @@ watch(
     }
   },
 );
-
-// Edit lists newest first, across categories
-appStore.setLinkGrouping("");
-useLinkFilterReload();
 
 function openCreate() {
   editor.create();
@@ -130,7 +126,7 @@ function filterByTag(id) {
 
 // Asks, then moves it to the trash; the toast has Undo
 async function handleDelete(id) {
-  const link = appStore.links.find((l) => l.id === id) || { id, title: "this link" };
+  const link = appStore.allLinks.find((l) => l.id === id) || { id, title: "this link" };
   try {
     await appStore.trashLink(link);
   } catch (error) {
@@ -230,14 +226,14 @@ async function handleDelete(id) {
 
     <!-- Count and sort -->
     <div
-      v-if="appStore.total > 0"
+      v-if="appStore.allLinks.length > 0"
       class="flex items-center justify-between gap-2"
     >
       <p
         class="text-xs sm:text-sm text-gray-500 dark:text-brand-400"
         data-testid="link-count"
       >
-        Showing {{ appStore.links.length }} of {{ appStore.total }} links
+        {{ shownCount(appStore.links.length, appStore.total, filtering) }}
       </p>
       <SortSelect />
     </div>
@@ -247,9 +243,11 @@ async function handleDelete(id) {
       class="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2 lg:grid-cols-3"
       data-testid="link-grid"
     >
+      <!-- shelf-card: off-screen cards are skipped until you scroll near -->
       <LinkCardEdit
         v-for="link in appStore.links"
         :key="link.id"
+        class="shelf-card"
         :link="link"
         @edit="openEdit"
         @delete="handleDelete"
@@ -257,25 +255,14 @@ async function handleDelete(id) {
     </div>
 
     <div
-      v-else
+      v-else-if="appStore.linksLoaded"
       class="py-10 text-center text-gray-500 dark:text-brand-400"
       data-testid="no-links"
     >
       <i class="mdi mdi-link-off text-6xl block mb-2"></i>
-      No links yet. Add your first link!
+      {{ appStore.allLinks.length ? "No links found." : "No links yet. Add your first link!" }}
     </div>
 
-    <div ref="sentinel" aria-hidden="true" data-testid="scroll-sentinel"></div>
-    <div v-if="appStore.hasMore" class="text-center">
-      <button
-        title="Load more links"
-        data-testid="load-more"
-        class="px-4 py-2 rounded-md bg-brand-600 text-white hover:bg-brand-700"
-        @click="appStore.loadMore()"
-      >
-        Load more
-      </button>
-    </div>
 
     <CategoryManager
       :open="showCategoryModal"

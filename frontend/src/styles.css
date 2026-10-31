@@ -115,3 +115,15 @@ html.dark body {
   -webkit-appearance: none;
   appearance: none;
 }
+
+/* Big shelves: the browser skips laying out and drawing what's off
+   screen until you scroll near it. The size is a guess for the scroll
+   bar until the first real draw, which the browser then remembers. */
+.shelf-section {
+  content-visibility: auto;
+  contain-intrinsic-size: auto calc(3rem + var(--shelf-rows, 4) * 2.75rem);
+}
+.shelf-card {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 7rem;
+}

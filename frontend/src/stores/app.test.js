@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createPinia, setActivePinia } from "pinia";
-import { useAppStore } from "@/stores/app";
+import { useAppStore, STALE_AFTER_MS } from "@/stores/app";
 import { useToastStore } from "@/stores/toast";
 import { useDialogStore } from "@/stores/dialog";
 import { flushPromises } from "@vue/test-utils";
@@ -26,135 +26,100 @@ vi.mock("@/services/api/settingsApi", () => ({
 }));
 
 import { linksApi } from "@/services/api/linksApi";
+
+// The sort is remembered in localStorage; start every test in your own order
+beforeEach(() => localStorage.clear());
 import { settingsApi } from "@/services/api/settingsApi";
 import { categoriesApi } from "@/services/api/categoriesApi";
 import { tagsApi } from "@/services/api/tagsApi";
 
-// Fake server holding `count` links, paged like GET /api/links
+// Fake server holding `count` links; GET /api/links returns them all
 function serveLinks(count) {
-  linksApi.list.mockImplementation(async ({ offset, limit }) => {
-    const start = offset;
-    const links = Array.from(
-      { length: Math.max(0, Math.min(limit, count - start)) },
-      (_, i) => ({ id: start + i + 1 }),
-    );
-    return {
-      links,
-      pagination: { offset, limit, total: count, pages: Math.ceil(count / limit) },
-    };
-  });
+  linksApi.list.mockImplementation(async () => ({
+    links: Array.from({ length: count }, (_, i) => ({ id: i + 1, title: `Link ${i + 1}` })),
+  }));
 }
 
-describe("app store pagination", () => {
+describe("app store shelf loading", () => {
   beforeEach(() => {
     setActivePinia(createPinia());
     vi.clearAllMocks();
-    // Paging is easier to follow with small pages than the default 100
-    useAppStore().settings.links_per_page = 20;
     document.documentElement.style.setProperty = vi.fn();
   });
 
-  it("has no more after the last page", async () => {
-    serveLinks(52);
+  it("loads the whole shelf in one request", async () => {
+    serveLinks(523);
     const store = useAppStore();
-    store.settings.links_per_page = 100;
+    expect(store.linksLoaded).toBe(false);
 
-    await store.loadLinks({ reset: true });
+    await store.loadLinks();
 
-    expect(store.links).toHaveLength(52);
-    expect(store.hasMore).toBe(false);
-  });
-
-  it("reloads from the first page when the page size changes", async () => {
-    serveLinks(52);
-    const store = useAppStore();
-    await store.loadLinks({ reset: true });
-    expect(store.links).toHaveLength(20);
-    expect(store.hasMore).toBe(true);
-
-    settingsApi.update.mockResolvedValue({
-      links_per_page: 100,
-      brand_color: "#687061",
-    });
-    await store.updateSettings({ links_per_page: 100 });
-
-    expect(store.links).toHaveLength(52);
-    expect(store.hasMore).toBe(false);
-  });
-
-  it("stops offering more when a page comes back short", async () => {
-    serveLinks(52);
-    const store = useAppStore();
-    await store.loadLinks({ reset: true });
-    // Two links deleted elsewhere since the first page loaded
-    serveLinks(50);
-
-    await store.loadMore();
-    await store.loadMore();
-
-    expect(store.links).toHaveLength(50);
-    expect(store.hasMore).toBe(false);
-  });
-
-  it("asking for more while a load runs only waits for it", async () => {
-    // Infinite scroll measures again afterwards; fetching a second page
-    // here loaded links nobody had scrolled to
-    serveLinks(52);
-    const store = useAppStore();
-    const first = store.loadLinks({ reset: true });
-    await store.loadMore();
-    await first;
-    expect(store.links).toHaveLength(20);
     expect(linksApi.list).toHaveBeenCalledTimes(1);
-
-    await store.loadMore();
-    expect(store.links.map((l) => l.id)).toEqual(Array.from({ length: 40 }, (_, i) => i + 1));
+    expect(linksApi.list).toHaveBeenCalledWith();
+    expect(store.allLinks).toHaveLength(523);
+    expect(store.links).toHaveLength(523);
+    expect(store.total).toBe(523);
+    expect(store.linksLoaded).toBe(true);
   });
 
-  it("a reset wins over a load started with the old page size", async () => {
-    // The view's first load (default 20) raced the start-up load that knows
-    // the user's 100 per page; the old answer must not stick at 20 or 40
-    serveLinks(67);
-    const store = useAppStore();
-    const early = store.loadLinks({ reset: true });
-    store.settings.links_per_page = 100;
-    const proper = store.loadLinks({ reset: true });
-    await Promise.all([early, proper]);
-
-    expect(store.links).toHaveLength(67);
-    expect(store.hasMore).toBe(false);
-  });
-
-  it("asks for whole categories on View, and reloads when the page's order changes", async () => {
+  it("searches, filters and sorts without asking the server again", async () => {
     serveLinks(30);
     const store = useAppStore();
-    // Before settings are in, start-up will load in the new order itself
-    await store.setLinkGrouping("category");
-    expect(linksApi.list).not.toHaveBeenCalled();
+    await store.loadLinks();
 
-    store.settingsLoaded = true;
-    await store.loadLinks({ reset: true });
-    expect(linksApi.list).toHaveBeenLastCalledWith(expect.objectContaining({ group: "category" }));
-
-    linksApi.list.mockClear();
-    await store.setLinkGrouping("category");
-    expect(linksApi.list).not.toHaveBeenCalled();
-    await store.setLinkGrouping("");
-    expect(linksApi.list).toHaveBeenCalledWith(expect.objectContaining({ group: "", offset: 0 }));
+    store.search = "Link 2";
+    expect(store.links.map((l) => l.id)).toEqual([2, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29]);
+    store.setSort("title_desc");
+    expect(store.links[0].id).toBe(29);
+    // The shelf's count doesn't follow the search
+    expect(store.total).toBe(30);
+    expect(linksApi.list).toHaveBeenCalledTimes(1);
   });
 
-  it("continues by offset after the page size changes", async () => {
-    serveLinks(67);
+  it("keeps the newer answer when two loads overlap", async () => {
     const store = useAppStore();
-    await store.loadLinks({ reset: true });
-    expect(store.links).toHaveLength(20);
-    store.settings.links_per_page = 100;
+    let answerOld;
+    linksApi.list
+      .mockImplementationOnce(() => new Promise((resolve) => (answerOld = resolve)))
+      .mockResolvedValueOnce({ links: [{ id: 1 }, { id: 2 }] });
+    const old = store.loadLinks();
+    await store.loadLinks();
+    answerOld({ links: [{ id: 1 }] });
+    await old;
+    expect(store.allLinks.map((l) => l.id)).toEqual([1, 2]);
+  });
 
-    await store.loadMore();
+  it("checks for changes when you come back to the tab after a while", async () => {
+    vi.useFakeTimers();
+    try {
+      serveLinks(1);
+      const store = useAppStore();
+      store.loadCategories = vi.fn().mockResolvedValue();
+      store.loadSharedCategories = vi.fn().mockResolvedValue();
+      store.loadTags = vi.fn().mockResolvedValue();
+      let state = "visible";
+      Object.defineProperty(document, "visibilityState", { configurable: true, get: () => state });
+      const flip = (to) => {
+        state = to;
+        document.dispatchEvent(new Event("visibilitychange"));
+      };
+      store.startFreshnessCheck();
 
-    expect(linksApi.list).toHaveBeenLastCalledWith(expect.objectContaining({ offset: 20, limit: 100 }));
-    expect(store.links.map((l) => l.id)).toEqual(Array.from({ length: 67 }, (_, i) => i + 1));
-    expect(store.hasMore).toBe(false);
+      // A quick look at another tab: nothing
+      flip("hidden");
+      vi.advanceTimersByTime(5_000);
+      flip("visible");
+      expect(linksApi.list).not.toHaveBeenCalled();
+
+      flip("hidden");
+      vi.advanceTimersByTime(STALE_AFTER_MS);
+      flip("visible");
+      expect(linksApi.list).toHaveBeenCalledTimes(1);
+      expect(store.loadCategories).toHaveBeenCalled();
+      expect(store.loadSharedCategories).toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
 
@@ -216,31 +181,33 @@ describe("app store link order", () => {
     setActivePinia(createPinia());
     vi.clearAllMocks();
     store = useAppStore();
-    store.links = [
-      { id: 1, category_id: 5 },
-      { id: 2, category_id: 6 },
-      { id: 3, category_id: 5 },
-      { id: 4, category_id: 5 },
+    store.allLinks = [
+      { id: 1, category_id: 5, created_at: "2026-01-04 00:00:00" },
+      { id: 2, category_id: 6, created_at: "2026-01-03 00:00:00" },
+      { id: 3, category_id: 5, created_at: "2026-01-02 00:00:00" },
+      { id: 4, category_id: 5, created_at: "2026-01-01 00:00:00" },
     ];
   });
+  const inCategory = (id) => store.linksByCategory.get(id).map((l) => l.id);
 
-  it("reorders one category in place and saves it", async () => {
+  it("reorders one category at once and saves it", async () => {
     linksApi.reorder.mockResolvedValue({});
     await store.reorderLinks([4, 1, 3]);
-    expect(store.links.map((l) => l.id)).toEqual([4, 2, 1, 3]);
-    expect(store.links[0].display_order).toBe(1);
+    expect(inCategory(5)).toEqual([4, 1, 3]);
+    expect(inCategory(6)).toEqual([2]);
+    expect(store.allLinks.find((l) => l.id === 4).display_order).toBe(1);
     expect(linksApi.reorder).toHaveBeenCalledWith([4, 1, 3]);
   });
 
   it("puts the old order back when saving fails", async () => {
     linksApi.reorder.mockRejectedValue(new Error("offline"));
     await store.reorderLinks([4, 1, 3]);
-    expect(store.links.map((l) => l.id)).toEqual([1, 2, 3, 4]);
+    expect(inCategory(5)).toEqual([1, 3, 4]);
   });
 
   it("moves a link one step within its category", async () => {
     linksApi.reorder.mockResolvedValue({});
-    await store.moveLink(store.links[2], "up");
+    await store.moveLink(store.allLinks[2], "up");
     expect(linksApi.reorder).toHaveBeenCalledWith([3, 1, 4]);
     linksApi.reorder.mockClear();
     await store.moveLink({ id: 4, category_id: 5 }, "down");
@@ -254,27 +221,25 @@ describe("app store favorites and trash", () => {
     setActivePinia(createPinia());
     vi.clearAllMocks();
     serveLinks(0);
-    linksApi.favorites.mockResolvedValue([]);
     store = useAppStore();
-    store.links = [
+    store.allLinks = [
       { id: 1, title: "Beta", is_favorite: 0 },
       { id: 2, title: "alpha", is_favorite: 1 },
     ];
-    store.favoriteLinks = [{ id: 2, title: "alpha", is_favorite: 1 }];
   });
 
   it("stars a link at once, sorted into the favorites", async () => {
     linksApi.update.mockResolvedValue({});
-    await store.toggleLinkFavorite(store.links[0]);
-    expect(store.links[0].is_favorite).toBe(1);
+    await store.toggleLinkFavorite(store.allLinks[0]);
+    expect(store.allLinks[0].is_favorite).toBe(1);
     expect(store.favoriteLinks.map((l) => l.title)).toEqual(["alpha", "Beta"]);
     expect(linksApi.update).toHaveBeenCalledWith(1, { is_favorite: true });
   });
 
   it("puts the star back when saving fails", async () => {
     linksApi.update.mockRejectedValue(new Error("offline"));
-    await store.toggleLinkFavorite(store.links[1]);
-    expect(store.links[1].is_favorite).toBe(1);
+    await store.toggleLinkFavorite(store.allLinks[1]);
+    expect(store.allLinks[1].is_favorite).toBe(1);
     expect(store.favoriteLinks.map((l) => l.id)).toEqual([2]);
   });
 
@@ -291,10 +256,13 @@ describe("app store favorites and trash", () => {
     expect(toast.items.find((t) => t.id === item.id)).toBeUndefined();
   });
 
-  it("loads favorites alongside the links", async () => {
-    linksApi.favorites.mockResolvedValue([{ id: 9, title: "Fav" }]);
-    await store.refreshLinks();
-    expect(store.favoriteLinks).toEqual([{ id: 9, title: "Fav" }]);
+  it("takes favorites from the shelf: your own, outside hidden categories", () => {
+    store.categories = [{ id: 5, is_hidden: 1 }];
+    store.allLinks.push(
+      { id: 3, title: "Shared", is_favorite: 1, is_from_shared_category: 1 },
+      { id: 4, title: "Secret", is_favorite: 1, category_id: 5 },
+    );
+    expect(store.favoriteLinks.map((l) => l.id)).toEqual([2]);
   });
 
   it("asks before moving a link to the trash", async () => {
@@ -324,11 +292,11 @@ describe("app store tags", () => {
   beforeEach(() => {
     setActivePinia(createPinia());
     store = useAppStore();
-    store.links = [
-      { id: 1, tags: [{ id: 7, name: "infra" }, { id: 8, name: "home" }] },
-      { id: 2, tags: [] },
+    store.allLinks = [
+      { id: 1, title: "One", tags: [{ id: 7, name: "infra" }, { id: 8, name: "home" }] },
+      { id: 2, title: "Two", tags: [] },
+      { id: 3, title: "Fav", is_favorite: 1, tags: [{ id: 7, name: "infra" }] },
     ];
-    store.favoriteLinks = [{ id: 3, tags: [{ id: 7, name: "infra" }] }];
     tagsApi.list.mockResolvedValue([{ id: 7, name: "servers", usage_count: 2 }]);
   });
 
@@ -336,7 +304,7 @@ describe("app store tags", () => {
     tagsApi.update.mockResolvedValue({ id: 7, name: "servers" });
     await store.renameTag(7, "servers");
     expect(tagsApi.update).toHaveBeenCalledWith(7, { name: "servers" });
-    expect(store.links[0].tags.map((t) => t.name)).toEqual(["servers", "home"]);
+    expect(store.allLinks[0].tags.map((t) => t.name)).toEqual(["servers", "home"]);
     expect(store.favoriteLinks[0].tags[0].name).toBe("servers");
     expect(store.tags).toEqual([{ id: 7, name: "servers", usage_count: 2 }]);
   });
@@ -344,11 +312,10 @@ describe("app store tags", () => {
   it("takes a deleted tag off the cards, and clears it as the filter", async () => {
     tagsApi.remove.mockResolvedValue({});
     store.filterTag = "7";
-    const filterByTag = vi.spyOn(store, "filterByTag").mockResolvedValue();
     await store.deleteTag(7);
-    expect(store.links[0].tags).toEqual([{ id: 8, name: "home" }]);
+    expect(store.allLinks[0].tags).toEqual([{ id: 8, name: "home" }]);
     expect(store.favoriteLinks[0].tags).toEqual([]);
-    expect(filterByTag).toHaveBeenCalledWith("");
+    expect(store.filterTag).toBe("");
   });
 });
 
@@ -358,49 +325,68 @@ describe("app store hidden categories", () => {
     setActivePinia(createPinia());
     vi.clearAllMocks();
     store = useAppStore();
-    store.settingsLoaded = true;
     categoriesApi.update.mockResolvedValue({});
-    linksApi.list.mockResolvedValue({
-      links: [{ id: 1 }],
-      hidden_matches: 3,
-      pagination: { offset: 0, limit: 20, total: 1 },
-    });
+    store.categories = [
+      { id: 5, name: "Friend", is_hidden: 1 },
+      { id: 6, name: "Mine", is_hidden: 0 },
+    ];
+    store.allLinks = [
+      { id: 1, title: "Grafana (friend)", category_id: 5, tags: [{ id: 4, name: "infra" }] },
+      { id: 2, title: "Grafana (mine)", category_id: 6, tags: [{ id: 4, name: "infra" }] },
+      { id: 3, title: "Loose", category_id: null, tags: [] },
+    ];
   });
+  const ids = () => store.links.map((l) => l.id).sort();
 
-  it("remembers how many matches were left out, and shows them on request", async () => {
+  it("leaves their links out, and counts the matches it left out", () => {
+    expect(ids()).toEqual([2, 3]);
+    expect(store.total).toBe(2);
+    expect(store.hiddenMatches).toBe(0);
     store.search = "grafana";
-    await store.loadLinks({ reset: true });
-    expect(store.hiddenMatches).toBe(3);
-    expect(linksApi.list).toHaveBeenLastCalledWith(expect.objectContaining({ includeHidden: false }));
+    expect(ids()).toEqual([2]);
+    expect(store.hiddenMatches).toBe(1);
+  });
 
-    await store.revealHidden();
+  it("shows them on request, until the search changes", () => {
+    store.search = "grafana";
+    store.revealHidden();
     expect(store.showHidden).toBe(true);
-    expect(linksApi.list).toHaveBeenLastCalledWith(expect.objectContaining({ includeHidden: true }));
-  });
-
-  it("starts a new tag filter without hidden categories", async () => {
-    store.showHidden = true;
-    await store.filterByTag(4);
+    expect(ids()).toEqual([1, 2]);
+    store.search = "friend";
     expect(store.showHidden).toBe(false);
+    expect(ids()).toEqual([]);
+    expect(store.hiddenMatches).toBe(1);
   });
 
-  it("hides a category, then reloads so its links leave the list", async () => {
-    const category = { id: 5, name: "Friend", is_hidden: 0 };
-    store.categories = [category];
-    linksApi.favorites.mockResolvedValue([]);
+  it("starts a new tag filter without hidden categories", () => {
+    store.revealHidden();
+    store.filterByTag(4);
+    expect(store.showHidden).toBe(false);
+    expect(ids()).toEqual([2]);
+    expect(store.hiddenMatches).toBe(1);
+  });
+
+  it("shows a hidden category's links when you pick it", () => {
+    store.filterCategory = "5";
+    expect(ids()).toEqual([1]);
+  });
+
+  it("hides a category: its links leave the list at once", async () => {
+    const category = store.categories[1];
     await store.toggleHidden(category);
-    expect(categoriesApi.update).toHaveBeenCalledWith(5, { is_hidden: true });
+    expect(categoriesApi.update).toHaveBeenCalledWith(6, { is_hidden: true });
     expect(category.is_hidden).toBe(1);
-    expect(linksApi.list).toHaveBeenCalled();
-    expect(useToastStore().items.at(-1).message).toContain("Friend is hidden");
+    expect(ids()).toEqual([3]);
+    expect(linksApi.list).not.toHaveBeenCalled();
+    expect(useToastStore().items.at(-1).message).toContain("Mine is hidden");
   });
 
   it("puts it back when hiding fails", async () => {
-    const category = { id: 5, name: "Friend", is_hidden: 0 };
+    const category = store.categories[1];
     categoriesApi.update.mockRejectedValueOnce(new Error("Nope"));
     await store.toggleHidden(category);
     expect(category.is_hidden).toBe(0);
-    expect(linksApi.list).not.toHaveBeenCalled();
+    expect(ids()).toEqual([2, 3]);
   });
 });
 
@@ -411,13 +397,11 @@ describe("app store sorting", () => {
     localStorage.clear();
   });
 
-  it("sends the sort and remembers it for next time", async () => {
+  it("sorts the list and remembers the choice for next time", () => {
     const store = useAppStore();
-    store.settingsLoaded = true;
-    linksApi.list.mockResolvedValue({ links: [], pagination: { offset: 0, limit: 20, total: 0 } });
+    store.allLinks = [{ id: 1, title: "beta" }, { id: 2, title: "Alpha" }];
     store.setSort("title");
-    await store.loadLinks({ reset: true });
-    expect(linksApi.list).toHaveBeenLastCalledWith(expect.objectContaining({ sort: "title" }));
+    expect(store.links.map((l) => l.id)).toEqual([2, 1]);
     setActivePinia(createPinia());
     expect(useAppStore().sort).toBe("title");
   });

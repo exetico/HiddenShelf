@@ -40,7 +40,7 @@ export const FEATURE_GROUPS = [
       {
         icon: "mdi-magnify",
         title: "Find anything fast",
-        text: "Search titles, URLs, descriptions and tags. Press / to jump to the search box.",
+        text: "Search titles, URLs, descriptions and tags, with results as you type. Press / to jump to the search box.",
         front: true,
       },
       {
@@ -147,6 +147,10 @@ export const FAQ = [
   {
     q: "Can I save a link while I'm on another site?",
     a: "Yes. Drag the bookmarklet from your profile to your browser's bookmarks bar. Clicking it on any page opens the add form with that page filled in.",
+  },
+  {
+    q: "Are my links stored in the browser?",
+    a: "No. The app loads your shelf when you open it and keeps it only while the tab is open, so a shared computer doesn't keep a copy. Search and filters then work on that, so they don't wait for the server.",
   },
   {
     q: "Do the tools send what I type anywhere?",

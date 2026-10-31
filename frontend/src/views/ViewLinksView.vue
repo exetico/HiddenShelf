@@ -1,10 +1,9 @@
 <script setup>
-import { useInfiniteScroll } from "@/composables/useInfiniteScroll";
-import { useLinkFilterReload } from "@/composables/useLinkFilterReload";
 import { useFilterQuery } from "@/composables/useFilterQuery";
 import { useMediaQuery } from "@/composables/useMediaQuery";
 import { ref, computed } from "vue";
 import { useAppStore } from "@/stores/app";
+import { shownCount } from "@/lib/linkCount";
 import LinkCardView from "@/components/links/LinkCardView.vue";
 import CategoryFilterBar from "@/components/categories/CategoryFilterBar.vue";
 import CategoryPicker from "@/components/categories/CategoryPicker.vue";
@@ -19,17 +18,9 @@ import { reorderIds } from "@/composables/useLinkDrag";
 import { useLinkDetailsStore } from "@/stores/linkDetails";
 
 const appStore = useAppStore();
-// First, so the first load already uses filters from the address
+// Filters from the address bar (?category=, ?tag=, ?q=, ?sort=). The
+// whole shelf is already loaded, so they apply at once.
 useFilterQuery();
-// Whole categories per page, in the order they're shown, so a category
-// never shows part of its links and new ones only add at the bottom
-appStore.setLinkGrouping("category");
-// Load the next page as you near the bottom; the button stays as a fallback
-const { sentinel } = useInfiniteScroll({
-  hasMore: () => appStore.hasMore,
-  loadMore: () => appStore.loadMore(),
-  count: () => appStore.links.length,
-});
 
 const details = useLinkDetailsStore();
 const linkMenu = useLinkMenu({ onDetails: openDetails });
@@ -56,8 +47,6 @@ async function onReorder({ groupKey, ...move }) {
 
 // Collapse state
 const collapsedCategories = ref({});
-
-useLinkFilterReload();
 
 const filtering = computed(
   () => Boolean(appStore.search || appStore.filterCategory || appStore.filterTag),
@@ -116,9 +105,9 @@ const groupedCategories = computed(() => {
 });
 
 // Two columns on wide screens. Each category goes to the column that is
-// shorter so far, decided in order, so categories loaded later only add
-// at the bottom and nothing already on screen moves (CSS columns would
-// rebalance everything). Collapsing doesn't count, so nothing hops over.
+// shorter so far, decided in order, so collapsing or adding a link only
+// moves what's below it (CSS columns would rebalance everything).
+// Collapsing doesn't count, so nothing hops over.
 const wide = useMediaQuery("(min-width: 1280px)");
 const columns = computed(() => {
   const groups = groupedCategories.value;
@@ -207,14 +196,14 @@ function toggleCategory(key) {
 
     <!-- Count and sort -->
     <div
-      v-if="appStore.total > 0"
+      v-if="appStore.allLinks.length > 0"
       class="flex items-center justify-between gap-2"
     >
       <p
         class="text-xs sm:text-sm text-gray-500 dark:text-brand-400"
         data-testid="link-count"
       >
-        Showing {{ appStore.links.length }} of {{ appStore.total }} links
+        {{ shownCount(appStore.links.length, appStore.total, filtering) }}
       </p>
       <SortSelect />
     </div>
@@ -231,10 +220,13 @@ function toggleCategory(key) {
         class="min-w-0"
         data-testid="link-column"
       >
+        <!-- shelf-section: the browser skips drawing categories that are
+             off screen until you scroll near them -->
         <article
           v-for="group in column"
           :key="group.key"
-          class="mb-3 sm:mb-6"
+          class="shelf-section mb-3 sm:mb-6"
+          :style="{ '--shelf-rows': collapsedCategories[group.key] ? 0 : group.links.length }"
           :data-testid="`link-group-${group.key}`"
         >
           <button
@@ -301,7 +293,7 @@ function toggleCategory(key) {
     </section>
 
     <div
-      v-else
+      v-else-if="appStore.linksLoaded"
       class="py-10 text-center text-gray-500 dark:text-brand-400"
       data-testid="no-links"
     >
@@ -309,17 +301,6 @@ function toggleCategory(key) {
       No links found.
     </div>
 
-    <div ref="sentinel" aria-hidden="true" data-testid="scroll-sentinel"></div>
-    <div v-if="appStore.hasMore" class="text-center">
-      <button
-        title="Load more links"
-        data-testid="load-more"
-        class="px-4 py-2 rounded-md bg-brand-600 text-white hover:bg-brand-700"
-        @click="appStore.loadMore()"
-      >
-        Load more
-      </button>
-    </div>
     <LinkPreviewPopover />
     <LinkDetailsSheet />
   </section>

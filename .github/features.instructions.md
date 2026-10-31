@@ -144,26 +144,27 @@ This document provides a comprehensive overview of all features, functionality, 
 #### View Mode (`ViewLinksView.vue`)
 
 - **Category-organized link display**: Links grouped under category headers with colored borders
-- **"Showing X of Y" counter**: Displays `Showing {links.length} of {total} links` at the top
+- **Link counter** (`shownCount` in `lib/linkCount.js`): "{total} links" for the whole shelf; "Showing X of Y links" while searching or filtering
 - **Collapsible category sections**: Click category header or chevron to collapse/expand; chevron rotates (`mdi-chevron-down` → `mdi-chevron-right`); collapsed state tracked per-category in `collapsedCategories` reactive Set
 - **Category filter bar** (`CategoryFilterBar.vue`): Filter visible links by category
 - **Context menu**: Right-click (desktop) or long-press (mobile) on link cards for quick actions
-- **Pagination**: "Load more" button when `links.length < total`
+- **No paging**: every link is on the page at once. Each category section has `shelf-section` (CSS `content-visibility: auto`, sized by `--shelf-rows`), so the browser skips drawing sections that are off screen
 - **Shared category owner badge**: Shows owner email next to shared category headers
-- **Empty state**: `mdi-link-off` icon with "No links yet" message when no links exist
+- **Empty state**: `mdi-link-off` icon with "No links found." once the shelf has loaded (`appStore.linksLoaded`), so it doesn't flash while loading
 - **Link count per group**: Category headers show count of links in that group
-- **Sorting** (`SortSelect.vue`): Your order, Newest first, Oldest first, Title A–Z, Title Z–A, Most visited. Stored in `appStore.sort` and localStorage (`hiddenshelf_sort`), sent as `?sort=` to `GET /api/links`. Drag to reorder is off while a sort is on
+- **Sorting** (`SortSelect.vue`): Your order, Newest first, Oldest first, Title A–Z, Title Z–A, Most visited. Stored in `appStore.sort` and localStorage (`hiddenshelf_sort`), applied in the browser (`sortLinks` in `lib/shelf.js`). Drag to reorder is off while a sort is on
 - **Filters in the address** (`useFilterQuery`, `lib/filterLinks.js`): `?category=`, `?tag=`, `?q=` and `?sort=` sync with the store both ways, so filtered lists can be bookmarked and linked to
 
 #### Edit Mode (`EditLinksView.vue`)
 
-- **Search input**: `<input type="search" placeholder="Search links...">` — debounced 300ms sync to `appStore.search`, triggers `loadLinks({ reset: true })`
-- **Category filter dropdown**: `<select>` with "All Categories" + category list — immediate sync (no debounce) to `appStore.filterCategory`, triggers `loadLinks({ reset: true })`
-- **"Showing X of Y" counter**: Same pattern as View mode
+- **Search input**: `<input type="search" placeholder="Search links...">` bound to `appStore.search`; results update as you type, with no request
+- **Category filter dropdown**: `<select>` with "All Categories" + category list, bound to `appStore.filterCategory`
+- **Link counter**: Same as View mode
 - **Action buttons**: "+ Add link", "Categories", "Tags" — open respective modals
 - **Link cards** (`LinkCardEdit.vue`): Edit-mode cards with public/private emoji, edit/delete actions
-- **Empty state**: `mdi-link-off` icon with "No links yet" message
-- **Pagination**: "Load more" button
+- **Empty state**: `mdi-link-off` icon: "No links yet. Add your first link!" on an empty shelf, "No links found." when the filters match nothing
+- **No paging**: every matching card at once; cards have `shelf-card` (`content-visibility: auto`)
+- **`?editId=`**: opens that link's editor, waiting for the shelf to load if needed
 - **Modal management**: `CategoryManager`, `TagManager` opened via boolean refs; links open in the shared editor
 - **Sorting and filters in the address**: Same as View mode
 - **Manager filter box** (`ManagerFilter.vue`): The tag and category managers show a filter box from 6 entries; Esc clears it first. Manager rows link to `/edit?tag=ID` / `/edit?category=ID`
@@ -267,7 +268,7 @@ This document provides a comprehensive overview of all features, functionality, 
 ### Link Operations
 
 - **Create**: via `linksApi.create()`
-- **Read**: via `linksApi.list()` with pagination, search, category filter
+- **Read**: `linksApi.list()` loads the whole shelf once (own + shared, hidden categories included) into `appStore.allLinks`. Search, category/tag filters, hidden categories, favorites and sorting are worked out in the browser (`lib/shelf.js`); `appStore.links` is the result
 - **Update**: via `linksApi.update()`
 - **Delete**: via `linksApi.remove()` with styled confirmation modal
 - **Reorder**: Move links up/down in display order
@@ -494,7 +495,8 @@ This document provides a comprehensive overview of all features, functionality, 
 
 ### Links (`/api/links`)
 
-- `GET` — List links (pagination, search, category filter, `include_shared`) — each link includes `total_visits` (batch-fetched, no N+1)
+- `GET` — List links: every match in one answer, no paging (`search`, `category_id`, `tag_id`, `sort`, `include_shared`, `include_hidden`); `{ links, hidden_matches, total }`. Each link includes `total_visits` (batch-fetched, no N+1). Old `page`/`limit`/`offset` parameters are ignored
+- **ETag** (`middleware/revalidate.js`, also on `GET /api/categories`, `/api/tags`, `/api/category_shares`): answers carry an ETag and `Cache-Control: private, no-store`. The app sends it back as `If-None-Match` (`revalidated()` in `lib/httpClient.js`, memory only) and gets `304` with no body when nothing changed. All `/api/*` answers are gzipped (`hono/compress` in `index.js`)
 - `POST` — Create link
 - `GET ?id=X` — Get specific link
 - `PUT ?id=X` — Update link
@@ -532,7 +534,7 @@ This document provides a comprehensive overview of all features, functionality, 
 ### User Settings (`/api/user_settings`)
 
 - `GET` — Get user settings
-- `PUT` — Update user settings (links_per_page, brand_color)
+- `PUT` — Update user settings (brand_color). The retired `links_per_page` is dropped when read or sent
 
 ### Configuration (`/api/config`)
 
@@ -652,7 +654,6 @@ This document provides a comprehensive overview of all features, functionality, 
 
 ### User Settings (stored in DB)
 
-- **Links Per Page**: Configurable pagination (10-100)
 - **Brand Color**: Custom theme color hex
 
 ### Docker Configuration
@@ -689,8 +690,9 @@ This document provides a comprehensive overview of all features, functionality, 
 | `components/links/LinkCardEdit.test.js`         | 13    | Public/private emoji (🔓/🔒), copy URL, delete, tag pills, description fallback, direct_redirect badge, visit count display |
 | `components/categories/CategoryManager.test.js` | 8     | Category list, link counts, create/delete, shared-with-me section, leave buttons                                            |
 | `views/DashboardView.test.js`                   | 12    | Welcome message, clickable stat cards, totalCategories with shared, visit stats, quick actions, navigation, theme toggle    |
-| `views/ViewLinksView.test.js`                   | 9     | X of Y counter, category headers, collapse/expand, empty state, Load More, shared owner badge                               |
-| `views/EditLinksView.test.js`                   | 10    | Search (debounced 300ms), category filter (immediate), pagination, empty state, link cards                                  |
+| `views/ViewLinksView.test.js`                   | 24    | Counter, category headers, collapse/expand, empty state, every link at once, shared owner badge                             |
+| `views/EditLinksView.test.js`                   | 23    | Search as you type (no request), category filter, counter, empty states, `?editId=` after load, link cards                  |
+| `lib/shelf.test.js`                             | 9     | Search, filters, hidden categories and hidden-match count, sorting, favorites                                               |
 | `views/ProfileView.test.js`                     | 13    | Beta notice, email, app version, share code verify/preview, URL extraction, danger zone, delete modal, shared categories    |
 | `views/LoginView.test.js`                       | 8     | Share code sessionStorage persistence, auth redirect, email input, remembered email display, welcome back UX with user icon |
 
@@ -701,12 +703,12 @@ This document provides a comprehensive overview of all features, functionality, 
 | File                        | Tests | Covers                                                                                                                                                              |
 | --------------------------- | ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `tests/auth.test.js`        | 13    | Magic link login, verify, logout, session, Google OAuth flow                                                                                                        |
-| `tests/links.test.js`       | 23    | Link CRUD, pagination, category filtering, tag filtering, total_visits batch fetch                                                                                  |
+| `tests/links.test.js`       | 23    | Link CRUD, whole list in one answer, ETag/304, category filtering, tag filtering, total_visits batch fetch                                                          |
 | `tests/categories.test.js`  | 10    | Category CRUD, ordering, user isolation                                                                                                                             |
 | `tests/tags.test.js`        | 8     | Tag CRUD, user isolation                                                                                                                                            |
 | `tests/shares.test.js`      | 12    | Share create/join/leave, member management, shared data access                                                                                                      |
 | `tests/linkVisits.test.js`  | 8     | Visit tracking, IP masking, public link access                                                                                                                      |
-| `tests/settings.test.js`    | 7     | User settings CRUD, brand color, links per page                                                                                                                     |
+| `tests/settings.test.js`    | 5     | User settings CRUD, brand color, retired links_per_page dropped                                                                                                     |
 | `tests/config.test.js`      | 1     | Public app config endpoint                                                                                                                                          |
 | `tests/security.test.js`    | 22    | Open redirect prevention, input validation (length + protocol), rate limiting, debug mode, session cookies, CORS, XSS                                               |
 | `tests/codeQuality.test.js` | 11    | Category delete orphans, category ownership validation, batch tag fetching, bulk delete (transaction + isolation + auth), short URL validation, category updated_at |
@@ -759,7 +761,7 @@ This document provides a comprehensive overview of all features, functionality, 
 
 ### State Management (Pinia)
 
-- **`app.js` store**: Links, categories, tags, pagination, search/filter state, `loadLinks()`, `loadMore()`, `bootstrap()`, `checkPendingShare()`, `applyBrandColor()`, `loadAppConfig()`
+- **`app.js` store**: `allLinks` (the whole shelf) and getters for what to show (`links`, `hiddenMatches`, `favoriteLinks`, `total`, `linksByCategory`), categories, tags, search/filter state, `loadLinks()`, `bootstrap()`, `checkPendingShare()`, `applyBrandColor()`, `loadAppConfig()`. `startFreshnessCheck()` reloads links, categories, shared categories and tags when you return to the tab after `STALE_AFTER_MS` (60s); usually 304s
 - **`auth.js` store**: User session, `isAuthenticated`, login/logout
 - **`toast.js` store**: Toast items array, `push()`, `remove()`, auto-dismiss with `setTimeout(3500ms)`, each item has `{ id, type, message, duration, createdAt }`
 

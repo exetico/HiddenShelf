@@ -9,7 +9,7 @@ const appStore = useAppStore();
 const open = ref(false);
 
 const uncategorizedCount = computed(
-  () => (appStore.linksByCategory.get("uncategorized") || []).length,
+  () => appStore.uncategorizedCount,
 );
 
 // Hidden categories get their own section at the end: picking one is

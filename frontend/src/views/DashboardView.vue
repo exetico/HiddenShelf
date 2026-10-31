@@ -16,7 +16,8 @@ const appStore = useAppStore();
 const router = useRouter();
 const { isDark, toggleTheme } = useTheme();
 
-const totalLinks = computed(() => appStore.total || appStore.links.length);
+// The whole shelf (hidden categories aside), whatever is typed in search
+const totalLinks = computed(() => appStore.total);
 
 onMounted(() => {
   appStore.loadVisitStats();

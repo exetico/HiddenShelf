@@ -23,7 +23,6 @@ vi.mock("@/services/api/linksApi", () => ({
   linksApi: {
     list: vi.fn().mockResolvedValue({
       links: [],
-      pagination: { page: 1, pages: 1, limit: 20, total: 0 },
     }),
   },
 }));
@@ -43,7 +42,7 @@ describe("ViewLinksView", () => {
     setActivePinia(pinia);
 
     const appStore = useAppStore();
-    appStore.links = [
+    appStore.allLinks = [
       { id: 1, title: "Link A", category_id: 1, url: "https://a.com" },
       { id: 2, title: "Link B", category_id: 1, url: "https://b.com" },
       { id: 3, title: "Link C", category_id: null, url: "https://c.com" },
@@ -52,7 +51,7 @@ describe("ViewLinksView", () => {
       { id: 1, name: "Work", icon: "mdi-briefcase", color: "#ff0000" },
     ];
     appStore.sharedCategories = [];
-    appStore.total = 3;
+    appStore.linksLoaded = true;
     appStore.search = "";
     appStore.filterCategory = "";
 
@@ -68,9 +67,13 @@ describe("ViewLinksView", () => {
     });
   }
 
-  it("displays 'Showing X of Y links' counter", () => {
+  it("counts the shelf, and what a search shows of it", async () => {
     const wrapper = mountView();
-    expect(wrapper.text()).toContain("Showing 3 of 3 links");
+    expect(wrapper.find('[data-testid="link-count"]').text()).toBe("3 links");
+    useAppStore().search = "link a";
+    await nextTick();
+    expect(wrapper.find('[data-testid="link-count"]').text()).toBe("Showing 1 of 3 links");
+    expect(wrapper.text()).not.toContain("Link B");
   });
 
   it("renders category group headers", () => {
@@ -107,33 +110,43 @@ describe("ViewLinksView", () => {
 
   it("shows empty state with icon when no links", () => {
     const appStore = useAppStore();
-    appStore.links = [];
-    appStore.total = 0;
+    appStore.allLinks = [];
 
     const wrapper = mountView();
     expect(wrapper.text()).toContain("No links found");
     expect(wrapper.find(".mdi-link-off").exists()).toBe(true);
   });
 
-  it("shows Load More button when hasMore is true", () => {
+  it("shows every link at once, with no Load more", () => {
     const appStore = useAppStore();
-    appStore.total = 100; // More than loaded
-
+    appStore.allLinks = Array.from({ length: 300 }, (_, i) => ({
+      id: i + 1,
+      title: `L${i}`,
+      category_id: 1,
+      url: "https://a.com",
+    }));
     const wrapper = mountView();
-    expect(wrapper.text()).toContain("Load more");
+    expect(wrapper.findAll(".link-card")).toHaveLength(300);
+    expect(wrapper.text()).not.toContain("Load more");
+    expect(wrapper.find('[data-testid="scroll-sentinel"]').exists()).toBe(false);
   });
 
-  it("hides Load More button when all links loaded", () => {
+  it("says nothing about an empty shelf until it has loaded", () => {
     const appStore = useAppStore();
-    appStore.total = 3; // Same as loaded
+    appStore.allLinks = [];
+    appStore.linksLoaded = false;
+    expect(mountView().text()).not.toContain("No links found");
+  });
 
-    const wrapper = mountView();
-    expect(wrapper.text()).not.toContain("Load more");
+  it("skips drawing off-screen categories (content-visibility)", () => {
+    const article = mountView().find('[data-testid="link-group-1"]');
+    expect(article.classes()).toContain("shelf-section");
+    expect(article.attributes("style")).toContain("--shelf-rows: 2");
   });
 
   it("shows shared category owner badge", () => {
     const appStore = useAppStore();
-    appStore.links = [
+    appStore.allLinks = [
       {
         id: 10,
         title: "Shared Link",
@@ -190,9 +203,8 @@ describe("ViewLinksView", () => {
 
     it("names its main parts, so they can be referred to", () => {
       const appStore = useAppStore();
-      appStore.total = 40;
       const wrapper = mountView();
-      for (const id of ["view-page", "page-search", "link-count", "link-groups", "scroll-sentinel", "load-more"]) {
+      for (const id of ["view-page", "page-search", "link-count", "link-groups"]) {
         expect(wrapper.find(`[data-testid="${id}"]`).exists(), id).toBe(true);
       }
       expect(wrapper.find('[data-testid="link-group-1"]').exists()).toBe(true);
@@ -225,7 +237,7 @@ describe("ViewLinksView", () => {
         { id: 2, name: "Small" },
         { id: 3, name: "Third" },
       ];
-      appStore.links = [
+      appStore.allLinks = [
         ...Array.from({ length: 10 }, (_, i) => ({ id: i + 1, title: `B${i}`, category_id: 1, url: "https://b.com" })),
         { id: 20, title: "S", category_id: 2, url: "https://s.com" },
         { id: 21, title: "T", category_id: 3, url: "https://t.com" },
@@ -242,13 +254,13 @@ describe("ViewLinksView", () => {
         { id: 2, name: "Two" },
         { id: 3, name: "Three" },
       ];
-      appStore.links = [
+      appStore.allLinks = [
         { id: 1, title: "a", category_id: 1, url: "https://a.com" },
         { id: 2, title: "b", category_id: 2, url: "https://b.com" },
       ];
       const wrapper = mountView();
       const before = columnTitles(wrapper);
-      appStore.links = [...appStore.links, { id: 3, title: "c", category_id: 3, url: "https://c.com" }];
+      appStore.allLinks = [...appStore.allLinks, { id: 3, title: "c", category_id: 3, url: "https://c.com" }];
       await wrapper.vm.$nextTick();
       const after = columnTitles(wrapper);
       expect(after[0].slice(0, before[0].length)).toEqual(before[0]);
@@ -286,7 +298,7 @@ describe("ViewLinksView", () => {
 
   it("doesn't offer dragging in a category shared with you", () => {
     const appStore = useAppStore();
-    appStore.links = [
+    appStore.allLinks = [
       { id: 8, title: "S1", category_id: 50, url: "https://s.com" },
       { id: 9, title: "S2", category_id: 50, url: "https://t.com" },
     ];
@@ -297,7 +309,7 @@ describe("ViewLinksView", () => {
 
   it("turns dragging off while the list is sorted, and back on for your own order", async () => {
     const appStore = useAppStore();
-    appStore.links = [
+    appStore.allLinks = [
       { id: 8, title: "S1", category_id: 1, url: "https://s.com" },
       { id: 9, title: "S2", category_id: 1, url: "https://t.com" },
     ];
@@ -320,7 +332,10 @@ describe("ViewLinksView", () => {
 
     it("lists favorites first, in a group you can't drag in", () => {
       const appStore = useAppStore();
-      appStore.favoriteLinks = favs();
+      appStore.allLinks = [
+        { id: 1, title: "Link A", category_id: 1, url: "https://a.com" },
+        ...favs(),
+      ];
       const wrapper = mountView();
       expect(wrapper.findAll("h2").map((h) => h.text())[0]).toBe("Favorites");
       const cards = wrapper.findAllComponents({ name: "LinkCardView" });
@@ -331,14 +346,20 @@ describe("ViewLinksView", () => {
 
     it("hides the favorites group while searching or filtering", () => {
       const appStore = useAppStore();
-      appStore.favoriteLinks = favs();
+      appStore.allLinks = [
+        { id: 1, title: "Link A", category_id: 1, url: "https://a.com" },
+        ...favs(),
+      ];
       appStore.search = "link";
       expect(mountView().findAll("h2").map((h) => h.text())).not.toContain("Favorites");
     });
 
     it("doesn't count a favorite twice in previous/next", async () => {
       const appStore = useAppStore();
-      appStore.favoriteLinks = favs();
+      appStore.allLinks = [
+        { id: 1, title: "Link A", category_id: 1, url: "https://a.com" },
+        ...favs(),
+      ];
       const wrapper = mountView();
       await wrapper.findAll(".link-card")[0].trigger("click");
       const details = useLinkDetailsStore();

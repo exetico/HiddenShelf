@@ -24,7 +24,6 @@ function onBookmarkletClick() {
 }
 
 const form = reactive({
-  links_per_page: appStore.settings.links_per_page,
   brand_color: appStore.settings.brand_color,
 });
 
@@ -180,7 +179,6 @@ const deleteConfirmInput = ref("");
 
 async function saveSettings() {
   await appStore.updateSettings({
-    links_per_page: Number(form.links_per_page),
     brand_color: form.brand_color,
   });
 }
@@ -197,7 +195,7 @@ function openDeleteEverythingModal() {
 
 async function confirmDeleteEverything() {
   const totalCount =
-    appStore.total + appStore.categories.length + appStore.tags.length;
+    appStore.ownLinkCount + appStore.categories.length + appStore.tags.length;
   const expectedAnswer = `delete ${totalCount} now`;
 
   if (deleteConfirmInput.value !== expectedAnswer) {
@@ -217,7 +215,7 @@ async function confirmDeleteEverything() {
     deleteProgress.value = "Refreshing data...";
     deleteProgressPercent.value = 80;
 
-    await appStore.loadLinks({ reset: true });
+    await appStore.loadLinks();
     await appStore.loadCategories();
     await appStore.loadTags();
 
@@ -276,18 +274,6 @@ const deleteBackdrop = backdropClose(() => (showDeleteModal.value = false));
       class="bg-white dark:bg-brand-900 rounded-lg border border-gray-200 dark:border-brand-800 p-5 space-y-3"
     >
       <h2 class="text-lg font-semibold">Settings</h2>
-      <label class="block text-sm">Links per page</label>
-      <select
-        v-model="form.links_per_page"
-        class="w-full px-3 py-2 rounded-md border border-gray-300 dark:border-brand-700 dark:bg-brand-800"
-      >
-        <option :value="20">20</option>
-        <option :value="50">50</option>
-        <option :value="100">100</option>
-        <option :value="250">250</option>
-        <option :value="500">500</option>
-      </select>
-
       <label class="block text-sm">Brand color</label>
       <div class="flex items-center gap-3">
         <input
@@ -657,7 +643,7 @@ const deleteBackdrop = backdropClose(() => (showDeleteModal.value = false));
             This will permanently delete ALL your data:
           </p>
           <ul class="text-sm text-gray-600 dark:text-brand-300 mb-4 space-y-1">
-            <li>• All links ({{ appStore.total }})</li>
+            <li>• All links ({{ appStore.ownLinkCount }})</li>
             <li>• All categories ({{ appStore.categories.length }})</li>
             <li>• All tags ({{ appStore.tags.length }})</li>
           </ul>
@@ -666,7 +652,7 @@ const deleteBackdrop = backdropClose(() => (showDeleteModal.value = false));
             <strong class="text-gray-900 dark:text-white"
               >delete
               {{
-                appStore.total +
+                appStore.ownLinkCount +
                 appStore.categories.length +
                 appStore.tags.length
               }}

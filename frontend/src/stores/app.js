@@ -8,11 +8,20 @@ import { configApi } from "@/services/api/configApi";
 import { linkVisitsApi } from "@/services/api/linkVisitsApi";
 import { useToastStore } from "@/stores/toast";
 import { useDialogStore } from "@/stores/dialog";
+import {
+  favoriteLinks,
+  hiddenCategoryIds,
+  selectLinks,
+} from "@/lib/shelf";
 
-// The links request running now, so later callers can wait for it, and
-// a counter so an answer that a newer reset has replaced is dropped
-let linksInFlight = null;
+// Counts link requests, so an answer that a newer request has replaced
+// (e.g. two saves in a row) is dropped
 let linksRequestId = 0;
+
+// Coming back to the tab after this long checks for changes made
+// elsewhere (another device, a shared category). Usually a 304.
+export const STALE_AFTER_MS = 60_000;
+let freshnessStarted = false;
 
 export const SORT_OPTIONS = [
   { value: "", label: "Your order" },
@@ -35,14 +44,16 @@ function readSort() {
 export const useAppStore = defineStore("app", {
   state: () => ({
     loading: false,
-    links: [],
-    // Every favorite link, whatever page of `links` it's on
-    favoriteLinks: [],
+    // The whole shelf: your links and those in categories shared with
+    // you, hidden categories included. Loaded in one request; `links`
+    // is what the current search and filters show of it.
+    allLinks: [],
+    // False until the first load is in, so pages don't flash "No links"
+    linksLoaded: false,
     categories: [],
     tags: [],
     sharedCategories: [],
     settings: {
-      links_per_page: 100,
       brand_color: "#687061",
     },
     appConfig: {
@@ -54,29 +65,54 @@ export const useAppStore = defineStore("app", {
       days: 30,
       summary: [],
     },
-    total: 0,
-    // True once the user's settings (page size) are in; until then the
-    // start-up load is on its way and views shouldn't fetch on their own
-    settingsLoaded: false,
-    // How the list is paged: "category" on View (whole categories, in View
-    // order), "" on Edit (newest first)
-    linkGrouping: "",
     search: "",
     filterCategory: "",
     filterTag: "",
-    // Search or tag matches left out because their category is hidden,
-    // and whether the person asked to see them anyway
-    hiddenMatches: 0,
-    showHidden: false,
+    // "Show them" on the hidden matches note: the search and filters it
+    // was pressed for. A new search or filter leaves hidden ones out again.
+    revealedFor: null,
     // How lists are sorted; "" is your own order. Remembered per browser.
     sort: readSort(),
   }),
   getters: {
-    hasMore: (state) => state.links.length < state.total,
-    linksByCategory: (state) => {
+    hiddenIds: (state) => hiddenCategoryIds(state.categories),
+    filterKey: (state) =>
+      JSON.stringify([state.search.trim(), String(state.filterCategory), String(state.filterTag)]),
+    showHidden() {
+      return this.revealedFor !== null && this.revealedFor === this.filterKey;
+    },
+    // What the search, filters and sort show, worked out in the browser
+    selection() {
+      return selectLinks(this.allLinks, {
+        search: this.search,
+        category: String(this.filterCategory || ""),
+        tag: this.filterTag,
+        sort: this.sort,
+        showHidden: this.showHidden,
+        hiddenIds: this.hiddenIds,
+      });
+    },
+    links() {
+      return this.selection.links;
+    },
+    // Search or tag matches left out because their category is hidden
+    hiddenMatches() {
+      return this.selection.hiddenMatches;
+    },
+    // Links on the shelf outside hidden categories, whatever the search
+    total() {
+      return this.allLinks.filter((l) => !this.hiddenIds.has(l.category_id)).length;
+    },
+    // Your own links, hidden categories included (export, delete everything)
+    ownLinkCount: (state) => state.allLinks.filter((l) => !l.is_from_shared_category).length,
+    uncategorizedCount: (state) => state.allLinks.filter((l) => l.category_id == null).length,
+    favoriteLinks() {
+      return favoriteLinks(this.allLinks, this.hiddenIds);
+    },
+    linksByCategory() {
       const grouped = new Map();
 
-      for (const link of state.links) {
+      for (const link of this.links) {
         const categoryKey = link.category_id || "uncategorized";
         if (!grouped.has(categoryKey)) grouped.set(categoryKey, []);
         grouped.get(categoryKey).push(link);
@@ -99,8 +135,9 @@ export const useAppStore = defineStore("app", {
         this.loadSharedCategories(),
         this.loadAppConfig(),
       ]);
-      await Promise.all([this.loadLinks({ reset: true }), this.loadFavorites()]);
+      await this.loadLinks();
       await this.checkPendingShare();
+      this.startFreshnessCheck();
     },
     async withLoading(fn) {
       this.loading = true;
@@ -116,17 +153,11 @@ export const useAppStore = defineStore("app", {
     },
     async loadSettings() {
       this.settings = await settingsApi.get();
-      this.settingsLoaded = true;
       this.applyBrandColor(this.settings.brand_color);
     },
     async updateSettings(payload) {
-      const previousPerPage = this.settings.links_per_page;
       this.settings = await settingsApi.update(payload);
       if (payload.brand_color) this.applyBrandColor(payload.brand_color);
-      // Start over in the new size
-      if (this.settings.links_per_page !== previousPerPage) {
-        await this.loadLinks({ reset: true });
-      }
     },
     applyBrandColor(hex) {
       const r = parseInt(hex.slice(1, 3), 16);
@@ -151,77 +182,40 @@ export const useAppStore = defineStore("app", {
       set("--brand-900", r - 65, g - 65, b - 65);
       set("--brand-950", r - 85, g - 85, b - 85);
     },
-    // Loads the first page (reset) or the next one. Pages are fetched by
-    // offset (how many are loaded), so a page-size change can't skip links.
-    // A reset always starts a fresh request and wins over one still
-    // running (e.g. the views' first load racing the start-up load); a
-    // "next page" while one is running just waits for that one.
-    async loadLinks({ reset = false } = {}) {
-      if (!reset && linksInFlight) return linksInFlight;
+    // Loads the whole shelf. Search, filters and sorting then work on it
+    // in the browser. The server answers 304 (no body) when nothing has
+    // changed since the last load, so calling this again is cheap. If two
+    // loads overlap, the newer one's answer is the one kept.
+    async loadLinks() {
       const id = ++linksRequestId;
-      this._loadingLinks = true;
-      const run = this._fetchLinks(reset, id).finally(() => {
-        if (id !== linksRequestId) return;
-        this._loadingLinks = false;
-        linksInFlight = null;
-      });
-      linksInFlight = run;
-      return run;
-    },
-    async _fetchLinks(reset, id) {
-      const offset = reset ? 0 : this.links.length;
-      const response = await linksApi.list({
-        offset,
-        limit: this.settings.links_per_page,
-        categoryId:
-          this.filterCategory === "uncategorized" ? "" : this.filterCategory,
-        search: this.search.trim(),
-        tagId: this.filterTag,
-        group: this.linkGrouping,
-        includeHidden: this.showHidden,
-        sort: this.sort,
-      });
-      // A newer reset started meanwhile; its result is the one to show
+      const response = await linksApi.list();
       if (id !== linksRequestId) return;
-
-      this.links = reset
-        ? response.links
-        : [...this.links, ...response.links];
-      if (reset) this.hiddenMatches = response.hidden_matches || 0;
-      // A short page means the server has nothing more, even if the count
-      // changed in between (e.g. a link deleted elsewhere)
-      const lastPage =
-        response.links.length < response.pagination.limit ||
-        offset + response.links.length >= response.pagination.total;
-      this.total = lastPage ? this.links.length : response.pagination.total;
+      this.allLinks = response.links || [];
+      this.linksLoaded = true;
     },
-    // Each page sets the order it needs. Before start-up has loaded the
-    // settings, start-up's own load picks this up
-    async setLinkGrouping(mode) {
-      if (this.linkGrouping === mode) return;
-      this.linkGrouping = mode;
-      if (this.settingsLoaded) await this.loadLinks({ reset: true });
-    },
-    // Infinite scroll and "Load more". While a load is running this only
-    // waits for it: the caller looks again afterwards, so nothing is
-    // fetched ahead of need
-    async loadMore() {
-      if (linksInFlight) {
-        await linksInFlight.catch(() => {});
-        return;
-      }
-      if (!this.hasMore) return;
-      await this.loadLinks();
-    },
-    async loadFavorites() {
-      try {
-        this.favoriteLinks = await linksApi.favorites();
-      } catch {
-        // Favorites are a shortcut; the shelf works without them
-      }
+    // Check for changes made elsewhere when you come back to the tab
+    // after a while. Errors are left for the next real action to show.
+    startFreshnessCheck() {
+      if (freshnessStarted || typeof document === "undefined") return;
+      freshnessStarted = true;
+      let hiddenAt = null;
+      document.addEventListener("visibilitychange", () => {
+        if (document.visibilityState === "hidden") {
+          hiddenAt = Date.now();
+          return;
+        }
+        if (hiddenAt === null || Date.now() - hiddenAt < STALE_AFTER_MS) return;
+        hiddenAt = null;
+        Promise.all([
+          this.loadLinks(),
+          this.loadCategories(),
+          this.loadSharedCategories(),
+          this.loadTags(),
+        ]).catch(() => {});
+      });
     },
     async refreshLinks() {
-      await Promise.all([this.loadLinks({ reset: true }), this.loadFavorites()]);
+      await this.loadLinks();
     },
     async createLink(payload) {
       await linksApi.create(payload);
@@ -238,22 +232,16 @@ export const useAppStore = defineStore("app", {
     /** Star or unstar a link; shown at once, put back if saving fails */
     async toggleLinkFavorite(link) {
       const value = link.is_favorite ? 0 : 1;
+      // Favorites are worked out from the shelf, so this updates them too
       const setEverywhere = (v) => {
-        for (const l of this.links) if (l.id === link.id) l.is_favorite = v;
+        for (const l of this.allLinks) if (l.id === link.id) l.is_favorite = v;
         link.is_favorite = v;
       };
-      const previousFavorites = this.favoriteLinks;
       setEverywhere(value);
-      this.favoriteLinks = value
-        ? [...this.favoriteLinks, { ...link, is_favorite: 1 }].sort((a, b) =>
-            a.title.localeCompare(b.title, undefined, { sensitivity: "base" }),
-          )
-        : this.favoriteLinks.filter((l) => l.id !== link.id);
       try {
         await linksApi.update(link.id, { is_favorite: !!value });
       } catch (error) {
         setEverywhere(value ? 0 : 1);
-        this.favoriteLinks = previousFavorites;
         useToastStore().error(error.message || "Couldn't save the favorite");
       }
     },
@@ -286,22 +274,17 @@ export const useAppStore = defineStore("app", {
     },
     /** Save a dragged order; `ids` is one category's links, in order */
     async reorderLinks(ids) {
-      const previous = this.links;
-      // Optimistic: put these links in their new order, in the slots they
-      // already take up in the list, so nothing else moves
-      const slots = this.links
-        .map((link, i) => (ids.includes(link.id) ? i : -1))
-        .filter((i) => i !== -1);
-      const byId = new Map(this.links.map((link) => [link.id, link]));
-      const next = [...this.links];
-      slots.forEach((slot, n) => {
-        next[slot] = { ...byId.get(ids[n]), display_order: n + 1 };
-      });
-      this.links = next;
+      const previous = this.allLinks;
+      // Optimistic: number these links 1, 2, 3… in their new order, as
+      // the server does; your own order sorts by that number
+      const position = new Map(ids.map((id, n) => [id, n + 1]));
+      this.allLinks = this.allLinks.map((link) =>
+        position.has(link.id) ? { ...link, display_order: position.get(link.id) } : link,
+      );
       try {
         await linksApi.reorder(ids);
       } catch (error) {
-        this.links = previous;
+        this.allLinks = previous;
         useToastStore().error(error.message || "Couldn't save the new order");
       }
     },
@@ -326,10 +309,7 @@ export const useAppStore = defineStore("app", {
     },
     async deleteCategory(id) {
       await categoriesApi.remove(id);
-      await Promise.all([
-        this.loadCategories(),
-        this.loadLinks({ reset: true }),
-      ]);
+      await Promise.all([this.loadCategories(), this.loadLinks()]);
       const toastStore = useToastStore();
       toastStore.success("Category deleted");
     },
@@ -339,7 +319,7 @@ export const useAppStore = defineStore("app", {
       const toastStore = useToastStore();
       toastStore.success("Category updated");
     },
-    // The list reloads through useLinkFilterReload, which watches this
+    // The list re-sorts on its own; nothing to load
     setSort(value) {
       this.sort = SORT_OPTIONS.some((o) => o.value === value) ? value : "";
       try {
@@ -350,9 +330,8 @@ export const useAppStore = defineStore("app", {
       }
     },
     // Show the matches in hidden categories for the current search or tag
-    async revealHidden(show = true) {
-      this.showHidden = show;
-      await this.loadLinks({ reset: true });
+    revealHidden(show = true) {
+      this.revealedFor = show ? this.filterKey : null;
     },
     // A hidden category's links stay out of lists, search and favorites
     // until you pick it
@@ -371,7 +350,6 @@ export const useAppStore = defineStore("app", {
           ? `${category.name} is hidden; pick it to see its links`
           : `${category.name} shows everywhere again`,
       );
-      await this.refreshLinks();
     },
     async toggleFavorite(category) {
       const isFavorite = !category.is_favorite;
@@ -412,10 +390,8 @@ export const useAppStore = defineStore("app", {
         useToastStore().error(error.message);
       }
     },
-    async filterByTag(tagId) {
+    filterByTag(tagId) {
       this.filterTag = tagId ? String(tagId) : "";
-      this.showHidden = false;
-      await this.loadLinks({ reset: true });
     },
     async loadTags() {
       this.tags = await tagsApi.list();
@@ -429,22 +405,18 @@ export const useAppStore = defineStore("app", {
     async renameTag(id, name) {
       const tag = await tagsApi.update(id, { name });
       // Cards show tag names, so rename them in place too
-      for (const list of [this.links, this.favoriteLinks]) {
-        for (const link of list) {
-          for (const t of link.tags || []) if (t.id === tag.id) t.name = tag.name;
-        }
+      for (const link of this.allLinks) {
+        for (const t of link.tags || []) if (t.id === tag.id) t.name = tag.name;
       }
       await this.loadTags();
       useToastStore().success("Tag renamed");
     },
     async deleteTag(id) {
       await tagsApi.remove(id);
-      for (const list of [this.links, this.favoriteLinks]) {
-        for (const link of list) {
-          if (link.tags) link.tags = link.tags.filter((t) => t.id !== id);
-        }
+      for (const link of this.allLinks) {
+        if (link.tags) link.tags = link.tags.filter((t) => t.id !== id);
       }
-      if (this.filterTag === String(id)) await this.filterByTag("");
+      if (this.filterTag === String(id)) this.filterByTag("");
       await this.loadTags();
       const toastStore = useToastStore();
       toastStore.success("Tag deleted");
@@ -454,19 +426,13 @@ export const useAppStore = defineStore("app", {
     },
     async acceptShare(shareCode) {
       await sharesApi.acceptShare(shareCode);
-      await Promise.all([
-        this.loadSharedCategories(),
-        this.loadLinks({ reset: true }),
-      ]);
+      await Promise.all([this.loadSharedCategories(), this.loadLinks()]);
       const toastStore = useToastStore();
       toastStore.success("Joined shared category");
     },
     async leaveSharedCategory(categoryId) {
       await sharesApi.leaveSharedCategory(categoryId);
-      await Promise.all([
-        this.loadSharedCategories(),
-        this.loadLinks({ reset: true }),
-      ]);
+      await Promise.all([this.loadSharedCategories(), this.loadLinks()]);
       const toastStore = useToastStore();
       toastStore.success("Left shared category");
     },

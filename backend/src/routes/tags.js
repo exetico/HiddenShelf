@@ -16,13 +16,14 @@ import {
   errorResponse,
   MAX_LENGTHS,
 } from "../lib/helpers.js";
+import { revalidate } from "../middleware/revalidate.js";
 import { requireAuth } from "../middleware/auth.js";
 
 const tags = new Hono();
 
 // ─── GET /api/tags ───────────────────────────────────────────────
 
-tags.get("/", requireAuth(), (c) => {
+tags.get("/", requireAuth(), revalidate(), (c) => {
   const db = getDb();
   const rows = db
     .prepare(

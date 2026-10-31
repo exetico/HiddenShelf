@@ -52,11 +52,11 @@ describe("DashboardView", () => {
     pinia = createPinia();
     setActivePinia(pinia);
     const appStore = useAppStore();
-    appStore.total = 42;
+    // 42 links on the shelf
+    appStore.allLinks = Array.from({ length: 42 }, (_, i) => ({ id: i + 1, title: `L${i}` }));
     appStore.categories = [{ id: 1 }, { id: 2 }];
     appStore.sharedCategories = [];
     appStore.tags = [{ id: 1 }, { id: 2 }, { id: 3 }];
-    appStore.links = [];
     appStore.visitStats = { total_visits: 0, days: 30, summary: [] };
     mockPush.mockClear();
     mockIsDark.value = false;
@@ -191,7 +191,6 @@ describe("DashboardView", () => {
       await flushPromises();
       expect(appStore.filterTag).toBe("7");
       expect(appStore.search).toBe("");
-      expect(linksApi.list).toHaveBeenCalledWith(expect.objectContaining({ tagId: "7" }));
       expect(mockPush).toHaveBeenCalledWith({ name: "view" });
     });
   });

@@ -17,13 +17,14 @@ import {
   errorResponse,
   MAX_LENGTHS,
 } from "../lib/helpers.js";
+import { revalidate } from "../middleware/revalidate.js";
 import { requireAuth } from "../middleware/auth.js";
 
 const categories = new Hono();
 
 // ─── GET /api/categories ─────────────────────────────────────────
 
-categories.get("/", requireAuth(), (c) => {
+categories.get("/", requireAuth(), revalidate(), (c) => {
   const db = getDb();
 
   const rows = db

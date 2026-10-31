@@ -320,7 +320,7 @@ Clean URLs (`/dashboard`, `/edit`, etc.). The backend serves the app for these r
 ### User_Settings
 
 - `user_id` - Primary key (FK → users, cascades on delete)
-- `settings` - JSON string (`{ links_per_page, brand_color }`)
+- `settings` - JSON string (`{ brand_color }`)
 - `created_at` - Timestamp
 - `updated_at` - Timestamp
 
@@ -414,7 +414,7 @@ Clean URLs (`/dashboard`, `/edit`, etc.). The backend serves the app for these r
 
 ### Links
 
-- `GET /api/links` - List user's links (with search, pagination, category filter)
+- `GET /api/links` - List user's links, all in one answer (with search, category and tag filters; ETag, so an unchanged list is a 304)
 - `POST /api/links` - Create new link
 - `GET /api/links?id=123` - Get single link
 - `PUT /api/links?id=123` - Update link
@@ -445,7 +445,7 @@ Clean URLs (`/dashboard`, `/edit`, etc.). The backend serves the app for these r
 ### User Settings
 
 - `GET /api/user_settings` - Get user settings
-- `PUT /api/user_settings` - Update settings (links_per_page, brand_color)
+- `PUT /api/user_settings` - Update settings (brand_color)
 
 ### Link Visits
 
