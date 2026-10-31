@@ -45,7 +45,8 @@ describe("In-app updates", () => {
       body: JSON.stringify(body),
     });
 
-  const requestFile = () => path.join(dir, "inbox", "request");
+  const flag = (action = "update") => path.join(dir, "inbox", action);
+  const requestFile = () => flag("update");
 
   beforeEach(() => {
     saved.emails = config.updateAdminEmails;
@@ -107,23 +108,24 @@ describe("In-app updates", () => {
     expect(data.fresh_login).toBe(true);
   });
 
-  it("starts an update: records it, drops only the id, emails the admins", async () => {
+  it("starts an update: records it, raises an empty flag, emails the admins", async () => {
     updaterReports();
-    const res = await post("/api/updates/update", admin.cookie, { body: { commit: B } });
+    const res = await post("/api/updates/update", admin.cookie, { body: { commit: A, anything: "x".repeat(5000) } });
     expect(res.status).toBe(202);
     const { id } = await json(res);
     expect(id).toMatch(/^[0-9a-f]{32}$/);
-    expect(fs.readFileSync(requestFile(), "utf8")).toBe(`${id}\n`);
+    // Nothing the admin sent reaches the updater
+    expect(fs.readFileSync(requestFile(), "utf8")).toBe("");
     const row = getDb().prepare("SELECT * FROM update_requests WHERE id = ?").get(id);
     expect(row).toMatchObject({ action: "update", target_commit: B, email: "Admin@Example.com", result: null });
     expect(mailer.sendNotice).toHaveBeenCalledWith("admin@example.com", expect.stringContaining("Update started"), expect.any(String));
   });
 
-  it("refuses a version other than the one the updater offers", async () => {
-    updaterReports();
-    const res = await post("/api/updates/update", admin.cookie, { body: { commit: A } });
-    expect(res.status).toBe(409);
-    expect((await post("/api/updates/update", admin.cookie, { body: { commit: "; rm -rf /" } })).status).toBe(400);
+  it("refuses an update when there is nothing new or the check failed", async () => {
+    updaterReports({ count: 0 });
+    expect((await post("/api/updates/update", admin.cookie)).status).toBe(409);
+    updaterReports({ ok: "no" });
+    expect((await post("/api/updates/update", admin.cookie)).status).toBe(409);
     expect(fs.existsSync(requestFile())).toBe(false);
   });
 
@@ -149,7 +151,7 @@ describe("In-app updates", () => {
     expect(fs.existsSync(requestFile())).toBe(false);
   });
 
-  it("says so when the updater isn't installed", async () => {
+  it("says so when the updater hasn't started", async () => {
     const res = await post("/api/updates/update", admin.cookie, { body: { commit: B } });
     expect(res.status).toBe(503);
   });
@@ -164,11 +166,17 @@ describe("In-app updates", () => {
   it("records the updater's result and emails the admins", async () => {
     updaterReports();
     const { id } = await json(await post("/api/updates/update", admin.cookie, { body: { commit: B } }));
-    writeStatus("job", `id=${id}\naction=update\nstate=rolled_back\nstep=Rolled back\nmessage=Health check failed\nfinished_at=1\n`);
+    const jobId = "c".repeat(32);
+    const started = Math.floor(Date.now() / 1000) + 1;
+    writeStatus("job", `id=${jobId}\naction=update\nstate=rolled_back\nstep=Rolled back\nmessage=Health check failed\nstarted_at=${started}\nfinished_at=${started + 1}\n`);
     const data = await json(await app.request("/api/updates", { headers: { Cookie: admin.cookie } }));
-    expect(data.job).toMatchObject({ id, state: "rolled_back" });
+    expect(data.job).toMatchObject({ id: jobId, state: "rolled_back" });
     expect(data.history[0]).toMatchObject({ id, result: "rolled_back", message: "Health check failed" });
     expect(mailer.sendNotice).toHaveBeenCalledWith("admin@example.com", expect.stringContaining("rolled back"), expect.any(String));
+    // Recorded once, even when the same result is read again
+    mailer.sendNotice.mockClear();
+    await app.request("/api/updates", { headers: { Cookie: admin.cookie } });
+    expect(mailer.sendNotice).not.toHaveBeenCalled();
   });
 
   it("offers a rollback only when the updater kept a previous version", async () => {
@@ -178,7 +186,8 @@ describe("In-app updates", () => {
     const res = await post("/api/updates/rollback", admin.cookie);
     expect(res.status).toBe(202);
     const row = getDb().prepare("SELECT action, target_commit FROM update_requests").get();
-    expect(row).toEqual({ action: "rollback", target_commit: null });
+    expect(row).toEqual({ action: "rollback", target_commit: A });
+    expect(fs.readFileSync(flag("rollback"), "utf8")).toBe("");
   });
 
   it("reads status files defensively", () => {

@@ -476,10 +476,10 @@ This document provides a comprehensive overview of all features, functionality, 
 
 - `id`, `user_id`, `settings` (JSON)
 
-#### update_requests (migration 013)
+#### update_requests (migrations 013, 014)
 
-- `id` (32 hex, also the request file's content), `action` (`update`/`rollback`), `target_commit`, `user_id`, `email`, `ip`, `created_at` (Unix seconds), `result` (`succeeded`/`failed`/`rolled_back`, NULL while waiting), `message`, `finished_at`
-- The audit log of in-app updates. The host updater reads a row by id, read only
+- `id` (32 hex), `action` (`update`/`rollback`), `target_commit` (what the panel showed), `user_id`, `email`, `ip`, `created_at` (Unix seconds), `result` (`succeeded`/`failed`/`rolled_back`, NULL while waiting), `message`, `finished_at`, `job_id` (the updater run that handled it)
+- The audit log of in-app updates. The updater only checks, read only, that a waiting row exists
 
 ### Migration System
 
@@ -557,18 +557,19 @@ This document provides a comprehensive overview of all features, functionality, 
 
 - Admins only: the signed-in user's stored email must be in `UPDATE_ADMIN_EMAILS`. Everyone else gets 404
 - `GET /` — `current` (commit, date, subject), `available` (target, count, migrations, commits), `job` (last run: state, step, message), `rollback` (previous version, `restores_database`), `log`, `history` (last 20 requests), `fresh_login`, `reauth_minutes`, `updater_seen`/`updater_stale`
-- `POST /update` `{ commit }` — must equal `available.target`. `POST /rollback` — needs `rollback`
-- Both need a sign-in within `UPDATE_REAUTH_MINUTES` (session `login_at`, set at each login; else 403 `reauth_required`), a same-site `Origin`, no other request waiting or running, and a minute since the last one
-- A request inserts an `update_requests` row, writes its id to `control/inbox/request` and emails every admin; `syncResults()` copies the updater's result onto the row (on GET, and every minute) and emails again
+- `POST /update`, `POST /rollback` — no body is read. Both need a sign-in within `UPDATE_REAUTH_MINUTES` (session `login_at`, set at each login; else 403 `reauth_required`), SITE_URL's exact `Origin`, no other request waiting or running, and a minute since the last one
+- A request inserts an `update_requests` row (`target_commit` = what the panel showed, for the log only), creates the empty flag `var/inbox/update` or `var/inbox/rollback`, and emails every admin. `syncResults()` copies the updater's result onto the newest waiting row of that action (`job_id` marks it handled; on GET and every minute) and emails again
 - `/api/auth/me` returns `can_update`; the Profile page shows `ServerUpdates.vue` (`frontend/src/components/admin/`) only then
 
-### Host updater (`deploy/updater/`)
+### Self-update (`backend/src/supervisor.js`, `backend/src/selfupdate/updater.js`)
 
-- `hiddenshelf-updater.sh run|check|watch`, installed by `make install-updater` as systemd units: `hiddenshelf-updater.path` (starts the run when `control/inbox/request` appears), `hiddenshelf-updater.service`, `hiddenshelf-updater-check.timer` (hourly `check`)
-- Shares `control/` with the app: `inbox/` (mode 1733, the app may only drop a file), `status/` (mounted read-only: `check`, `current`, `available`, `job`, `rollback`, `log`), `state/` (host only: lock, processed ids, rollback info)
-- Update: id must be 32 hex, unused, and match a database row under 10 minutes old; `origin/main` must equal the row's commit and fast-forward the checkout; clean tree; 1 GB free. Builds while the old container serves, tags the old image `hiddenshelf:previous`, backs up to `db/backups/pre-update-*.sqlite` (keeps 10), swaps, waits 60 s for `/api/health` on the new image, else restores image, database and checkout
-- Rollback: one step back from `state/rollback`; restores the database too when the update added migrations, after a `pre-rollback-*.sqlite` copy
-- The image is `hiddenshelf:latest`, built with the `GIT_COMMIT` build arg (env `GIT_COMMIT` in the app). `make refresh-base` pulls a newer base image; updates never do
+- The image's CMD is the supervisor. It runs `backend/src/index.js` as a child (restarts it if it exits; three crashes in two minutes on an updated version fall back to the image's code) and, with `UPDATE_ADMIN_EMAILS` set, polls for flags every 3 s and runs `check` hourly
+- `var/` is the `app-var` volume: `repo.git` (bare, fetches `main` from `UPDATE_REPO_URL`, https only), `releases/<commit>/` (built copies), `state/` (`current`, `previous`), `status/` (`check`, `current`, `available`, `job`, `rollback`, `log`), `inbox/`
+- Flags are never read: `lstat`, delete, ignore if older than 10 minutes, and act only with a waiting `update_requests` row of that action from the last 10 minutes
+- Update: fast-forward of the running commit only; 1 GB free; `git archive` + `npm ci` + frontend build into `releases/.tmp-<commit>` (site stays up); backup `db/backups/pre-update-*.sqlite` (keeps 10); stop, start the new code, wait 60 s for `/api/health`, else restore the backup and start the old code
+- Rollback: one step back to `state/previous`; restores the database when the update added migrations, after `pre-rollback-*.sqlite`
+- At start the current release is used only if the image's `GIT_COMMIT` is its ancestor, so a newer image from `make upgrade` wins. Commands run with fixed argument lists, never a shell
+- `make refresh-base` pulls a newer base image; updates never do
 
 ## Public Link Viewing
 
@@ -621,7 +622,7 @@ This document provides a comprehensive overview of all features, functionality, 
 - **Session Timeout**: 30-day session lifetime
 - **Rate Limiting**: In-memory rate limiter on POST `/api/auth/login` — 10 attempts per IP per 15-minute window, returns HTTP 429 when exceeded. Uses `getClientIp()` helper with `X-Forwarded-For` support. Limiter state stored in `loginAttempts` Map (exported for test cleanup).
 - **Google email must be verified**: the callback refuses a Google account whose `verified_email` is false, since emails decide account linking and update admins
-- **In-app updates**: the app container never gets the Docker socket, git or a GitHub token; it only writes a request id. Admin allowlist from env, recent sign-in, same-site Origin, audit log and admin emails (see Updates above)
+- **In-app updates**: no Docker socket anywhere; a click sends nothing but itself (an empty flag the updater never reads). Admin allowlist from env, recent sign-in, exact-origin check, audit log and admin emails. Trade-off: updated code lives in a volume the app can write (see Self-update above)
 
 ### Open Redirect Prevention
 
@@ -679,7 +680,7 @@ This document provides a comprehensive overview of all features, functionality, 
 - Session lifetime (`SESSION_LIFETIME`); sessions are stored in the SQLite `sessions` table
 - Debug mode, signup toggle (`DEBUG_MODE`, `SIGNUP_ENABLED`)
 - Google OAuth credentials (`GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`)
-- In-app updates (`UPDATE_ADMIN_EMAILS`, `UPDATE_REAUTH_MINUTES`; `UPDATE_CONTROL_DIR` defaults to `./control`)
+- In-app updates (`UPDATE_ADMIN_EMAILS`, `UPDATE_REAUTH_MINUTES`, `UPDATE_REPO_URL`; `UPDATE_VAR_DIR` defaults to `./var`)
 
 ### User Settings (stored in DB)
 
@@ -742,7 +743,7 @@ This document provides a comprehensive overview of all features, functionality, 
 | `tests/security.test.js`    | 22    | Open redirect prevention, input validation (length + protocol), rate limiting, debug mode, session cookies, CORS, XSS                                               |
 | `tests/codeQuality.test.js` | 11    | Category delete orphans, category ownership validation, batch tag fetching, bulk delete (transaction + isolation + auth), short URL validation, category updated_at |
 | `tests/updates.test.js`     | 13    | Admin-only update endpoints, re-login window, Origin check, one at a time, result sync and emails, health check, status file parsing                                |
-| `tests/updater.test.js`     | 12    | Host updater with real git and fake docker: check, update, refusals (bad id, replay, old, moved main, dirty tree), failed build, auto-rollback, manual rollback      |
+| `tests/selfupdate.test.js`  | 10    | Self-updater with real git and fake npm: check, update, flag never read (links, pipes, folders), old flags, no matching request, failed build, auto-rollback, manual rollback, image vs release at start |
 | `tests/migrations.test.js`  | 14    | All 7 migrations run successfully, idempotency, per-migration schema checks, foreign key constraints, cascade behavior                                              |
 
 **Backend Total: 129 tests across 11 files**
