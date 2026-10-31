@@ -89,6 +89,19 @@ function onKeydown(event) {
   input.focus();
 }
 onMounted(() => window.addEventListener("keydown", onKeydown));
+
+// Opening the app puts you straight in the search box, so you can type
+// right away. Only with a mouse or trackpad on a wide screen: the box is
+// hidden on phones, and focusing on a touch screen would pop the keyboard.
+// Never steals focus from something you're already in, or from a dialog.
+const AUTOFOCUS_QUERY = "(min-width: 768px) and (pointer: fine)";
+onMounted(() => {
+  if (!window.matchMedia?.(AUTOFOCUS_QUERY).matches) return;
+  const active = document.activeElement;
+  if (active && active !== document.body) return;
+  if (document.querySelector("[role='dialog']")) return;
+  searchField.value?.focus();
+});
 onUnmounted(() => window.removeEventListener("keydown", onKeydown));
 
 // It is a toggle: tapping the side you are already on flips to the other
