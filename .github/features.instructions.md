@@ -126,6 +126,11 @@ This document provides a comprehensive overview of all features, functionality, 
 - **Tools card**: One link per tool (`TOOLS` in `lib/urlTools.js`) to `/tools?tool=KEY`
 - **Features and FAQ link**: At the bottom, to `/help`
 
+#### Admin (`AdminView.vue`, `/admin`)
+
+- Admins only (`UPDATE_ADMIN_EMAILS`, `authStore.canUpdate`): the shield button in the top bar (`nav-admin`); anyone else is sent to the dashboard
+- Holds things about the whole server, not one account: today only Server updates (see Updates below)
+
 #### Tools (`ToolsView.vue`, `/tools`)
 
 - Linked from the dashboard and the toolbox button in the top bar (`nav-tools-page`)
@@ -561,7 +566,7 @@ This document provides a comprehensive overview of all features, functionality, 
 - `POST /update`, `POST /rollback` — no body is read. Both need a sign-in within `UPDATE_REAUTH_MINUTES` (session `login_at`, set at each login; else 403 `reauth_required`), SITE_URL's exact `Origin`, no other request waiting or running, and a minute since the last one
 - `POST /check` — no body is read; SITE_URL's exact `Origin`, but no fresh sign-in (it changes nothing). 429 if the last check was under a minute ago, 409 while an update runs. Creates the empty flag `var/inbox/check` (an existing one is fine), with no `update_requests` row; returns the previous `checked_at` so the panel can wait for a newer one
 - A request inserts an `update_requests` row (`target_commit` = what the panel showed, for the log only), creates the empty flag `var/inbox/update` or `var/inbox/rollback`, and emails every admin. `syncResults()` copies the updater's result onto the newest waiting row of that action (`job_id` marks it handled; on GET and every minute) and emails again
-- `/api/auth/me` returns `can_update`; the Profile page shows `ServerUpdates.vue` (`frontend/src/components/admin/`) only then
+- `/api/auth/me` returns `can_update`. Only then does TopNav show the Admin button (`nav-admin`) and the router allow `/admin` (`AdminView.vue`, route meta `admin`; others go to the dashboard). The page holds `ServerUpdates.vue` (`frontend/src/components/admin/`)
 
 ### Self-update (`backend/src/supervisor.js`, `backend/src/selfupdate/updater.js`)
 

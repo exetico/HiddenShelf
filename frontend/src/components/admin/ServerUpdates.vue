@@ -116,7 +116,7 @@ async function signInAgain() {
   });
   if (!ok) return;
   try {
-    sessionStorage.setItem("hiddenshelf_return_to", "/profile#updates");
+    sessionStorage.setItem("hiddenshelf_return_to", "/admin");
   } catch {
     /* storage blocked: you land on the dashboard instead */
   }

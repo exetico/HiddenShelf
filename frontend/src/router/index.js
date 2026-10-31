@@ -4,6 +4,7 @@ import ViewLinksView from "@/views/ViewLinksView.vue";
 import EditLinksView from "@/views/EditLinksView.vue";
 import ProfileView from "@/views/ProfileView.vue";
 import ToolsView from "@/views/ToolsView.vue";
+import AdminView from "@/views/AdminView.vue";
 import HelpView from "@/views/HelpView.vue";
 import LoginView from "@/views/LoginView.vue";
 import { useAuthStore } from "@/stores/auth";
@@ -29,6 +30,8 @@ const routes = [
   { path: "/edit", name: "edit", component: EditLinksView },
   { path: "/profile", name: "profile", component: ProfileView },
   { path: "/tools", name: "tools", component: ToolsView },
+  // Admins only (UPDATE_ADMIN_EMAILS)
+  { path: "/admin", name: "admin", component: AdminView, meta: { admin: true } },
   // Open to everyone; inside the app when you're signed in
   {
     path: "/help",
@@ -78,6 +81,8 @@ router.beforeEach(async (to, from) => {
     sessionStorage.setItem("hiddenshelf_return_to", to.fullPath);
     return { name: "login" };
   }
+
+  if (to.meta.admin && !authStore.canUpdate) return { name: "dashboard" };
 
   return true;
 });
