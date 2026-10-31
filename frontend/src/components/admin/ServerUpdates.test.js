@@ -6,7 +6,7 @@ import { useAuthStore } from "@/stores/auth";
 import ServerUpdates from "@/components/admin/ServerUpdates.vue";
 
 vi.mock("@/services/api/updatesApi", () => ({
-  updatesApi: { status: vi.fn(), update: vi.fn(), rollback: vi.fn() },
+  updatesApi: { status: vi.fn(), update: vi.fn(), rollback: vi.fn(), check: vi.fn() },
 }));
 vi.mock("@/services/api/authApi", () => ({
   authApi: { logout: vi.fn().mockResolvedValue({}), me: vi.fn() },
@@ -105,6 +105,25 @@ describe("ServerUpdates", () => {
     await vi.advanceTimersByTimeAsync(3500);
     await flushPromises();
     expect(wrapper.find('[data-testid="update-progress"]').exists()).toBe(false);
+  });
+
+  it("checks for updates now and shows what it found", async () => {
+    updatesApi.status.mockResolvedValue(status({ available: { target: null, count: 0, commits: [] } }));
+    updatesApi.check.mockResolvedValue({ checked_at: 1700000000 });
+    vi.useFakeTimers();
+    const wrapper = mountIt();
+    await flushPromises();
+    const button = wrapper.find('[data-testid="check-button"]');
+    expect(button.text()).toContain("Check for updates");
+    await button.trigger("click");
+    await flushPromises();
+    expect(updatesApi.check).toHaveBeenCalledWith();
+    expect(wrapper.find('[data-testid="check-button"]').text()).toContain("Checking");
+    updatesApi.status.mockResolvedValue(status({ checked_at: 1700000100 }));
+    await vi.advanceTimersByTimeAsync(3500);
+    await flushPromises();
+    expect(wrapper.find('[data-testid="check-button"]').text()).toContain("Check for updates");
+    expect(wrapper.find('[data-testid="update-available"]').text()).toContain("1 new change");
   });
 
   it("does nothing when the admin cancels", async () => {

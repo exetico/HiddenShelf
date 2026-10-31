@@ -162,7 +162,7 @@ export const FAQ = [
   },
   {
     q: "I run my own Hidden Shelf. Can I update it from the app?",
-    a: "Yes. List the admins in UPDATE_ADMIN_EMAILS (see the README) and they get Server updates on their profile, with the new changes listed and Update and Roll back buttons. The database is backed up before every update, and a version that doesn't start is undone by itself.",
+    a: "Yes. List the admins in UPDATE_ADMIN_EMAILS (see the README) and they get Server updates on their profile, with the new changes listed and Update and Roll back buttons. The server looks for new versions every hour, and Check for updates looks right away. The database is backed up before every update, and a version that doesn't start is undone by itself.",
   },
   {
     q: "Can I get my data out?",

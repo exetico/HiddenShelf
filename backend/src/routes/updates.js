@@ -6,6 +6,8 @@
  *   POST /api/updates/update    → update to the latest main (no body: the
  *                                 updater decides what to install)
  *   POST /api/updates/rollback  → back to the version before the last update
+ *   POST /api/updates/check     → look for a new version now (no body; no
+ *                                 fresh sign-in needed, as it changes nothing)
  *
  * Anyone who isn't an admin gets 404, as if the feature didn't exist.
  * Starting anything also needs a sign-in within UPDATE_REAUTH_MINUTES and a
@@ -23,6 +25,7 @@ import {
   syncResults,
   history,
   requestUpdate,
+  requestCheck,
   UpdateError,
 } from "../lib/updates.js";
 
@@ -61,10 +64,16 @@ function sameSite(origin) {
   }
 }
 
-function guard(c) {
+function originGuard(c) {
   if (!sameSite(c.req.header("origin"))) {
     return errorResponse(c, "This request must come from the app itself", 403);
   }
+  return null;
+}
+
+function guard(c) {
+  const bad = originGuard(c);
+  if (bad) return bad;
   if (!hasFreshLogin(c.session)) {
     return c.json(
       { error: `Sign in again to confirm. Updates need a sign-in from the last ${config.updateReauthMinutes} minutes.`, reauth_required: true },
@@ -84,9 +93,20 @@ function start(c, action) {
   }
 }
 
-// Neither endpoint reads a request body
+// None of these endpoints reads a request body
 updates.post("/update", (c) => guard(c) || start(c, "update"));
 
 updates.post("/rollback", (c) => guard(c) || start(c, "rollback"));
+
+updates.post("/check", (c) => {
+  const bad = originGuard(c);
+  if (bad) return bad;
+  try {
+    return c.json({ success: true, ...requestCheck() }, 202);
+  } catch (err) {
+    if (err instanceof UpdateError) return errorResponse(c, err.message, err.status);
+    throw err;
+  }
+});
 
 export default updates;

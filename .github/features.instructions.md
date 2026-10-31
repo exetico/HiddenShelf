@@ -558,6 +558,7 @@ This document provides a comprehensive overview of all features, functionality, 
 - Admins only: the signed-in user's stored email must be in `UPDATE_ADMIN_EMAILS`. Everyone else gets 404
 - `GET /` — `current` (commit, date, subject), `available` (target, count, migrations, commits), `job` (last run: state, step, message), `rollback` (previous version, `restores_database`), `log`, `history` (last 20 requests), `fresh_login`, `reauth_minutes`, `updater_seen`/`updater_stale`
 - `POST /update`, `POST /rollback` — no body is read. Both need a sign-in within `UPDATE_REAUTH_MINUTES` (session `login_at`, set at each login; else 403 `reauth_required`), SITE_URL's exact `Origin`, no other request waiting or running, and a minute since the last one
+- `POST /check` — no body is read; SITE_URL's exact `Origin`, but no fresh sign-in (it changes nothing). 429 if the last check was under a minute ago, 409 while an update runs. Creates the empty flag `var/inbox/check` (an existing one is fine), with no `update_requests` row; returns the previous `checked_at` so the panel can wait for a newer one
 - A request inserts an `update_requests` row (`target_commit` = what the panel showed, for the log only), creates the empty flag `var/inbox/update` or `var/inbox/rollback`, and emails every admin. `syncResults()` copies the updater's result onto the newest waiting row of that action (`job_id` marks it handled; on GET and every minute) and emails again
 - `/api/auth/me` returns `can_update`; the Profile page shows `ServerUpdates.vue` (`frontend/src/components/admin/`) only then
 
@@ -565,7 +566,7 @@ This document provides a comprehensive overview of all features, functionality, 
 
 - The image's CMD is the supervisor. It runs `backend/src/index.js` as a child (restarts it if it exits; three crashes in two minutes on an updated version fall back to the image's code) and, with `UPDATE_ADMIN_EMAILS` set, polls for flags every 3 s and runs `check` hourly
 - `var/` is the `app-var` volume: `repo.git` (bare, fetches `main` from `UPDATE_REPO_URL`, https only), `releases/<commit>/` (built copies), `state/` (`current`, `previous`), `status/` (`check`, `current`, `available`, `job`, `rollback`, `log`), `inbox/`
-- Flags are never read: `lstat`, delete, ignore if older than 10 minutes, and act only with a waiting `update_requests` row of that action from the last 10 minutes
+- Flags are never read: `lstat`, delete, ignore if older than 10 minutes, and act only with a waiting `update_requests` row of that action from the last 10 minutes. The `check` flag needs no row; it runs `check` unless the last one was under a minute ago
 - Update: fast-forward of the running commit only; 1 GB free; `git archive` + `npm ci` + frontend build into `releases/.tmp-<commit>` (site stays up); backup `db/backups/pre-update-*.sqlite` (keeps 10); stop, start the new code, wait 60 s for `/api/health`, else restore the backup and start the old code
 - Rollback: one step back to `state/previous`; restores the database when the update added migrations, after `pre-rollback-*.sqlite`
 - At start the current release is used only if the image's `GIT_COMMIT` is its ancestor, so a newer image from `make upgrade` wins. Commands run with fixed argument lists, never a shell
