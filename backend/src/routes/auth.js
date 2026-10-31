@@ -293,7 +293,7 @@ auth.get("/google/callback", async (c) => {
     const googleUser = await userInfoRes.json();
     // An unverified Google address proves nothing about who owns it, and
     // emails decide account linking and who may update the app
-    if (!googleUser.email || googleUser.verified_email === false) {
+    if (!googleUser.email || googleUser.verified_email !== true) {
       return c.redirect(`${loginUrl}?error=oauth_failed`);
     }
     const email = googleUser.email;

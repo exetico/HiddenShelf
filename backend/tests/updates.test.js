@@ -20,7 +20,8 @@ vi.mock("../src/lib/mailer.js", async (importOriginal) => ({
 
 const A = "a".repeat(40);
 const B = "b".repeat(40);
-const ORIGIN = new URL(config.siteUrl).origin;
+// A production-like site, so localhost dev allowances don't apply
+const ORIGIN = "https://shelf.example.com";
 
 describe("In-app updates", () => {
   let app, dir, admin, user;
@@ -49,6 +50,8 @@ describe("In-app updates", () => {
   beforeEach(() => {
     saved.emails = config.updateAdminEmails;
     saved.dir = config.updateControlDir;
+    saved.siteUrl = config.siteUrl;
+    config.siteUrl = ORIGIN;
     dir = fs.mkdtempSync(path.join(os.tmpdir(), "hs-updates-"));
     fs.mkdirSync(path.join(dir, "inbox"));
     fs.mkdirSync(path.join(dir, "status"));
@@ -63,6 +66,7 @@ describe("In-app updates", () => {
   afterEach(() => {
     config.updateAdminEmails = saved.emails;
     config.updateControlDir = saved.dir;
+    config.siteUrl = saved.siteUrl;
     fs.rmSync(dir, { recursive: true, force: true });
     cleanup();
   });
@@ -138,6 +142,10 @@ describe("In-app updates", () => {
     updaterReports();
     expect((await post("/api/updates/update", admin.cookie, { body: { commit: B }, origin: "https://evil.example" })).status).toBe(403);
     expect((await post("/api/updates/update", admin.cookie, { body: { commit: B }, origin: null })).status).toBe(403);
+    // Same host name but another port or scheme is another site
+    const other = new URL(ORIGIN);
+    other.port = "8443";
+    expect((await post("/api/updates/update", admin.cookie, { body: { commit: B }, origin: other.origin })).status).toBe(403);
     expect(fs.existsSync(requestFile())).toBe(false);
   });
 

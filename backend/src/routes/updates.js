@@ -14,7 +14,7 @@
 import { Hono } from "hono";
 import config from "../config.js";
 import { requireAuth } from "../middleware/auth.js";
-import { errorResponse, getClientIp, isAllowedRedirectOrigin } from "../lib/helpers.js";
+import { errorResponse, getClientIp, isDevSetup } from "../lib/helpers.js";
 import {
   isUpdateAdmin,
   hasFreshLogin,
@@ -47,9 +47,21 @@ updates.get("/", (c) => {
   });
 });
 
+// Exactly SITE_URL's origin (scheme, host and port). Local dev servers on
+// another port are allowed only in development.
+function sameSite(origin) {
+  if (!origin) return false;
+  try {
+    const url = new URL(origin);
+    if (url.origin === new URL(config.siteUrl).origin) return true;
+    return isDevSetup() && ["localhost", "127.0.0.1"].includes(url.hostname);
+  } catch {
+    return false;
+  }
+}
+
 function guard(c) {
-  const origin = c.req.header("origin");
-  if (!origin || !isAllowedRedirectOrigin(origin)) {
+  if (!sameSite(c.req.header("origin"))) {
     return errorResponse(c, "This request must come from the app itself", 403);
   }
   if (!hasFreshLogin(c.session)) {

@@ -72,7 +72,9 @@ to=$JOB_TO
 started_at=$JOB_STARTED
 finished_at=$finished
 EOF
-  tail -n 300 "$STATE/job.log" 2>/dev/null | tr -d '\000-\010\013-\037\177' | publish log
+  # No control characters, and no credentials if a URL in an error had any
+  tail -n 300 "$STATE/job.log" 2>/dev/null | tr -d '\000-\010\013-\037\177' |
+    sed -E 's#://[^/@[:space:]]+@#://***@#g' | publish log
 }
 
 step() { log "== $1"; write_job running "$1"; }
@@ -194,9 +196,12 @@ EOF
 # ─── The request: id from the inbox, details from the app's database ──
 
 read_request() {
-  local file="$INBOX/request" raw row action commit created now
-  [ -f "$file" ] || return 2
-  raw=$(head -c 64 "$file" | tr -d '[:space:]')
+  local file="$INBOX/request" raw="" row action commit created now
+  [ -e "$file" ] || [ -L "$file" ] || return 2
+  # Only a plain file is read: not a link to something else, not a pipe
+  if [ -f "$file" ] && [ ! -L "$file" ]; then
+    raw=$(head -c 64 -- "$file" | tr -d '[:space:]')
+  fi
   rm -f -- "$file"
   if ! [[ "$raw" =~ ^[0-9a-f]{32}$ ]]; then
     JOB_ID="invalid"; JOB_ACTION="unknown"
@@ -368,6 +373,10 @@ do_rollback() {
 # ─── Entry points ────────────────────────────────────────────────
 
 setup_dirs() {
+  local d
+  for d in "$CONTROL" "$INBOX" "$STATUS" "$STATE"; do
+    [ -L "$d" ] && { echo "$d is a symlink; refusing to use it" >&2; return 1; }
+  done
   mkdir -p "$INBOX" "$STATUS" "$STATE"
   chmod 0700 "$STATE"
 }
@@ -376,7 +385,7 @@ do_run() {
   local status
   exec 9>"$STATE/lock"
   flock -w 1800 9 || return 1
-  [ -f "$INBOX/request" ] || return 0
+  [ -e "$INBOX/request" ] || [ -L "$INBOX/request" ] || return 0
   : >"$STATE/job.log"
   JOB_STARTED=$(date -u +%s)
   REQ_COMMIT=""
@@ -396,7 +405,7 @@ do_run() {
 
 main() {
   [ -d "$REPO_DIR/.git" ] || { echo "Not a Hidden Shelf checkout: $REPO_DIR" >&2; return 1; }
-  setup_dirs
+  setup_dirs || return 1
   case "${1:-}" in
     run) do_run ;;
     check)
@@ -407,7 +416,7 @@ main() {
       # For hosts without systemd: poll the inbox, check hourly
       local last=0
       while :; do
-        [ -f "$INBOX/request" ] && ( do_run )
+        { [ -e "$INBOX/request" ] || [ -L "$INBOX/request" ]; } && ( do_run )
         if [ $(($(date -u +%s) - last)) -ge 3600 ]; then
           (exec 9>"$STATE/lock"; flock -n 9 && do_check)
           last=$(date -u +%s)

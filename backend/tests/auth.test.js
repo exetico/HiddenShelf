@@ -2,7 +2,8 @@
  * Tests for /api/auth endpoints.
  */
 
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
+import { sessions } from "../src/middleware/session.js";
 import {
   createTestApp,
   createAuthenticatedUser,
@@ -223,6 +224,47 @@ describe("Auth API", () => {
     it("returns 401 when not authenticated", async () => {
       const res = await app.request("/api/auth/me");
       expect(res.status).toBe(401);
+    });
+  });
+
+  // ── GET /api/auth/google/callback ──
+
+  describe("GET /api/auth/google/callback", () => {
+    const saved = {};
+    beforeEach(() => {
+      saved.id = config.googleClientId;
+      saved.secret = config.googleClientSecret;
+      config.googleClientId = "id";
+      config.googleClientSecret = "secret";
+    });
+    afterEach(() => {
+      config.googleClientId = saved.id;
+      config.googleClientSecret = saved.secret;
+      vi.unstubAllGlobals();
+    });
+
+    async function callback(googleUser) {
+      vi.stubGlobal("fetch", vi.fn(async (url) => ({
+        json: async () => (String(url).includes("token") ? { access_token: "t" } : googleUser),
+      })));
+      const sessionId = "s".repeat(64);
+      sessions.set(sessionId, { data: { oauth2state: "st" }, expiresAt: Date.now() + 60000 });
+      return app.request("/api/auth/google/callback?state=st&code=c", {
+        headers: { Cookie: `hiddenshelf_session=${sessionId}` },
+      });
+    }
+
+    it("refuses a Google account whose email isn't verified", async () => {
+      const res = await callback({ id: "g1", email: "admin@example.com", verified_email: false });
+      expect(res.headers.get("location")).toContain("error=oauth_failed");
+      expect(getDb().prepare("SELECT COUNT(*) AS n FROM users").get().n).toBe(0);
+    });
+
+    it("signs in a verified Google account and records when", async () => {
+      const res = await callback({ id: "g1", email: "new@example.com", verified_email: true });
+      expect(res.headers.get("location")).not.toContain("error=");
+      const row = getDb().prepare("SELECT data FROM sessions").all().map((r) => JSON.parse(r.data)).find((d) => d.user_id);
+      expect(row.login_at).toBeGreaterThan(Date.now() - 5000);
     });
   });
 

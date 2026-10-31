@@ -92,6 +92,9 @@ restore:
 # Back up, update the code and rebuild. The database in db/ is not part of
 # the repository, so git pull never touches it; migrations run on start.
 upgrade:
+	@if [ -f control/state/lock ] && command -v flock >/dev/null && ! flock -n control/state/lock true; then \
+		echo "An in-app update is running. Try again when it has finished."; exit 1; \
+	fi
 	@if docker compose ps --status running --services | grep -qx web; then \
 		$(MAKE) backup; \
 	else \

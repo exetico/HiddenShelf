@@ -214,6 +214,23 @@ describe.skipIf(!hasTools)("host updater", () => {
     expect(fs.existsSync(path.join(server, "control/inbox/request"))).toBe(false);
   });
 
+  it("never reads a request that is a link or a pipe", () => {
+    const secret = path.join(dir, "secret");
+    fs.writeFileSync(secret, `${ID}\n`);
+    fs.symlinkSync(secret, path.join(server, "control/inbox/request"));
+    let res = run("run", { FAKE_REQUEST_ROW: `update|${B}|${now()}` });
+    expect(res.status).not.toBe(0);
+    expect(kv("job").message).toContain("not a valid id");
+    expect(fs.existsSync(path.join(server, "control/inbox/request"))).toBe(false);
+    expect(fs.readFileSync(secret, "utf8")).toBe(`${ID}\n`);
+
+    execFileSync("mkfifo", [path.join(server, "control/inbox/request")]);
+    res = run("run", { FAKE_REQUEST_ROW: `update|${B}|${now()}` });
+    expect(res.status).not.toBe(0);
+    expect(fs.existsSync(path.join(server, "control/inbox/request"))).toBe(false);
+    expect(calls()).toBe("");
+  });
+
   it("ignores an id the app has no request for", () => {
     const res = run("run", { FAKE_REQUEST_ROW: request("") });
     expect(res.status).not.toBe(0);

@@ -38,6 +38,11 @@ sudo -u "$USER_NAME" docker info >/dev/null 2>&1 || {
 }
 case "$DIR" in *[!A-Za-z0-9/._-]*) echo "The folder path $DIR has characters systemd units can't hold. Move it to a plain path." >&2; exit 1 ;; esac
 
+# Root is about to chown these, so they must be real folders, not links
+for d in control control/status control/inbox control/state; do
+  [ -L "$DIR/$d" ] && { echo "$DIR/$d is a symlink; remove it and run this again." >&2; exit 1; }
+done
+
 # Folders the app and the updater share. The app (user "node" in the
 # container) may only drop a file in inbox/ (write, no listing) and read status/.
 install -d -o "$USER_NAME" -m 0755 "$DIR/control" "$DIR/control/status"
