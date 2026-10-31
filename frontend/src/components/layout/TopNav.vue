@@ -205,6 +205,19 @@ function pickMode(name) {
         </button>
 
         <button
+          v-if="authStore.canUpdate"
+          class="p-1.5 sm:p-2 rounded-md text-gray-700 dark:text-brand-200 hover:bg-gray-100 dark:hover:bg-brand-800"
+          :class="route.name === 'admin' && 'bg-gray-100 dark:bg-brand-800'"
+          title="Admin: server updates"
+          aria-label="Admin"
+          :aria-current="route.name === 'admin' ? 'page' : undefined"
+          data-testid="nav-admin"
+          @click="goTo('admin')"
+        >
+          <i class="mdi mdi-shield-account-outline text-lg" aria-hidden="true"></i>
+        </button>
+
+        <button
           class="w-8 h-8 sm:w-9 sm:h-9 shrink-0 rounded-full bg-brand-600 text-white text-sm font-semibold"
           :title="`Profile and settings (${authStore.user?.email || ''})`"
           aria-label="Profile and settings"

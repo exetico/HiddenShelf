@@ -104,10 +104,9 @@ describe("ProfileView", () => {
     expect(useToastStore().items.at(-1).message).toMatch(/bookmarks bar/);
   });
 
-  it("shows server updates to admins only", async () => {
-    expect(mountProfile().find('[data-testid="server-updates"]').exists()).toBe(false);
+  it("leaves server updates to the Admin page", async () => {
     useAuthStore().canUpdate = true;
-    expect(mountProfile().find('[data-testid="server-updates"]').exists()).toBe(true);
+    expect(mountProfile().find('[data-testid="server-updates"]').exists()).toBe(false);
   });
 
   it("shows beta notice", () => {

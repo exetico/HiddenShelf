@@ -10,7 +10,6 @@ import { useDialogStore } from "@/stores/dialog";
 import { sharesApi } from "@/services/api/sharesApi";
 import { accountApi } from "@/services/api/accountApi";
 import ImportExportModal from "@/components/common/ImportExportModal.vue";
-import ServerUpdates from "@/components/admin/ServerUpdates.vue";
 import { backdropClose } from "@/lib/backdropClose";
 
 const authStore = useAuthStore();
@@ -496,9 +495,6 @@ const deleteBackdrop = backdropClose(() => (showDeleteModal.value = false));
         Logout
       </button>
     </article>
-
-    <!-- Admins only (UPDATE_ADMIN_EMAILS): update the app from here -->
-    <ServerUpdates v-if="authStore.canUpdate" />
 
     <!-- Danger Zone -->
     <article

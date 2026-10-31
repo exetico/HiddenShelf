@@ -117,6 +117,14 @@ describe("TopNav", () => {
     expect(mountNav().find('[data-testid="nav-tools-page"]').attributes("aria-current")).toBe("page");
   });
 
+  it("shows the Admin button to admins only", async () => {
+    expect(mountNav().find('[data-testid="nav-admin"]').exists()).toBe(false);
+    useAuthStore().canUpdate = true;
+    const wrapper = mountNav();
+    await wrapper.find('[data-testid="nav-admin"]').trigger("click");
+    expect(mockPush).toHaveBeenCalledWith(expect.objectContaining({ name: "admin" }));
+  });
+
   it("stays at the top while you scroll", () => {
     expect(mountNav().find("header").classes()).toEqual(
       expect.arrayContaining(["sticky", "top-0", "z-30"]),

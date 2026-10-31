@@ -146,7 +146,7 @@ describe("ServerUpdates", () => {
     expect(asked.title).toBe("Sign in again");
     expect(updatesApi.update).not.toHaveBeenCalled();
     expect(logout).toHaveBeenCalled();
-    expect(sessionStorage.getItem("hiddenshelf_return_to")).toBe("/profile#updates");
+    expect(sessionStorage.getItem("hiddenshelf_return_to")).toBe("/admin");
   });
 
   it("warns that a rollback with a database change loses newer data", async () => {

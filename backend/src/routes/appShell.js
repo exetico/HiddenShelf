@@ -2,7 +2,7 @@
  * App shell routes — clean URLs for the Vue app.
  *
  * Endpoint mapping:
- *   GET /, /login, /dashboard, /view, /edit, /profile, /tools, /help → the app's index.html
+ *   GET /, /login, /dashboard, /view, /edit, /profile, /tools, /admin, /help → the app's index.html
  *
  * The app uses history routing, so these paths reach the server on a reload
  * or a bookmark. Only the app's own routes are listed: /api, /h, /assets and
@@ -15,7 +15,7 @@ import fs from "node:fs";
 import { Hono } from "hono";
 import { withAbsoluteShareImage } from "../lib/helpers.js";
 
-export const APP_ROUTES = ["/", "/login", "/dashboard", "/view", "/edit", "/profile", "/tools", "/help"];
+export const APP_ROUTES = ["/", "/login", "/dashboard", "/view", "/edit", "/profile", "/tools", "/admin", "/help"];
 
 export function appShellRoutes({ indexPath }) {
   const routes = new Hono();
