@@ -1,4 +1,4 @@
-import { describe, expect, it, vi, beforeEach } from "vitest";
+import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import { mount } from "@vue/test-utils";
 import { createPinia, setActivePinia } from "pinia";
 import { useAuthStore } from "@/stores/auth";
@@ -176,6 +176,55 @@ describe("TopNav", () => {
       expect(typing.defaultPrevented).toBe(false);
       other.remove();
       wrapper.unmount();
+    });
+
+    describe("focus on open", () => {
+      const setMedia = (desktop) => {
+        window.matchMedia = vi.fn().mockReturnValue({ matches: desktop });
+      };
+      const mountAttached = () =>
+        mount(TopNav, { global: { plugins: [pinia] }, attachTo: document.body });
+      afterEach(() => {
+        delete window.matchMedia;
+        document.activeElement?.blur?.();
+      });
+
+      it("puts the cursor in the search box with a mouse on a wide screen", () => {
+        setMedia(true);
+        const wrapper = mountAttached();
+        expect(window.matchMedia).toHaveBeenCalledWith(
+          "(min-width: 768px) and (pointer: fine)",
+        );
+        const input = wrapper.find('[data-testid="nav-search"]').element;
+        expect(document.activeElement).toBe(input);
+        wrapper.unmount();
+      });
+
+      it("leaves focus alone on phones and touch screens", () => {
+        setMedia(false);
+        const wrapper = mountAttached();
+        expect(document.activeElement).toBe(document.body);
+        wrapper.unmount();
+      });
+
+      it("doesn't steal focus from a field or an open dialog", () => {
+        setMedia(true);
+        const other = document.createElement("input");
+        document.body.appendChild(other);
+        other.focus();
+        let wrapper = mountAttached();
+        expect(document.activeElement).toBe(other);
+        wrapper.unmount();
+        other.remove();
+
+        const dialog = document.createElement("div");
+        dialog.setAttribute("role", "dialog");
+        document.body.appendChild(dialog);
+        wrapper = mountAttached();
+        expect(document.activeElement).toBe(document.body);
+        wrapper.unmount();
+        dialog.remove();
+      });
     });
 
     it("adds a link on N, but not while typing or with a dialog open", async () => {

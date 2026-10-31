@@ -104,6 +104,7 @@ This document provides a comprehensive overview of all features, functionality, 
 - Mode switching tabs: Dashboard, View, Edit, Profile
 - User avatar with initials
 - Responsive design
+- Search box (`nav-search`, md+): focused when the app opens, but only when `(min-width: 768px) and (pointer: fine)` matches, nothing else has focus and no dialog is open. `/` jumps to it
 
 ### Layout (`AppShell.vue`)
 
