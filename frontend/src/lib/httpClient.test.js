@@ -1,5 +1,12 @@
-import { describe, expect, it, vi } from "vitest";
-import { forgetAnswers, request, revalidated } from "@/lib/httpClient";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  forgetAnswers,
+  request,
+  revalidated,
+  UNREACHABLE_MESSAGE,
+  UNREADABLE_MESSAGE,
+} from "@/lib/httpClient";
+import { connection, resetConnection } from "@/lib/connection";
 
 describe("httpClient", () => {
   it("returns payload when request succeeds", async () => {
@@ -80,5 +87,70 @@ describe("httpClient", () => {
       body: "{}",
       headers: { "Content-Type": "application/json", "X-Test": "1" },
     });
+  });
+});
+
+describe("httpClient when the server can't be reached", () => {
+  beforeEach(() => resetConnection());
+  afterEach(() => {
+    resetConnection();
+    vi.unstubAllGlobals();
+  });
+
+  const html = (status) => ({
+    ok: false,
+    status,
+    json: async () => {
+      throw new SyntaxError("Unexpected token <");
+    },
+  });
+
+  it.each([502, 503, 504, 521, 522])("a proxy's %i page means the server is restarting", async (status) => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(html(status)));
+    const error = await request("/api/access/admin").catch((e) => e);
+    expect(error.unreachable).toBe(true);
+    expect(error.message).toBe(UNREACHABLE_MESSAGE);
+    expect(connection.down).toBe(true);
+  });
+
+  it("no network at all counts as unreachable too", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new TypeError("Load failed")));
+    const error = await request("/api/updates").catch((e) => e);
+    expect(error.unreachable).toBe(true);
+    expect(connection.down).toBe(true);
+  });
+
+  it("the app's own 503 is an ordinary error with its message", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({ ok: false, status: 503, json: async () => ({ success: false, error: "Could not reach the updater." }) }),
+    );
+    const error = await request("/api/updates").catch((e) => e);
+    expect(error.unreachable).toBeUndefined();
+    expect(error.message).toBe("Could not reach the updater.");
+    expect(error.status).toBe(503);
+    expect(connection.down).toBe(false);
+  });
+
+  it("any other answer that isn't JSON is unreadable, and starts no reconnect loop", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ...html(200), ok: true }));
+    const error = await request("/api/x").catch((e) => e);
+    expect(error.unreachable).toBeUndefined();
+    expect(error.message).toBe(UNREADABLE_MESSAGE);
+    expect(connection.down).toBe(false);
+  });
+
+  it("a cancelled request stays a cancel", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(Object.assign(new Error("aborted"), { name: "AbortError" })));
+    const error = await request("/api/x").catch((e) => e);
+    expect(error.name).toBe("AbortError");
+    expect(connection.down).toBe(false);
+  });
+
+  it("the shelf load reports a restart the same way", async () => {
+    forgetAnswers();
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ...html(502), headers: new Headers() }));
+    const error = await revalidated("/api/links").catch((e) => e);
+    expect(error.unreachable).toBe(true);
   });
 });

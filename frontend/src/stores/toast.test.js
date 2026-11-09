@@ -79,4 +79,12 @@ describe("toast store", () => {
     ["A", "B", "C", "D"].forEach((m) => store.info(m));
     expect(store.items.map((t) => t.message)).toEqual(["B", "C", "D"]);
   });
+
+  it("doesn't stack the same message twice", () => {
+    const store = useToastStore();
+    store.error("Can't reach the server");
+    store.error("Can't reach the server");
+    store.success("Can't reach the server");
+    expect(store.items.map((t) => t.type)).toEqual(["error", "success"]);
+  });
 });

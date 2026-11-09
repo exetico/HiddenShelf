@@ -1,5 +1,6 @@
 <script setup>
 import { useToastStore } from "@/stores/toast";
+import ConnectionStatus from "@/components/feedback/ConnectionStatus.vue";
 
 const toastStore = useToastStore();
 
@@ -83,6 +84,8 @@ function statusOf(item) {
         ></div>
       </div>
     </transition-group>
+    <!-- While the server can't be reached; below the toasts, nearest the thumb -->
+    <ConnectionStatus />
   </div>
 </template>
 

@@ -20,6 +20,8 @@ import { configApi } from "@/services/api/configApi";
 import { useAuthStore } from "@/stores/auth";
 import { useDialogStore } from "@/stores/dialog";
 import { useToastStore } from "@/stores/toast";
+import { useReconnect } from "@/composables/useReconnect";
+import LoadError from "@/components/common/LoadError.vue";
 
 const authStore = useAuthStore();
 const dialog = useDialogStore();
@@ -27,6 +29,8 @@ const toast = useToastStore();
 
 const status = ref(null);
 const loadError = ref("");
+// The server couldn't be reached (it may be restarting); loads again by itself
+const unreachable = ref(false);
 const busy = ref(false);
 // Set after a click, until the updater reports a result for that request
 const waitingFor = ref(null);
@@ -93,6 +97,7 @@ async function load() {
   try {
     status.value = await updatesApi.status();
     loadError.value = "";
+    unreachable.value = false;
     if (waitingFor.value) {
       // The request's own row in the history gets the updater's result
       const row = status.value.history?.find((h) => h.id === waitingFor.value);
@@ -118,7 +123,10 @@ async function load() {
     }
   } catch (e) {
     // While the app restarts the server can't answer; keep waiting
-    if (!running.value) loadError.value = e.message || "Could not load the update status.";
+    if (!running.value) {
+      loadError.value = e.message || "Could not load the update status.";
+      unreachable.value = Boolean(e?.unreachable);
+    }
   }
   schedule();
 }
@@ -228,6 +236,10 @@ onMounted(() => {
   loadMethods();
 });
 onBeforeUnmount(() => clearTimeout(timer));
+useReconnect(() => {
+  load();
+  loadMethods();
+});
 </script>
 
 <template>
@@ -243,7 +255,7 @@ onBeforeUnmount(() => clearTimeout(timer));
       </p>
     </div>
 
-    <p v-if="loadError" class="text-sm text-red-600 dark:text-red-400">{{ loadError }}</p>
+    <LoadError v-if="loadError" :message="loadError" :unreachable="unreachable" @retry="load" />
     <p v-else-if="!status" class="text-sm text-gray-500 dark:text-brand-400">Loading…</p>
 
     <template v-else>

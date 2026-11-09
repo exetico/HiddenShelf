@@ -1,3 +1,5 @@
+import { reportDown, setHealthUrl } from "@/lib/connection";
+
 /**
  * Construct full URL with base path
  * In dev: Vite proxy handles /api -> backend
@@ -19,11 +21,68 @@ function getFullPath(path) {
   return normalizedBase + normalizedPath;
 }
 
+export const UNREACHABLE_MESSAGE =
+  "Can't reach the server right now. It may be restarting; the app keeps trying.";
+export const UNREADABLE_MESSAGE =
+  "The server sent an answer the app couldn't read. Try reloading the page.";
+
+// Answers a proxy in front of the app gives while the app is down or
+// restarting: 502 Bad Gateway, 503, 504 (nginx, Caddy, Traefik), and
+// Cloudflare's 520-530 ("origin unreachable" and friends).
+const gatewayDown = (status) => [502, 503, 504].includes(status) || (status >= 520 && status <= 530);
+
+setHealthUrl(getFullPath("/api/health"));
+
+function unreachable(cause) {
+  const error = new Error(UNREACHABLE_MESSAGE);
+  error.unreachable = true;
+  if (cause) error.cause = cause;
+  reportDown();
+  return error;
+}
+
+/**
+ * fetch, but a request that never reached the app (no network, or the
+ * server is restarting) throws an error marked `unreachable`, and starts
+ * the reconnect checks (lib/connection.js). A cancelled request still
+ * throws its AbortError.
+ */
+async function send(url, init) {
+  try {
+    return await fetch(url, init);
+  } catch (err) {
+    if (err?.name === "AbortError") throw err;
+    throw unreachable(err);
+  }
+}
+
+/**
+ * The JSON body of an answer. A gateway error without the app's own JSON
+ * means the app wasn't there to answer; any other body that isn't JSON is
+ * unreadable. Either way nothing from it is used.
+ */
+async function readJson(response) {
+  let payload;
+  try {
+    payload = await response.json();
+  } catch {
+    payload = undefined;
+  }
+  const fromApp = payload && typeof payload === "object" && "success" in payload;
+  if (gatewayDown(response.status) && !fromApp) throw unreachable();
+  if (!payload || typeof payload !== "object") {
+    const error = new Error(UNREADABLE_MESSAGE);
+    error.status = response.status;
+    throw error;
+  }
+  return payload;
+}
+
 export async function request(path, options = {}) {
   const fullPath = getFullPath(path);
 
   const { headers, body, ...rest } = options;
-  const response = await fetch(fullPath, {
+  const response = await send(fullPath, {
     credentials: "same-origin",
     ...rest,
     headers: {
@@ -34,12 +93,7 @@ export async function request(path, options = {}) {
     body: body || undefined,
   });
 
-  let payload;
-  try {
-    payload = await response.json();
-  } catch {
-    throw new Error("Invalid server response");
-  }
+  const payload = await readJson(response);
 
   if (!response.ok || !payload.success) {
     const error = new Error(payload.error || `Request failed (${response.status})`);
@@ -72,20 +126,17 @@ export async function revalidated(path) {
 }
 
 async function fetchWithTag(path, etag) {
-  const response = await fetch(getFullPath(path), {
+  const response = await send(getFullPath(path), {
     credentials: "same-origin",
     cache: "no-store",
     headers: etag ? { "If-None-Match": etag } : {},
   });
   if (response.status === 304) return { notModified: true };
-  let payload;
-  try {
-    payload = await response.json();
-  } catch {
-    throw new Error("Invalid server response");
-  }
+  const payload = await readJson(response);
   if (!response.ok || !payload.success) {
-    throw new Error(payload.error || `Request failed (${response.status})`);
+    const error = new Error(payload.error || `Request failed (${response.status})`);
+    error.status = response.status;
+    throw error;
   }
   return { payload, etag: response.headers?.get?.("ETag") || null };
 }

@@ -11,7 +11,7 @@ import { sessionMiddleware, sessions } from "../src/middleware/session.js";
 import { cors } from "hono/cors";
 import { requireJsonBody } from "../src/middleware/requireJson.js";
 import { limitBodySize } from "../src/middleware/bodyLimit.js";
-import { allowedCorsOrigin } from "../src/lib/helpers.js";
+import { allowedCorsOrigin, notFoundResponse } from "../src/lib/helpers.js";
 
 // Routes
 import authRoutes, { loginAttempts } from "../src/routes/auth.js";
@@ -80,6 +80,7 @@ export function createTestApp() {
   app.route("/api/access", accessRoutes);
   app.route("/", publicLinkRoutes({ templatePath: linkTemplatePath }));
   app.route("/", appShellRoutes({ indexPath: appIndexPath }));
+  app.notFound(notFoundResponse);
 
   return app;
 }

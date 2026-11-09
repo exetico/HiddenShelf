@@ -386,3 +386,15 @@ export function isSameSiteOrigin(origin) {
     return false;
   }
 }
+
+/**
+ * The answer for a path nothing handles. API paths answer in JSON like
+ * every other API answer, so the app can tell "no such thing" apart from
+ * "the server isn't up" (a proxy's error page). Other paths stay plain text.
+ */
+export function notFoundResponse(c) {
+  if (c.req.path.startsWith("/api/")) {
+    return c.json({ success: false, error: "Not found" }, 404);
+  }
+  return c.text("404 Not Found", 404);
+}

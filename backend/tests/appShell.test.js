@@ -80,4 +80,13 @@ describe("App shell routes", () => {
       [config.googleClientId, config.googleClientSecret] = saved;
     }
   });
+
+  it("answers an unknown API path in JSON, so the app can tell it from a restart", async () => {
+    const res = await app.request("/api/no-such-thing");
+    expect(res.status).toBe(404);
+    expect(await res.json()).toEqual({ success: false, error: "Not found" });
+    const page = await app.request("/no-such-file.txt");
+    expect(page.status).toBe(404);
+    expect(page.headers.get("content-type")).toContain("text/plain");
+  });
 });

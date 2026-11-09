@@ -12,6 +12,11 @@ export const useToastStore = defineStore("toast", {
   actions: {
     // `action` adds a button to the toast, like { label: "Undo", run }
     push(type, message, { action = null, duration = TOAST_DURATION } = {}) {
+      // The same message already showing (several requests failing at
+      // once, say) says nothing new
+      if (!action && this.items.some((t) => t.type === type && t.message === message && !t.action)) {
+        return;
+      }
       const id = nextId++;
       this.items.push({
         id,

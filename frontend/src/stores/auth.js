@@ -1,6 +1,7 @@
 import { defineStore } from "pinia";
 import { authApi } from "@/services/api/authApi";
 import { useToastStore } from "@/stores/toast";
+import { whenUp } from "@/lib/connection";
 
 export const useAuthStore = defineStore("auth", {
   state: () => ({
@@ -27,7 +28,7 @@ export const useAuthStore = defineStore("auth", {
   actions: {
     async bootstrap() {
       try {
-        const { user, welcome, canUpdate } = await authApi.me();
+        const { user, welcome, canUpdate } = await this.askWhoAmI();
         this.user = user;
         this.canUpdate = Boolean(canUpdate);
         if (welcome) {
@@ -40,6 +41,20 @@ export const useAuthStore = defineStore("auth", {
         this.canUpdate = false;
       } finally {
         this.ready = true;
+      }
+    },
+    // Who is signed in. If the server can't be reached (it may be
+    // restarting), wait until it can and ask again, rather than treating
+    // you as signed out. Nothing is shown meanwhile: no page opens until
+    // the server has said who you are.
+    async askWhoAmI() {
+      for (;;) {
+        try {
+          return await authApi.me();
+        } catch (error) {
+          if (!error?.unreachable) throw error;
+          await whenUp();
+        }
       }
     },
     async logout() {

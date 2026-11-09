@@ -12,9 +12,13 @@ vi.mock("@/services/api/authApi", () => ({
 
 import { authApi } from "@/services/api/authApi";
 
+const connectionMock = vi.hoisted(() => ({ whenUp: vi.fn().mockResolvedValue() }));
+vi.mock("@/lib/connection", () => connectionMock);
+
 describe("auth store", () => {
   beforeEach(() => {
     setActivePinia(createPinia());
+    connectionMock.whenUp.mockClear();
     // Mock window.location.hash to prevent redirect loops in tests
     delete window.location;
     window.location = { hash: "", assign: vi.fn() };
@@ -93,5 +97,34 @@ describe("auth store", () => {
     expect(store.user).toBeNull();
     expect(window.location.assign).toHaveBeenCalledWith("/login");
     expect(authApi.logout).toHaveBeenCalled();
+  });
+
+  it("waits for a server that is restarting instead of signing you out", async () => {
+    const down = Object.assign(new Error("Can't reach the server"), { unreachable: true });
+    authApi.me.mockRejectedValueOnce(down).mockResolvedValueOnce({ user: { email: "a@example.com" }, welcome: null });
+    let backUp;
+    connectionMock.whenUp.mockImplementationOnce(() => new Promise((r) => (backUp = r)));
+    const store = useAuthStore();
+
+    const done = store.bootstrap();
+    await Promise.resolve();
+    await Promise.resolve();
+    // Still waiting: not ready, and nobody is treated as signed out
+    expect(store.ready).toBe(false);
+    expect(store.user).toBeNull();
+
+    backUp();
+    await done;
+    expect(store.ready).toBe(true);
+    expect(store.user.email).toBe("a@example.com");
+  });
+
+  it("any other failure still means signed out", async () => {
+    authApi.me.mockRejectedValueOnce(Object.assign(new Error("Unauthorized"), { status: 401 }));
+    const store = useAuthStore();
+    await store.bootstrap();
+    expect(store.ready).toBe(true);
+    expect(store.isAuthenticated).toBe(false);
+    expect(connectionMock.whenUp).not.toHaveBeenCalled();
   });
 });

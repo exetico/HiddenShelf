@@ -243,7 +243,22 @@ This document provides a comprehensive overview of all features, functionality, 
 - **Progress bar**: Each toast has a `<div class="toast-progress">` with CSS `@keyframes shrink` animation, duration set to `item.duration` ms (default 3500ms)
 - **Dismiss**: click the toast or its close button (`title="Dismiss"`); both call `toastStore.remove(id)`
 - **Accessibility**: errors use `role="alert"`, the rest `role="status"`, inside an `aria-live="polite"` region
-- Multiple toasts stack vertically; the store keeps at most 3 and drops the oldest
+- Multiple toasts stack vertically; the store keeps at most 3 and drops the oldest. The same message (type and text) already showing isn't added again
+
+#### ConnectionStatus (`ConnectionStatus.vue`)
+
+- Shown inside the toast area (below the toasts) while `connection.down` (`lib/connection.js`): "Can't reach the server. It may be restarting after an update. Trying again in Ns." with a **Try now** button (`retryNow()`)
+- Goes away by itself when the server answers
+
+### Reaching the server (`lib/connection.js`, `lib/httpClient.js`)
+
+- `httpClient` marks an error `unreachable` (message `UNREACHABLE_MESSAGE`) when `fetch` itself fails (no network; an `AbortError` stays an abort), or when a 502/503/504/520-530 answer isn't the app's own JSON (a proxy's error page while the app restarts). It then calls `reportDown()`
+- Any other answer that isn't JSON throws `UNREADABLE_MESSAGE` and starts no reconnect checks. The backend answers unknown `/api/*` paths with JSON 404 (`notFoundResponse` in `lib/helpers.js`), so a missing route never looks like a restart
+- While down, `connection.js` polls `GET /api/health` (no-store) after 2s, 4s, 8s, then every 15s, and at once on `online`, on the tab becoming visible, and on **Try now**. Only `{ ok: true }` counts as up. Down again within 30s of coming back keeps the slower pace
+- `onReconnect(fn)` / `useReconnect(fn)` (composable) run when it's back, and when the browser restores a page from its back/forward cache (`pageshow` with `persisted`). Used by: App.vue (reloads the shelf), JoinRequests, ServerUpdates, LoginView (sign-in methods), JoinView, ProfileView (owned shares). `whenUp()` resolves when it's back
+- **Fails closed**: `authStore.bootstrap()` retries `/api/auth/me` after `whenUp()` when it was unreachable, instead of treating you as signed out, and `ready` stays false meanwhile, so the router opens no page. App.vue shows "Connecting to the server…" (`data-testid="waiting-for-server"`) in that time. Any other failure still means signed out
+- Requests that change something are never retried by themselves; they fail with the message and you try again
+- `LoadError.vue` (common): a card's load error with **Try again**; when `unreachable`, a calm gray "Waiting for the server…" line instead of red
 
 ## Link Management
 

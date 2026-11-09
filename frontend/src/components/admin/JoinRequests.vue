@@ -8,12 +8,16 @@ import { ref, computed, onMounted } from "vue";
 import { accessApi } from "@/services/api/accessApi";
 import { useDialogStore } from "@/stores/dialog";
 import { useToastStore } from "@/stores/toast";
+import { useReconnect } from "@/composables/useReconnect";
+import LoadError from "@/components/common/LoadError.vue";
 
 const dialog = useDialogStore();
 const toast = useToastStore();
 
 const data = ref(null);
 const loadError = ref("");
+// The server couldn't be reached (it may be restarting); loads again by itself
+const unreachable = ref(false);
 const busyId = ref(null);
 const newEmail = ref("");
 const inviting = ref(false);
@@ -42,8 +46,10 @@ async function load() {
   try {
     data.value = await accessApi.adminList();
     loadError.value = "";
+    unreachable.value = false;
   } catch (error) {
     loadError.value = error.message || "Couldn't load the list";
+    unreachable.value = Boolean(error?.unreachable);
   }
 }
 
@@ -93,6 +99,7 @@ async function inviteEmail() {
 }
 
 onMounted(load);
+useReconnect(load);
 </script>
 
 <template>
@@ -117,7 +124,7 @@ onMounted(load);
       </p>
     </div>
 
-    <p v-if="loadError" class="text-sm text-red-600 dark:text-red-400">{{ loadError }}</p>
+    <LoadError v-if="loadError" :message="loadError" :unreachable="unreachable" @retry="load" />
     <p v-else-if="!data" class="text-sm text-gray-500 dark:text-brand-400">Loading…</p>
 
     <template v-else>

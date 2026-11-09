@@ -3,6 +3,7 @@ import { mount, flushPromises } from "@vue/test-utils";
 import { createPinia, setActivePinia } from "pinia";
 import { useDialogStore } from "@/stores/dialog";
 import JoinRequests from "@/components/admin/JoinRequests.vue";
+import { reportDown, resetConnection, retryNow } from "@/lib/connection";
 
 vi.mock("@/services/api/accessApi", () => ({
   accessApi: {
@@ -95,5 +96,39 @@ describe("JoinRequests", () => {
     const w = mount(JoinRequests);
     await flushPromises();
     expect(w.text()).toContain("Not found");
+  });
+
+  it("says calmly when the server is restarting, and loads again once it's back", async () => {
+    resetConnection();
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, status: 200, json: async () => ({ ok: true }) }));
+    accessApi.adminList.mockRejectedValueOnce(
+      Object.assign(new Error("Can't reach the server right now."), { unreachable: true }),
+    );
+    const w = mount(JoinRequests);
+    await flushPromises();
+    const error = w.find('[data-testid="load-error"]');
+    expect(error.text()).toContain("Waiting for the server");
+    expect(error.classes()).not.toContain("text-red-600");
+
+    accessApi.adminList.mockResolvedValue({ success: true, mode: "approval", configured_mode: "approval", entries });
+    reportDown();
+    await retryNow();
+    await flushPromises();
+    expect(w.find('[data-testid="load-error"]').exists()).toBe(false);
+    expect(w.findAll('[data-testid="waiting-entry"]')).toHaveLength(1);
+    w.unmount();
+    resetConnection();
+    vi.unstubAllGlobals();
+  });
+
+  it("Try again loads the list again", async () => {
+    accessApi.adminList.mockRejectedValueOnce(new Error("Boom"));
+    const w = mount(JoinRequests);
+    await flushPromises();
+    expect(w.find('[data-testid="load-error"]').text()).toContain("Boom");
+    accessApi.adminList.mockResolvedValue({ success: true, mode: "approval", configured_mode: "approval", entries });
+    await w.find('[data-testid="load-error-retry"]').trigger("click");
+    await flushPromises();
+    expect(w.findAll('[data-testid="waiting-entry"]')).toHaveLength(1);
   });
 });

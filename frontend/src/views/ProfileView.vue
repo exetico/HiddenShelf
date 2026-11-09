@@ -2,6 +2,7 @@
 import { appUrl } from "@/lib/appUrl";
 import { bookmarkletHref } from "@/lib/quickAdd";
 import { ref, reactive, onMounted, nextTick } from "vue";
+import { useReconnect } from "@/composables/useReconnect";
 import { useRoute } from "vue-router";
 import { useAuthStore } from "@/stores/auth";
 import { useAppStore } from "@/stores/app";
@@ -84,6 +85,7 @@ async function loadOwnedShares() {
     ownedShares.value = [];
   }
 }
+useReconnect(loadOwnedShares);
 
 const route = useRoute();
 const sharingSection = ref(null);
