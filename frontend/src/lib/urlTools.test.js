@@ -76,7 +76,7 @@ describe("urlTools", () => {
     for (const tool of TOOLS) {
       expect(tool.description.length, tool.key).toBeGreaterThan(60);
       expect(tool.hint, tool.key).toBeTruthy();
-      expect(["shelf", "links"], tool.key).toContain(tool.group);
+      expect(["shelf", "move", "link"], tool.key).toContain(tool.group);
     }
   });
 });

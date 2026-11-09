@@ -1,30 +1,30 @@
 <script setup>
 import { computed } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import CheckLinksTool from "@/components/tools/CheckLinksTool.vue";
 import DuplicatesTool from "@/components/tools/DuplicatesTool.vue";
 import TidyTool from "@/components/tools/TidyTool.vue";
 import AddManyTool from "@/components/tools/AddManyTool.vue";
+import BookmarksTool from "@/components/tools/BookmarksTool.vue";
+import ShareListTool from "@/components/tools/ShareListTool.vue";
 import QrTool from "@/components/tools/QrTool.vue";
 import InspectTool from "@/components/tools/InspectTool.vue";
 import { ACCENTS, TONES } from "@/components/tools/styles";
 import { useAppStore } from "@/stores/app";
-import { useLinkCheckStore } from "@/stores/linkCheck";
 import { TOOLS, TOOL_GROUPS, toolFor, toolQuery } from "@/lib/urlTools";
-import { findDuplicates, ownLinks, tidyReport } from "@/lib/shelfTools";
+import { findDuplicates, tidyReport } from "@/lib/shelfTools";
 
 // The Tools page: an overview of every tool, and the open tool (?tool=).
-// Shelf tools work on your own links; the link tools run in your browser.
+// Every tool runs in the browser; the server only saves what you choose to.
 const route = useRoute();
 const router = useRouter();
 const appStore = useAppStore();
-const linkCheck = useLinkCheckStore();
 
 const COMPONENTS = {
-  check: CheckLinksTool,
   duplicates: DuplicatesTool,
   tidy: TidyTool,
   "add-many": AddManyTool,
+  bookmarks: BookmarksTool,
+  "share-list": ShareListTool,
   qr: QrTool,
   inspect: InspectTool,
 };
@@ -35,31 +35,16 @@ function open(key) {
   router.push({ name: "tools", query: toolQuery(key) });
 }
 
-const WHERE = {
-  browser: { icon: "mdi-shield-lock-outline", text: "Runs in your browser" },
-  server: { icon: "mdi-server-network", text: "Your server visits each link" },
-};
 
 // What each shelf tool has found, for its card
 const insights = computed(() => {
   if (!appStore.linksLoaded) return {};
-  const own = ownLinks(appStore.allLinks);
   const dupes = findDuplicates(appStore.allLinks);
   const report = tidyReport(appStore.allLinks);
   const toTidy = new Set(Object.values(report).flat().map((l) => l.id)).size;
   const plural = (n, word) => `${n} ${word}${n === 1 ? "" : "s"}`;
 
-  let check = { text: `${plural(own.length, "link")} to check`, tone: "quiet" };
-  if (linkCheck.running) check = { text: `Checking ${linkCheck.done} of ${linkCheck.total}…`, tone: "quiet" };
-  else if (linkCheck.checkedAt) {
-    const { broken, moved } = linkCheck.counts;
-    check =
-      broken || moved
-        ? { text: [broken && `${broken} broken`, moved && `${moved} moved`].filter(Boolean).join(" · "), tone: broken ? "bad" : "warn" }
-        : { text: "All links work", tone: "good" };
-  }
   return {
-    check,
     duplicates: dupes.length
       ? { text: `${plural(dupes.length, "page")} saved twice or more`, tone: "warn" }
       : { text: "No duplicates", tone: "good" },
@@ -83,9 +68,9 @@ const insights = computed(() => {
         ></i>
         <h1 class="relative text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">Tools</h1>
         <p class="relative mt-1 max-w-xl text-sm sm:text-base text-gray-600 dark:text-brand-300">
-          Keep your shelf in shape and get more out of a link. Find broken
-          links and duplicates, tidy up, add a pile of links at once, or make
-          a QR code.
+          Keep your shelf in shape and move links in and out of it. Every
+          tool runs in your browser: only what you choose to save goes to
+          your shelf.
         </p>
       </header>
 
@@ -128,8 +113,7 @@ const insights = computed(() => {
                 {{ insights[tool.key].text }}
               </span>
               <span v-else class="text-gray-500 dark:text-brand-400">
-                <i class="mdi" :class="WHERE[tool.where].icon" aria-hidden="true"></i>
-                {{ WHERE[tool.where].text }}
+                <i class="mdi mdi-shield-lock-outline" aria-hidden="true"></i> Runs in your browser
               </span>
             </span>
           </button>
@@ -139,7 +123,7 @@ const insights = computed(() => {
 
     <!-- One tool -->
     <template v-else>
-      <nav class="flex items-center gap-2 -mb-1" aria-label="Tools">
+      <nav class="-mb-1" aria-label="Tools">
         <button
           type="button"
           class="inline-flex items-center gap-1 text-sm text-gray-600 dark:text-brand-300 hover:text-gray-900 dark:hover:text-white"
@@ -149,33 +133,11 @@ const insights = computed(() => {
         >
           <i class="mdi mdi-arrow-left" aria-hidden="true"></i> All tools
         </button>
-        <!-- Jump straight to another tool; scrolls sideways on phones -->
-        <div class="ml-auto flex gap-1 overflow-x-auto" role="tablist" aria-label="Switch tool">
-          <button
-            v-for="tool in TOOLS"
-            :key="tool.key"
-            type="button"
-            role="tab"
-            :aria-selected="active.key === tool.key"
-            :title="tool.label"
-            class="grid place-items-center shrink-0 w-8 h-8 rounded-md text-lg transition-colors"
-            :class="
-              active.key === tool.key
-                ? ACCENTS[tool.accent].tile
-                : 'text-gray-500 dark:text-brand-400 hover:bg-gray-100 dark:hover:bg-brand-800'
-            "
-            :data-testid="`tool-tab-${tool.key}`"
-            @click="open(tool.key)"
-          >
-            <i class="mdi" :class="tool.icon" aria-hidden="true"></i>
-            <span class="sr-only">{{ tool.label }}</span>
-          </button>
-        </div>
       </nav>
 
       <article
         class="bg-white dark:bg-brand-900 rounded-xl border border-gray-200 dark:border-brand-800 overflow-hidden"
-        role="tabpanel"
+        :aria-label="active.label"
         :data-testid="`tool-${active.key}`"
       >
         <header
@@ -191,12 +153,8 @@ const insights = computed(() => {
               {{ active.description }}
             </p>
             <p class="mt-1.5 text-xs text-gray-500 dark:text-brand-400">
-              <i class="mdi" :class="WHERE[active.where].icon" aria-hidden="true"></i>
-              {{
-                active.where === "server"
-                  ? "Your Hidden Shelf server visits each link to see if it still works. Only your own links are checked, and nothing is shared."
-                  : "Runs in your browser. Nothing you type here is sent anywhere unless you save it to your shelf."
-              }}
+              <i class="mdi mdi-shield-lock-outline" aria-hidden="true"></i>
+              Runs in your browser. Only what you choose to save goes to your shelf.
             </p>
           </div>
         </header>

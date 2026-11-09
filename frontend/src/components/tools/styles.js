@@ -37,6 +37,11 @@ export const ACCENTS = {
     glow: "to-rose-500/10 dark:to-rose-400/10",
     art: "text-rose-500 dark:text-rose-400",
   },
+  orange: {
+    tile: "bg-orange-100 text-orange-700 dark:bg-orange-400/15 dark:text-orange-300",
+    glow: "to-orange-500/10 dark:to-orange-400/10",
+    art: "text-orange-500 dark:text-orange-400",
+  },
   slate: {
     tile: "bg-slate-200 text-slate-700 dark:bg-slate-400/15 dark:text-slate-300",
     glow: "to-slate-500/10 dark:to-slate-400/10",

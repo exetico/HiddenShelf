@@ -320,7 +320,7 @@ const topVisitedLinks = computed(() =>
         <i class="mdi mdi-toolbox-outline mr-1"></i>Tools
       </h2>
       <p class="text-sm text-gray-500 dark:text-brand-400 mb-3">
-        Find broken links and duplicates, tidy up, add many links at once, or make a QR code.
+        Find duplicates, tidy up, bring in browser bookmarks, share a list, or make a QR code.
       </p>
       <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
         <a

@@ -83,7 +83,7 @@ export const FEATURE_GROUPS = [
       {
         icon: "mdi-toolbox-outline",
         title: "Shelf tools",
-        text: "Find links that no longer work, duplicates, and links without a category or tags, and fix them in one place.",
+        text: "Find duplicates and links without a category or tags, and fix them in one place. All tools run in your browser.",
         front: true,
       },
       {
@@ -92,9 +92,19 @@ export const FEATURE_GROUPS = [
         text: "Paste a list, an email or your open tabs, and every new link in it is added to the category you pick.",
       },
       {
+        icon: "mdi-bookmark-multiple-outline",
+        title: "Browser bookmarks",
+        text: "Import the bookmarks file from Chrome, Firefox, Safari or Edge, with folders as categories. Or save your shelf as a bookmarks file for a browser.",
+      },
+      {
+        icon: "mdi-format-list-bulleted-square",
+        title: "Copy as a list",
+        text: "Copy a category, a tag or your favorites as Markdown, plain text, HTML or CSV, to paste into a chat, a note or an email.",
+      },
+      {
         icon: "mdi-qrcode",
         title: "QR codes and link inspector",
-        text: "Make a QR code for any address and save it as a picture. See what's inside a link and copy it without tracking.",
+        text: "Make a QR code for any address, or one that joins your Wi-Fi, and save it as a picture. See what's inside a link and copy it without tracking.",
       },
       {
         icon: "mdi-swap-horizontal",
@@ -172,11 +182,7 @@ export const FAQ = [
   },
   {
     q: "Do the tools send what I type anywhere?",
-    a: "No. QR codes, inspecting links, adding many links and finding duplicates all happen in your browser; only links you choose to add are saved. Check links is the one exception: your Hidden Shelf server visits each of your links to see if it still works. It doesn't visit addresses on your own network.",
-  },
-  {
-    q: "Why does Check links say it couldn't tell?",
-    a: "Some sites need you to sign in, or turn away automatic checks, so the server can't see the page. Open the link to see for yourself. Links on your own network (like 192.168.x.x or nas.lan) aren't checked at all.",
+    a: "No. Every tool works in your browser, including reading a bookmarks file and making a Wi-Fi QR code: your Wi-Fi password never leaves the page. Only the links you choose to add or change are saved to your shelf.",
   },
   {
     q: "Are there keyboard shortcuts?",
