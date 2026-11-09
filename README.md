@@ -94,7 +94,7 @@ Sign-in links are limited so the form can't be used to flood an inbox: one link 
 
 ### 5. Log in
 
-Open your `SITE_URL`, enter your email and click the link you receive (or use Google). The first login creates your account. When everyone who needs an account has one, set `SIGNUP_ENABLED=false` in `.env` and run `make up` again to close registration.
+Open your `SITE_URL`, enter your email and click the link you receive (or use Google). The first login creates your account. To stop just anyone from joining, set `SIGNUP_MODE` in `.env` and run `make up` again: `approval` lets new people ask to join, and you approve or deny them on the Admin page; `invite` only lets in the emails you add there. Both need you in `UPDATE_ADMIN_EMAILS`.
 
 ### Login without email
 
@@ -193,7 +193,8 @@ Set these in `.env`. Docker Compose passes them to the container. When running N
 | `FROM_EMAIL`           | `noreply@example.com`                 | Sender email                            |
 | `FROM_NAME`            | `Hidden Shelf`                        | Sender name                             |
 | `DEBUG_MODE`           | `false`                               | Log magic links instead of emailing them, show detailed errors. Dev only |
-| `SIGNUP_ENABLED`       | `true`                                | Allow new user registration             |
+| `SIGNUP_MODE`          | (from `SIGNUP_ENABLED`)               | Who can make an account: `open` (anyone), `approval` (new people ask to join, an admin approves), `invite` (only emails an admin added). Admins are `UPDATE_ADMIN_EMAILS` |
+| `SIGNUP_ENABLED`       | `true`                                | Older setting, used when `SIGNUP_MODE` is empty: `true` is `open`, `false` is `approval` |
 | `EMAIL_LOGIN_ENABLED`  | `true`                                | `false`: no magic link login and no email at all; Google sign-in only |
 | `TRUST_PROXY`          | (auto)                                | `true`/`false`: trust `X-Forwarded-For` for client IPs. Auto trusts it only from private addresses. `true` also reads `CF-Connecting-IP` |
 | `GOOGLE_CLIENT_ID`     | ``                                    | Google OAuth client ID                  |

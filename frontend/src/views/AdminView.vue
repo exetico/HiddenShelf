@@ -5,6 +5,7 @@
  * Things that are about the whole server, not one account, go here.
  */
 import ServerUpdates from "@/components/admin/ServerUpdates.vue";
+import JoinRequests from "@/components/admin/JoinRequests.vue";
 </script>
 
 <template>
@@ -15,6 +16,7 @@ import ServerUpdates from "@/components/admin/ServerUpdates.vue";
         Settings for the whole server. Only admins see this page.
       </p>
     </div>
+    <JoinRequests />
     <ServerUpdates />
   </section>
 </template>

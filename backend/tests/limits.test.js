@@ -114,7 +114,7 @@ describe("Content limits", () => {
 
   it("matches the limits the app checks before saving", () => {
     const source = readFileSync(new URL("../../frontend/src/lib/limits.js", import.meta.url), "utf8");
-    for (const key of ["url", "title", "description", "icon", "categoryName", "tagName", "tagsPerLink"]) {
+    for (const key of ["url", "title", "description", "icon", "categoryName", "tagName", "tagsPerLink", "joinNote"]) {
       const match = source.match(new RegExp(`\\b${key}: ([\\d_]+)`));
       expect(match, key).toBeTruthy();
       expect(Number(match[1].replace(/_/g, "")), key).toBe(MAX_LENGTHS[key]);

@@ -47,6 +47,7 @@ describe("LoginView", () => {
     localStorage.clear();
     loginMethods.email_login_enabled = true;
     loginMethods.google_auth_enabled = true;
+    delete loginMethods.signup_mode;
   });
 
   function mountLogin(routeQuery = {}) {
@@ -193,5 +194,28 @@ describe("LoginView", () => {
     expect(toasts.at(-1)).toMatchObject({ type: "info", message });
     // Still on the form, so they can try again later
     expect(wrapper.find('input[type="email"]').exists()).toBe(true);
+  });
+
+  describe("when sign-up isn't open", () => {
+    it("says new people can ask to join", async () => {
+      loginMethods.signup_mode = "approval";
+      const wrapper = mountLogin();
+      await flushPromises();
+      expect(wrapper.find('[data-testid="join-hint"]').text()).toMatch(/ask to join/);
+    });
+
+    it("says it's by invitation only", async () => {
+      loginMethods.signup_mode = "invite";
+      const wrapper = mountLogin();
+      await flushPromises();
+      expect(wrapper.find('[data-testid="join-hint"]').text()).toMatch(/invitation only/);
+    });
+
+    it("says nothing when anyone can join", async () => {
+      loginMethods.signup_mode = "open";
+      const wrapper = mountLogin();
+      await flushPromises();
+      expect(wrapper.find('[data-testid="join-hint"]').exists()).toBe(false);
+    });
   });
 });

@@ -38,6 +38,7 @@ import accountRoutes from "./routes/account.js";
 import { publicLinkRoutes } from "./routes/publicLink.js";
 import updatesRoutes from "./routes/updates.js";
 import healthRoutes from "./routes/health.js";
+import accessRoutes from "./routes/access.js";
 import { syncResults, updatesEnabled } from "./lib/updates.js";
 
 // ─── Initialise database ────────────────────────────────────────
@@ -80,6 +81,7 @@ app.route("/api/config", configRoutes);
 app.route("/api/account", accountRoutes);
 app.route("/api/updates", updatesRoutes);
 app.route("/api/health", healthRoutes);
+app.route("/api/access", accessRoutes);
 
 // ─── Resolve project root (one level above backend/) ─────────────
 
