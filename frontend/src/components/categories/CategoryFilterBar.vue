@@ -146,9 +146,10 @@ function stopDrag() {
         <span class="text-xs opacity-75">({{ uncategorizedCount }})</span>
       </button>
 
-      <!-- Own Category Buttons. A small star sits in the corner (inside the
-           padding, so the button is no wider): always shown for favorites,
-           on hover for the rest. -->
+      <!-- Own Category Buttons. Favorites get a small star tucked onto the
+           corner of their icon, like a badge, so the button is no wider.
+           Hovering any other category shows an outlined star there to
+           add it. -->
       <div
         v-for="category in orderedCategories"
         :key="category.id"
@@ -190,13 +191,19 @@ function stopDrag() {
             >({{ category.link_count || 0 }})</span
           >
         </button>
+        <!-- Sits on the icon's lower right corner. The ring is the
+             button's own background, so it cuts a little notch out of the
+             icon instead of floating on top of it. -->
         <button
-          class="absolute top-0 right-0 p-0.5 leading-none transition-opacity"
-          :class="
+          class="absolute left-[25px] top-[21px] grid place-items-center w-3.5 h-3.5 rounded-full leading-none transition-opacity"
+          :class="[
+            String(appStore.filterCategory) === String(category.id)
+              ? 'bg-brand-600 text-amber-300'
+              : 'bg-gray-100 dark:bg-brand-800 text-amber-500 dark:text-amber-400 group-hover:bg-gray-200 dark:group-hover:bg-brand-700',
             category.is_favorite
-              ? 'text-amber-500'
-              : 'opacity-0 group-hover:opacity-70 hover:opacity-100! focus:opacity-100'
-          "
+              ? ''
+              : 'opacity-0 group-hover:opacity-80 hover:opacity-100! focus:opacity-100',
+          ]"
           :title="
             category.is_favorite ? 'Remove from favorites' : 'Add to favorites'
           "
@@ -205,10 +212,11 @@ function stopDrag() {
               ? `Remove ${category.name} from favorites`
               : `Add ${category.name} to favorites`
           "
+          :data-testid="`favorite-toggle-${category.id}`"
           @click="!hasDragged && appStore.confirmToggleFavorite(category)"
         >
           <i
-            class="mdi text-[11px]"
+            class="mdi text-[10px]"
             :class="category.is_favorite ? 'mdi-star' : 'mdi-star-outline'"
           ></i>
         </button>

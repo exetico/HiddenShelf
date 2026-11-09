@@ -123,10 +123,12 @@ const insights = computed(() => {
 
     <!-- One tool -->
     <template v-else>
-      <nav class="-mb-1" aria-label="Tools">
+      <!-- A small pill on its own line, with the page's usual gap below
+           it, so it never sits on the tool's card -->
+      <nav aria-label="Tools">
         <button
           type="button"
-          class="inline-flex items-center gap-1 text-sm text-gray-600 dark:text-brand-300 hover:text-gray-900 dark:hover:text-white"
+          class="inline-flex items-center gap-1.5 pl-2 pr-3 py-1 rounded-full text-sm border border-gray-200 dark:border-brand-800 bg-white dark:bg-brand-900 text-gray-700 dark:text-brand-200 hover:border-brand-400 dark:hover:border-brand-600 hover:text-gray-900 dark:hover:text-white transition-colors"
           title="Back to all tools"
           data-testid="tools-back"
           @click="open('')"

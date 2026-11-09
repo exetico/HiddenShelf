@@ -101,16 +101,21 @@ describe("CategoryPicker", () => {
     expect(categoriesApi.update).toHaveBeenCalledWith(1, { is_favorite: true });
   });
 
-  it("desktop star sits in the corner so the button keeps its width", () => {
+  it("desktop star sits on the icon's corner, like a badge, so the button keeps its width", () => {
     const wrapper = mount(CategoryFilterBar, { global: { plugins: [pinia] } });
     const star = wrapper.find('[aria-label="Remove Home from favorites"]');
     expect(star.classes()).toEqual(
-      expect.arrayContaining(["absolute", "top-0", "right-0"]),
+      expect.arrayContaining(["absolute", "rounded-full", "w-3.5", "h-3.5"]),
     );
+    // Out of the flow: not inside the chip's own button
+    expect(star.element.parentElement.tagName).toBe("DIV");
+    expect(star.classes()).not.toContain("opacity-0");
+    expect(star.find("i").classes()).toContain("mdi-star");
     const notFav = wrapper.find('[aria-label="Add Work to favorites"]');
     expect(notFav.classes()).toEqual(
-      expect.arrayContaining(["opacity-0", "group-hover:opacity-70"]),
+      expect.arrayContaining(["opacity-0", "group-hover:opacity-80"]),
     );
+    expect(notFav.find("i").classes()).toContain("mdi-star-outline");
   });
 
   it("desktop bar opens a category menu on right-click", async () => {

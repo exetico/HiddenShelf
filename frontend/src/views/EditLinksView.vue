@@ -16,6 +16,8 @@ import SearchField from "@/components/common/SearchField.vue";
 import ActiveTagFilter from "@/components/tags/ActiveTagFilter.vue";
 import SortSelect from "@/components/common/SortSelect.vue";
 import HiddenMatchesNote from "@/components/categories/HiddenMatchesNote.vue";
+import CategoryFilterBar from "@/components/categories/CategoryFilterBar.vue";
+import CategoryPicker from "@/components/categories/CategoryPicker.vue";
 
 const route = useRoute();
 const router = useRouter();
@@ -61,13 +63,6 @@ const showTagModal = ref(false);
 const showTrash = ref(false);
 const editor = useLinkEditorStore();
 
-// The category select; ids are strings, as in the address bar
-const localFilterCategory = computed({
-  get: () => String(appStore.filterCategory || ""),
-  set: (value) => {
-    appStore.filterCategory = value;
-  },
-});
 
 
 function openEditById(editId) {
@@ -142,7 +137,7 @@ async function runTagAction(action) {
 // Picking a category or tag in its manager shows its links here
 function filterByCategory(id) {
   showCategoryModal.value = false;
-  localFilterCategory.value = String(id);
+  appStore.filterCategory = String(id);
 }
 function filterByTag(id) {
   showTagModal.value = false;
@@ -163,46 +158,30 @@ async function handleDelete(id) {
 
 <template>
   <section class="space-y-3 sm:space-y-4" data-testid="edit-page">
-    <!-- One bar for finding and managing links. Phones: search and the
-         category on the first row, the buttons on the second. From md up
-         (where search and "Add link" are in the top bar): the category,
-         the managers, and Trash at the end. -->
+    <!-- The same category chips as View (from sm up), so picking a
+         category looks and works the same on both pages: icons, counts,
+         Uncategorized, shared and favorites. On phones, the same picker
+         as View sits beside search. -->
+    <CategoryFilterBar class="hidden sm:block" />
+
+    <!-- Finding and managing links. Phones: the category picker and search
+         on the first row, the buttons on the second. From md up (where
+         search and "Add link" are in the top bar): the managers, and Trash
+         at the end. -->
     <!-- On the page background, not a white card, so the outlined
          controls keep their contrast -->
     <div
       class="flex flex-wrap items-center gap-2"
       data-testid="edit-toolbar"
     >
-      <div class="md:hidden flex flex-1 min-w-0">
+      <!-- The picker hides itself from sm up, where the chips show -->
+      <div class="md:hidden flex flex-1 basis-full min-w-0 gap-2">
+        <CategoryPicker />
         <SearchField
           v-model="appStore.search"
           placeholder="Search links..."
           data-testid="page-search"
         />
-      </div>
-      <!-- Our own chevron: the browser's sits too close to the edge and
-           not quite centered -->
-      <div class="relative max-w-[40%] md:max-w-xs">
-      <select
-        v-model="localFilterCategory"
-        title="Show the links in one category"
-        aria-label="Category"
-        data-testid="category-filter"
-        class="w-full appearance-none pl-3 pr-9 py-1.5 sm:py-2 text-sm sm:text-base rounded-md border border-gray-300 dark:border-brand-700 bg-white dark:bg-brand-900 text-gray-800 dark:text-brand-100 hover:bg-gray-100 dark:hover:bg-brand-800 truncate"
-      >
-        <option value="">All Categories</option>
-        <option
-          v-for="cat in appStore.categories"
-          :key="cat.id"
-          :value="String(cat.id)"
-        >
-          {{ cat.name }}{{ cat.is_hidden ? " (hidden)" : "" }}
-        </option>
-      </select>
-      <i
-        class="mdi mdi-chevron-down pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-lg leading-none text-gray-500 dark:text-brand-300"
-        aria-hidden="true"
-      ></i>
       </div>
 
       <div class="flex flex-1 basis-full md:basis-auto items-center gap-2" data-testid="edit-actions">

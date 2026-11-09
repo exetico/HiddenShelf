@@ -84,6 +84,13 @@ describe("EditLinksView", () => {
     appStore.filterCategory = "";
   });
 
+  // A category's chip in the bar (its main button)
+  const chip = (wrapper, name) =>
+    wrapper
+      .find('[data-testid="category-filter-bar"]')
+      .findAll("button")
+      .find((b) => b.attributes("title")?.includes(name) && b.text().includes(name));
+
   function mountEdit() {
     return mount(EditLinksView, {
       global: {
@@ -100,19 +107,24 @@ describe("EditLinksView", () => {
     expect(searchInput.attributes("placeholder")).toBe("Search links...");
   });
 
-  it("shows category filter dropdown", () => {
+  it("filters by category with the same chips as View, and the phone picker", () => {
     const wrapper = mountEdit();
-    const select = wrapper.find("select");
-    expect(select.exists()).toBe(true);
-    expect(wrapper.text()).toContain("All Categories");
-    expect(wrapper.text()).toContain("Work");
-    expect(wrapper.text()).toContain("Personal");
+    const bar = wrapper.find('[data-testid="category-filter-bar"]');
+    expect(bar.exists()).toBe(true);
+    expect(bar.classes()).toEqual(expect.arrayContaining(["hidden", "sm:block"]));
+    expect(bar.text()).toContain("All");
+    expect(bar.text()).toContain("Work");
+    expect(bar.text()).toContain("Personal");
+    expect(wrapper.text()).not.toContain("All Categories");
+    // Phones get the picker beside search instead
+    const toolbar = wrapper.find('[data-testid="edit-toolbar"]');
+    expect(toolbar.find('[data-testid="category-picker"]').exists()).toBe(true);
   });
 
   it("counts the shelf, and what the filters show of it", async () => {
     const wrapper = mountEdit();
     expect(wrapper.find('[data-testid="link-count"]').text()).toBe("3 links");
-    await wrapper.find("select").setValue("1");
+    await chip(wrapper, "Work").trigger("click");
     expect(wrapper.find('[data-testid="link-count"]').text()).toBe("Showing 1 of 3 links");
     expect(wrapper.findAll(".link-card").map((c) => c.text())).toEqual(["Alpha"]);
   });
@@ -180,10 +192,11 @@ describe("EditLinksView", () => {
     const appStore = useAppStore();
     const wrapper = mountEdit();
 
-    const select = wrapper.find("select");
-    await select.setValue("1");
-
+    await chip(wrapper, "Work").trigger("click");
     expect(appStore.filterCategory).toBe("1");
+    // A second click shows every category again, as in View
+    await chip(wrapper, "Work").trigger("click");
+    expect(appStore.filterCategory).toBe("");
   });
 
   it("opens the new-link form when sent here by the top bar's Add link", async () => {
@@ -289,7 +302,7 @@ describe("EditLinksView", () => {
     wrapper.findComponent({ name: "CategoryManager" }).vm.$emit("filter", 2);
     await flushPromises();
     expect(appStore.filterCategory).toBe("2");
-    expect(wrapper.find('[data-testid="category-filter"]').element.value).toBe("2");
+    expect(chip(wrapper, "Personal").element.parentElement.className).toContain("bg-brand-600");
     expect(wrapper.findComponent({ name: "CategoryManager" }).props("open")).toBe(false);
   });
 
@@ -305,17 +318,18 @@ describe("EditLinksView", () => {
   it("marks hidden categories in the category filter", () => {
     const appStore = useAppStore();
     appStore.categories = [{ id: 1, name: "Work" }, { id: 2, name: "Friend", is_hidden: 1 }];
-    const options = mountEdit().findAll('[data-testid="category-filter"] option').map((o) => o.text());
-    expect(options).toEqual(["All Categories", "Work", "Friend (hidden)"]);
+    const friend = chip(mountEdit(), "Friend");
+    expect(friend.attributes("title")).toBe("Friend is hidden; pick it to see its links");
+    expect(friend.find('[aria-label="hidden"]').exists()).toBe(true);
   });
 
-  it("keeps the category filter and every button in one bar, in order", () => {
+  it("keeps the picker and every button in one bar, in order", () => {
     const bar = mountEdit().find('[data-testid="edit-toolbar"]');
     const ids = bar
       .findAll("[data-testid]")
       .map((el) => el.attributes("data-testid"))
-      .filter((id) => ["category-filter", "add-link", "open-categories", "open-tags", "open-trash"].includes(id));
-    expect(ids).toEqual(["category-filter", "add-link", "open-categories", "open-tags", "open-trash"]);
+      .filter((id) => ["category-picker", "add-link", "open-categories", "open-tags", "open-trash"].includes(id));
+    expect(ids).toEqual(["category-picker", "add-link", "open-categories", "open-tags", "open-trash"]);
     // Trash looks like the managers: outlined, no fill, pushed to the end
     const trash = bar.find('[data-testid="open-trash"]').classes();
     const tags = bar.find('[data-testid="open-tags"]').classes();
