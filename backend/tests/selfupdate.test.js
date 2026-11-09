@@ -78,7 +78,7 @@ describe.skipIf(!hasGit)("self-updater", () => {
   function updater(opts = {}) {
     const u = createUpdater({
       varDir, imageDir, imageCommit: A, repoUrl: origin, dbPath, controller,
-      healthTimeoutMs: 10, minFreeBytes: 1, env, ...opts,
+      healthTimeoutMs: 10, minFreeBytes: 1, env, channel: "main", ...opts,
     });
     u.setup();
     return u;
@@ -266,6 +266,74 @@ describe.skipIf(!hasGit)("self-updater", () => {
     // After make upgrade built an image that is as new or newer: the image wins
     expect(updater({ imageCommit: B }).startupChoice()).toEqual({ dir: imageDir, commit: B });
     expect(state("current")).toBeNull();
+  });
+
+  /** A pull request merged the way GitHub does it: its commits plus a merge commit. */
+  function mergePr(number, title, files) {
+    git(work, "checkout", "-q", "-b", `pr-${number}`);
+    for (const [i, [file, content]] of files.entries()) {
+      fs.writeFileSync(path.join(work, file), content);
+      git(work, "add", "-A");
+      git(work, "commit", "-q", "-m", `${title} part ${i + 1}`);
+    }
+    git(work, "checkout", "-q", "main");
+    git(work, "merge", "-q", "--no-ff", `pr-${number}`, "-m", `Merge pull request #${number} from someone/pr-${number}`, "-m", title);
+    git(work, "push", "-q", "origin", "HEAD:main");
+    return git(work, "rev-parse", "HEAD");
+  }
+  function tag(name, at, push = true) {
+    git(work, "tag", name, at);
+    if (push) git(work, "push", "-q", "origin", `refs/tags/${name}`);
+  }
+
+  it("counts a merged pull request once, by its title", () => {
+    const M = mergePr(41, "Limit field lengths", [["a.txt", "1"], ["b.txt", "2"]]);
+    updater({ imageCommit: B }).check();
+    expect(kv("check")).toMatchObject({ channel: "main", target: M, count: "1" });
+    const lines = fs.readFileSync(path.join(varDir, "status", "available"), "utf8").trim().split("\n");
+    expect(lines).toHaveLength(1);
+    expect(lines[0]).toContain("Limit field lengths (#41)");
+  });
+
+  describe("releases channel", () => {
+    const rel = (opts = {}) => updater({ channel: "releases", ...opts });
+
+    it("offers nothing until there is a release", () => {
+      rel().check();
+      expect(kv("check")).toMatchObject({ ok: "yes", channel: "releases", count: "0", target: A, target_tag: "" });
+    });
+
+    it("offers the newest release on main, not the newest merge", async () => {
+      tag("v1.9.0", B);
+      const C = mergePr(42, "Something new", [["c.txt", "3"]]);
+      tag("v1.10.0", C);
+      const D = commit("d.txt", "4", "Not released yet");
+      // A newer-looking tag that isn't on main is never offered
+      git(work, "checkout", "-q", "-b", "side", A);
+      fs.writeFileSync(path.join(work, "side.txt"), "x");
+      git(work, "add", "-A");
+      git(work, "commit", "-q", "-m", "Side");
+      tag("v9.0.0", "HEAD");
+      tag("v2.0.0-beta.1", D);
+      git(work, "checkout", "-q", "main");
+
+      const u = rel();
+      u.check();
+      expect(kv("check")).toMatchObject({ target: C, target_tag: "v1.10.0", count: "2" });
+      request("update");
+      await u.runPending();
+      expect(kv("job")).toMatchObject({ state: "succeeded", to: C, message: "Updated to v1.10.0." });
+      expect(kv("current")).toMatchObject({ commit: C, tag: "v1.10.0", subject: "Something new (#42)" });
+      expect(kv("rollback")).toMatchObject({ commit: A, tag: "" });
+      expect(kv("check")).toMatchObject({ count: "0", target_tag: "v1.10.0" });
+      expect(D).not.toBe(C);
+    });
+
+    it("is happy running something newer than the newest release", () => {
+      tag("v1.0.0", A);
+      rel({ imageCommit: B }).check();
+      expect(kv("check")).toMatchObject({ ok: "yes", count: "0", ahead: "yes", target_tag: "v1.0.0" });
+    });
   });
 
   it("won't update a server running code that isn't on main", () => {

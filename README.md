@@ -109,26 +109,28 @@ To go back to an earlier version, check out its commit or tag and run `make up`.
 
 ### Updating from the app
 
-Admins can update from **Profile → Server updates** instead of the terminal, the way Discourse does it. The panel lists the new commits on `main` and has **Update** and **Roll back** buttons. To turn it on:
+Admins can update from **Admin → Server updates** instead of the terminal, the way Discourse does it. The panel lists what is new (one line per merged pull request) and has **Update** and **Roll back** buttons. To turn it on:
 
 ```bash
 echo "UPDATE_ADMIN_EMAILS=you@example.com" >> .env   # comma-separated; empty means off
 make up
 ```
 
+**Releases or every change.** By default (`UPDATE_CHANNEL=releases`, recommended) Update only offers versions you publish as a release: a tag like `v1.2.0` on `main` (on GitHub: Releases → Draft a new release, with a new `vX.Y.Z` tag on `main`). Merging a pull request then never reaches the server by itself, and you choose when a set of changes is ready. Tags that aren't on `main`, and pre-releases like `v2.0.0-beta.1`, are never offered. With `UPDATE_CHANNEL=main`, Update installs whatever is on `main` as soon as it is merged. Change it in `.env` and run `make up`.
+
 There is nothing to install and no sudo: the app container updates itself. Its main process is a small supervisor (`backend/src/supervisor.js`) that runs the web app and, when updates are on, the updater (`backend/src/selfupdate/updater.js`).
 
 What happens when an admin clicks Update:
 
-1. The app checks that they are in `UPDATE_ADMIN_EMAILS`, that they signed in within the last `UPDATE_REAUTH_MINUTES` (10 by default, otherwise it asks them to sign in again), and that the request comes from the site itself. It saves who asked, when and from where, and emails every admin.
+1. The app checks that they are in `UPDATE_ADMIN_EMAILS`, that they signed in within the last `UPDATE_REAUTH_MINUTES` (10 by default; otherwise the panel asks them to confirm it's them with Google or an emailed link, and brings them back, without signing out), and that the request comes from the site itself. It saves who asked, when and from where, and emails every admin.
 2. It creates an empty flag file. That is all the click does: no version, text or file goes from the admin to the updater, and the updater never reads the flag, only checks that it exists and deletes it.
-3. The updater fetches `main` from `UPDATE_REPO_URL` over HTTPS and refuses unless it is a fast-forward of the running version. It builds the new version in the `app-var` volume while the site keeps running (a minute or two), backs up the database to `db/backups/pre-update-<date>.sqlite`, then restarts the app on the new code. The site is offline for a few seconds.
+3. The updater fetches `main` (and, for releases, its tags) from `UPDATE_REPO_URL` over HTTPS, picks the newest release on `main` or the tip of `main`, and refuses unless it is a fast-forward of the running version. It builds the new version in the `app-var` volume while the site keeps running (a minute or two), backs up the database to `db/backups/pre-update-<date>.sqlite`, then restarts the app on the new code. The site is offline for a few seconds.
 4. If the new version doesn't pass `/api/health` within 60 seconds, the updater puts the old version and the database backup back on its own. A version that later keeps crashing on start falls back to the image's version.
 5. **Roll back** goes one step back. If that update changed the database, the database goes back too, after a safety copy (`pre-rollback-<date>.sqlite`). The page warns about this before you confirm.
 
 The image's own code is never changed; updates live in the `app-var` volume and survive restarts. When you upgrade from the terminal (`make upgrade`), the newer of the two runs. `make clean` removes the volume, which goes back to the image's version.
 
-**The trade-off.** To update itself, the app has to be able to write the code it runs (only in `app-var`, never the image). Someone who broke into the app could change that code and stay in after a restart. They can't reach Docker or the server itself. Anyone who can push to `main` decides what gets installed, so protect the branch on GitHub (pull requests only, no force-push).
+**The trade-off.** To update itself, the app has to be able to write the code it runs (only in `app-var`, never the image). Someone who broke into the app could change that code and stay in after a restart. They can't reach Docker or the server itself. Anyone who can push to `main` (or, for releases, push a `v*` tag) decides what gets installed, so protect the branch on GitHub (pull requests only, no force-push) and, with releases, add a tag rule so only you can create `v*` tags.
 
 **Base image.** Updates keep the Node base image the container has, so a click never brings in a new Node or Alpine version. To move to the newest `node:22-alpine` patch, run `make refresh-base` from the terminal.
 
@@ -184,9 +186,10 @@ Set these in `.env`. Docker Compose passes them to the container. When running N
 | `GOOGLE_CLIENT_ID`     | ``                                    | Google OAuth client ID                  |
 | `GOOGLE_CLIENT_SECRET` | ``                                    | Google OAuth client secret              |
 | `GOOGLE_REDIRECT_URI`  | `{SITE_URL}/api/auth/google/callback` | OAuth redirect. Leave empty; the server warns if it doesn't end in `/api/auth/google/callback` |
-| `UPDATE_ADMIN_EMAILS`  | ``                                    | Comma-separated emails that may update the app from Profile. Empty: nobody (see [Updating from the app](#updating-from-the-app)) |
+| `UPDATE_ADMIN_EMAILS`  | ``                                    | Comma-separated emails that may update the app from the Admin page. Empty: nobody (see [Updating from the app](#updating-from-the-app)) |
 | `UPDATE_REAUTH_MINUTES`| `10`                                  | How recent an admin's sign-in must be to update or roll back |
-| `UPDATE_REPO_URL`      | `https://github.com/exetico/HiddenShelf.git` | Where in-app updates come from (`main`, https only). Change it if you run a fork |
+| `UPDATE_REPO_URL`      | `https://github.com/exetico/HiddenShelf.git` | Where in-app updates come from (https only). Change it if you run a fork |
+| `UPDATE_CHANNEL`       | `releases`                            | `releases`: Update offers only `vX.Y.Z` tags on `main` (recommended). `main`: every change as soon as it is merged |
 
 ### Subpath deployment
 
@@ -489,7 +492,7 @@ Clean URLs (`/dashboard`, `/edit`, etc.). The backend serves the app for these r
 
 - `GET /api/health` - `{ ok: true }` when the app and its database answer
 - `GET /api/updates` - Admins only: running version, new commits, last result, history
-- `POST /api/updates/update` - Admins only, no body: update to the latest `main`; needs a recent sign-in
+- `POST /api/updates/update` - Admins only, no body: update to the newest release (or the latest `main`, see `UPDATE_CHANNEL`); needs a recent sign-in
 - `POST /api/updates/rollback` - Admins only: back to the version before the last update
 
 ### Account

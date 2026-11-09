@@ -266,6 +266,22 @@ describe("Auth API", () => {
       const row = getDb().prepare("SELECT data FROM sessions").all().map((r) => JSON.parse(r.data)).find((d) => d.user_id);
       expect(row.login_at).toBeGreaterThan(Date.now() - 5000);
     });
+
+    it("confirms who you are without a greeting and returns to where you were", async () => {
+      vi.stubGlobal("fetch", vi.fn(async (url) => ({
+        json: async () => (String(url).includes("token") ? { access_token: "t" } : { id: "g2", email: "admin@example.com", verified_email: true }),
+      })));
+      const userId = getDb().prepare("INSERT INTO users (email) VALUES (?)").run("admin@example.com").lastInsertRowid;
+      const sessionId = "r".repeat(64);
+      sessions.set(sessionId, { data: { user_id: userId, oauth2state: "st", return_to: "#/admin" }, expiresAt: Date.now() + 60000 });
+      const res = await app.request("/api/auth/google/callback?state=st&code=c", {
+        headers: { Cookie: `hiddenshelf_session=${sessionId}` },
+      });
+      expect(res.headers.get("location")).toMatch(/\/admin$/);
+      const row = getDb().prepare("SELECT data FROM sessions").all().map((r) => JSON.parse(r.data)).find((d) => d.user_id);
+      expect(row.login_at).toBeGreaterThan(Date.now() - 5000);
+      expect(row.welcome).toBeUndefined();
+    });
   });
 
   // ── GET /api/auth/google ──
@@ -276,6 +292,20 @@ describe("Auth API", () => {
       expect(res.status).toBe(500);
       const data = await json(res);
       expect(data.error).toContain("not configured");
+    });
+
+    it("remembers where to return to after signing in", async () => {
+      const saved = [config.googleClientId, config.googleClientSecret];
+      config.googleClientId = "id";
+      config.googleClientSecret = "secret";
+      try {
+        const res = await app.request("/api/auth/google?return_to=%23%2Fadmin");
+        expect((await json(res)).authUrl).toContain("accounts.google.com");
+        const data = getDb().prepare("SELECT data FROM sessions").all().map((r) => JSON.parse(r.data)).find((d) => d.oauth2state);
+        expect(data.return_to).toBe("#/admin");
+      } finally {
+        [config.googleClientId, config.googleClientSecret] = saved;
+      }
     });
   });
 });

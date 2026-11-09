@@ -178,10 +178,12 @@ auth.get("/verify", async (c) => {
   }
 
   // Set session
+  // Confirming who you are (admin updates) is not a new visit: no greeting
+  const sameUser = Number(c.session.get("user_id")) === Number(user.id);
   c.session.set("user_id", user.id);
   c.session.set("user_email", email);
   // The app greets once after login (read and cleared by /me)
-  c.session.set("welcome", isNewUser ? "new" : "back");
+  if (!sameUser) c.session.set("welcome", isNewUser ? "new" : "back");
   // When this sign-in happened; admin updates ask for a recent one
   c.session.set("login_at", Date.now());
   c.session.regenerate();
@@ -232,6 +234,11 @@ auth.get("/google", (c) => {
   if (rawRedirectOrigin && isAllowedRedirectOrigin(rawRedirectOrigin)) {
     c.session.set("oauth_redirect_origin", rawRedirectOrigin);
   }
+
+  // Where to land afterwards (checked by safeReturnTo when used), e.g.
+  // back on the Admin page after confirming who you are
+  const returnTo = c.req.query("return_to");
+  if (returnTo && returnTo.length <= MAX_LENGTHS.returnTo) c.session.set("return_to", returnTo);
 
   const state = generateToken(16);
   c.session.set("oauth2state", state);
@@ -338,9 +345,10 @@ auth.get("/google/callback", async (c) => {
     }
 
     // Set session
+    const sameUser = Number(c.session.get("user_id")) === Number(user.id);
     c.session.set("user_id", user.id);
     c.session.set("user_email", email);
-    c.session.set("welcome", isNewUser ? "new" : "back");
+    if (!sameUser) c.session.set("welcome", isNewUser ? "new" : "back");
     // When this sign-in happened; admin updates ask for a recent one
     c.session.set("login_at", Date.now());
     c.session.regenerate();

@@ -20,6 +20,7 @@ import { sendNotice } from "./mailer.js";
 
 const MAX_FILE = 64 * 1024;
 const HEX40 = /^[0-9a-f]{40}$/;
+const RELEASE_TAG = /^v\d{1,6}\.\d{1,6}\.\d{1,6}$/;
 const FINAL_STATES = new Set(["succeeded", "failed", "rolled_back"]);
 // A request the updater hasn't picked up in this time is given up on
 // (the updater itself refuses requests older than 10 minutes)
@@ -82,18 +83,19 @@ export function parseKv(text, keys) {
 
 const int = (v) => (/^\d+$/.test(v || "") ? Number(v) : null);
 const commitOrNull = (v) => (HEX40.test(v || "") ? v : null);
+const tagOrNull = (v) => (RELEASE_TAG.test(v || "") ? v : null);
 
 /** Everything the updater last reported, cleaned up for the API. */
 export function readStatus() {
   const check = parseKv(readText(controlPath("status", "check")), [
-    "checked_at", "ok", "error", "branch", "target", "count", "migrations",
+    "checked_at", "ok", "error", "branch", "channel", "target", "target_tag", "ahead", "count", "migrations",
   ]);
-  const current = parseKv(readText(controlPath("status", "current")), ["commit", "date", "subject"]);
+  const current = parseKv(readText(controlPath("status", "current")), ["commit", "date", "subject", "tag"]);
   const job = parseKv(readText(controlPath("status", "job")), [
     "id", "action", "state", "step", "message", "from", "to", "started_at", "finished_at",
   ]);
   const rollback = parseKv(readText(controlPath("status", "rollback")), [
-    "commit", "subject", "date", "db_restore", "updated_at",
+    "commit", "subject", "date", "tag", "db_restore", "updated_at",
   ]);
   const available = (readText(controlPath("status", "available")) || "")
     .split("\n")
@@ -111,11 +113,17 @@ export function readStatus() {
     check_ok: check.ok === "yes",
     check_error: check.error || "",
     branch: check.branch || "main",
+    // Before the updater reports one, the server's setting
+    channel: ["main", "releases"].includes(check.channel) ? check.channel : config.updateChannel,
     current: commitOrNull(current.commit)
-      ? { commit: current.commit, date: int(current.date), subject: current.subject || "" }
+      ? { commit: current.commit, date: int(current.date), subject: current.subject || "", tag: tagOrNull(current.tag) }
       : null,
     available: {
       target: commitOrNull(check.target),
+      // releases channel: the newest release, and whether this server runs
+      // something newer than it
+      target_tag: tagOrNull(check.target_tag),
+      ahead: check.ahead === "yes",
       count: int(check.count) || 0,
       migrations: check.migrations === "yes",
       commits: available,
@@ -138,6 +146,7 @@ export function readStatus() {
           commit: rollback.commit,
           subject: rollback.subject || "",
           date: int(rollback.date),
+          tag: tagOrNull(rollback.tag),
           restores_database: rollback.db_restore === "yes",
           updated_at: int(rollback.updated_at),
         }
@@ -265,7 +274,7 @@ export function requestUpdate({ action, userId, ip }) {
 
   const what = action === "rollback"
     ? `a rollback to ${short(shown)}`
-    : `an update to ${short(shown)} (${status.available.count} change${status.available.count === 1 ? "" : "s"})`;
+    : `an update to ${status.available.target_tag || short(shown)} (${status.available.count} change${status.available.count === 1 ? "" : "s"})`;
   notifyAdmins(
     action === "rollback" ? "Rollback started" : "Update started",
     `${user.email} started ${what} from ${ip}.\nIf this wasn't one of you, empty UPDATE_ADMIN_EMAILS and run make up.`,
