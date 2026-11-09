@@ -199,9 +199,9 @@ export function createUpdater({
   // ─── check ─────────────────────────────────────────────────────
 
   function fetchUpstream() {
-    const refs = [`+refs/heads/${branch}:refs/heads/${branch}`];
-    // Tags may be moved on GitHub, so take them as they are now
-    if (channel === "releases") refs.push("+refs/tags/v*:refs/tags/v*");
+    // Tags may be moved on GitHub, so take them as they are now. Fetched on
+    // both channels: the app shows a release's tag as its version
+    const refs = [`+refs/heads/${branch}:refs/heads/${branch}`, "+refs/tags/v*:refs/tags/v*"];
     git("fetch", "--quiet", "--no-tags", repoUrl, ...refs);
     return git("rev-parse", `refs/heads/${branch}`);
   }
@@ -523,5 +523,14 @@ export function createUpdater({
   /** Back to the image's code at the next start (the release kept crashing). */
   const forgetCurrent = () => writeState("current", null);
 
-  return { setup, check, startupChoice, runPending, runningCommit, forgetCurrent, dirs };
+  /** The release tag of a commit, for the version the app shows ("" if none). */
+  const versionTag = (commit) => {
+    try {
+      return hasCommit(commit) ? tagOf(commit) : "";
+    } catch {
+      return "";
+    }
+  };
+
+  return { setup, check, startupChoice, runPending, runningCommit, forgetCurrent, versionTag, branch, dirs };
 }

@@ -5,6 +5,8 @@ services:
       args:
         # Set by make; shown next to the Update button
         GIT_COMMIT: ${GIT_COMMIT:-}
+        GIT_TAG: ${GIT_TAG:-}
+        GIT_BRANCH: ${GIT_BRANCH:-}
     image: hiddenshelf:latest
     container_name: hiddenshelf
     ports:

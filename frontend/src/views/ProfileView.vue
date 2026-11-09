@@ -542,7 +542,7 @@ const deleteBackdrop = backdropClose(() => (showDeleteModal.value = false));
       v-if="appStore.appConfig.app_version"
       class="text-center text-xs text-gray-400 dark:text-brand-600"
     >
-      {{ appStore.appConfig.site_name }} v{{ appStore.appConfig.app_version }}
+      {{ appStore.appConfig.site_name }} {{ appStore.appConfig.app_version }}
     </p>
 
     <!-- Delete Progress Modal -->

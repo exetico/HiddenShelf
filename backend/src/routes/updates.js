@@ -16,6 +16,7 @@
 
 import { Hono } from "hono";
 import config from "../config.js";
+import { appVersion } from "../lib/version.js";
 import { requireAuth } from "../middleware/auth.js";
 import { errorResponse, getClientIp, isSameSiteOrigin } from "../lib/helpers.js";
 import {
@@ -42,7 +43,7 @@ updates.get("/", (c) => {
   syncResults(status);
   return c.json({
     success: true,
-    app_version: config.appVersion,
+    app_version: appVersion(),
     built_commit: config.gitCommit || null,
     fresh_login: hasFreshLogin(c.session),
     reauth_minutes: config.updateReauthMinutes,

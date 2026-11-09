@@ -130,8 +130,12 @@ const config = {
     ? process.env.GIT_COMMIT
     : "",
 
-  // App version
-  appVersion: process.env.APP_VERSION || "2.0.0",
+  // The release tag (vX.Y.Z) and branch of that commit, when known; the app
+  // shows its version from these (see lib/version.js)
+  gitTag: /^v\d{1,6}\.\d{1,6}\.\d{1,6}$/.test(process.env.GIT_TAG || "") ? process.env.GIT_TAG : "",
+  gitBranch: /^[A-Za-z0-9._\/-]{1,100}$/.test(process.env.GIT_BRANCH || "") && process.env.GIT_BRANCH !== "HEAD"
+    ? process.env.GIT_BRANCH
+    : "",
 };
 
 export default config;

@@ -71,9 +71,10 @@ describe.skipIf(!hasMake)("Makefile data targets", () => {
   }
 
   function calls() {
-    // "git rev-parse HEAD" only reads the commit to label the image with
+    // These only read the commit, tag and branch to label the image with
+    const labels = ["git rev-parse HEAD", "git describe --tags --exact-match --match v[0-9]* HEAD", "git rev-parse --abbrev-ref HEAD"];
     return fs.existsSync(log)
-      ? fs.readFileSync(log, "utf8").trim().split("\n").filter((l) => l && l !== "git rev-parse HEAD")
+      ? fs.readFileSync(log, "utf8").trim().split("\n").filter((l) => l && !labels.includes(l))
       : [];
   }
 

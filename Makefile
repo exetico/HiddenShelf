@@ -1,9 +1,12 @@
 .PHONY: help up down restart logs dev build-frontend test test-backend test-frontend clean install backup restore upgrade refresh-base
 
-# Labels a build with the commit it is built from (shown next to the Update
-# button). Read when the command runs, i.e. after a git pull in the same
-# recipe: an exported make variable would be read before it.
-WITH_COMMIT = GIT_COMMIT=$$(git rev-parse HEAD 2>/dev/null)
+# Labels a build with the commit it is built from, its release tag (vX.Y.Z,
+# if the commit has one) and branch: the app shows "v1.2.0" or
+# "main · abc1234". Read when the command runs, i.e. after a git pull in the
+# same recipe: an exported make variable would be read before it.
+WITH_COMMIT = GIT_COMMIT=$$(git rev-parse HEAD 2>/dev/null) \
+	GIT_TAG=$$(git describe --tags --exact-match --match 'v[0-9]*' HEAD 2>/dev/null) \
+	GIT_BRANCH=$$(git rev-parse --abbrev-ref HEAD 2>/dev/null)
 
 # Default target
 help:

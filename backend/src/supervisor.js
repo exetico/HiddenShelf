@@ -27,7 +27,7 @@ const controller = {
     stopping = false;
     child = spawn(process.execPath, [path.join(dir, "backend", "src", "index.js")], {
       cwd: process.cwd(),
-      env: { ...process.env, GIT_COMMIT: commit || "" },
+      env: { ...process.env, ...versionEnv(commit) },
       stdio: "inherit",
     });
     const me = child;
@@ -75,6 +75,18 @@ const controller = {
     return false;
   },
 };
+
+/**
+ * GIT_COMMIT, GIT_TAG and GIT_BRANCH for the app, so it shows the version it
+ * runs: the image's own labels (from make), or for a version installed from
+ * the app, its release tag and the branch it came from.
+ */
+function versionEnv(commit) {
+  if (!commit || commit === config.gitCommit) {
+    return { GIT_COMMIT: config.gitCommit, GIT_TAG: config.gitTag, GIT_BRANCH: config.gitBranch };
+  }
+  return { GIT_COMMIT: commit, GIT_TAG: updater?.versionTag(commit) || "", GIT_BRANCH: updater?.branch || "" };
+}
 
 let updater = null;
 if (updatesOn) {
