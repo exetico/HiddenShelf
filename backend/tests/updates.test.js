@@ -234,7 +234,9 @@ describe("In-app updates", () => {
     expect(status.channel).toBe("releases");
     expect(status.available).toMatchObject({ target: B, target_tag: "v1.2.0", ahead: false, count: 3 });
     expect(status.current.tag).toBeNull();
-    writeStatus("check", `checked_at=${now}\nok=yes\nchannel=nightly\n`);
-    expect(readStatus().channel).toBe(config.updateChannel);
+    expect(status.updater_outdated).toBe(false);
+    // An updater from before channels existed reports none: it follows main
+    writeStatus("check", `checked_at=${now}\nok=yes\nbranch=main\ntarget=${B}\ncount=0\n`);
+    expect(readStatus()).toMatchObject({ channel: "main", updater_outdated: true });
   });
 });

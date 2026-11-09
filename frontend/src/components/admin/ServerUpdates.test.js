@@ -197,14 +197,26 @@ describe("ServerUpdates", () => {
     updatesApi.status.mockResolvedValue(status({ channel: "releases", available: { target: A, target_tag: null, count: 0, commits: [] } }));
     wrapper = mountIt();
     await flushPromises();
-    expect(wrapper.find('[data-testid="up-to-date"]').text()).toContain("no releases yet");
+    expect(wrapper.find('[data-testid="up-to-date"]').text()).toContain("You're up to date. New versions show up here when they are released.");
+    expect(wrapper.text()).not.toMatch(/publish/i);
 
     updatesApi.status.mockResolvedValue(
       status({ channel: "releases", available: { target: A, target_tag: "v1.0.0", ahead: true, count: 0, commits: [] } }),
     );
     wrapper = mountIt();
     await flushPromises();
-    expect(wrapper.find('[data-testid="up-to-date"]').text()).toContain("newer version than the latest release (v1.0.0)");
+    expect(wrapper.find('[data-testid="up-to-date"]').text()).toContain("You're up to date: this server runs a newer version than the latest release (v1.0.0)");
+  });
+
+  it("asks for make up when the updater is older than the web app", async () => {
+    updatesApi.status.mockResolvedValue(
+      status({ channel: "main", updater_outdated: true, available: { target: A, count: 0, commits: [] } }),
+    );
+    const wrapper = mountIt();
+    await flushPromises();
+    expect(wrapper.find('[data-testid="updater-outdated"]').text()).toContain("make up");
+    expect(wrapper.find('[data-testid="update-channel"]').text()).toContain("Every change on main");
+    expect(wrapper.find('[data-testid="up-to-date"]').text()).toBe("You're on the latest version.");
   });
 
   it("warns that a rollback with a database change loses newer data", async () => {
