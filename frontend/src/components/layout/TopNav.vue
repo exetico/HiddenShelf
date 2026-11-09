@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, onUnmounted, ref, watch } from "vue";
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useAuthStore } from "@/stores/auth";
 import { useAppStore } from "@/stores/app";
@@ -112,6 +112,94 @@ function pickMode(name) {
     goTo(name);
   }
 }
+
+// The round initials button opens a small account menu: Settings, Admin
+// (admins only) and Log out
+const menuOpen = ref(false);
+const profileMenu = ref(null);
+const profileButton = ref(null);
+const menuPanel = ref(null);
+const menuItems = computed(() => [
+  {
+    id: "settings",
+    label: "Settings",
+    icon: "mdi-cog-outline",
+    hint: "Settings: profile, appearance, sharing and import/export",
+    current: route.name === "profile",
+    run: () => pickMenu(() => goTo("profile")),
+  },
+  ...(authStore.canUpdate
+    ? [
+        {
+          id: "admin",
+          label: "Admin",
+          icon: "mdi-shield-account-outline",
+          hint: "Admin: server updates",
+          current: route.name === "admin",
+          run: () => pickMenu(() => goTo("admin")),
+        },
+      ]
+    : []),
+  {
+    id: "logout",
+    label: "Log out",
+    icon: "mdi-logout",
+    hint: "Sign out on this device",
+    current: false,
+    run: () => pickMenu(() => authStore.logout()),
+  },
+]);
+
+function menuButtons() {
+  return [...(menuPanel.value?.querySelectorAll('[role="menuitem"]') || [])];
+}
+async function toggleMenu() {
+  menuOpen.value = !menuOpen.value;
+  if (!menuOpen.value) return;
+  await nextTick();
+  menuButtons()[0]?.focus();
+}
+function closeMenu({ refocus = false } = {}) {
+  if (!menuOpen.value) return;
+  menuOpen.value = false;
+  if (refocus) profileButton.value?.focus();
+}
+function pickMenu(action) {
+  closeMenu();
+  action();
+}
+function onMenuKeydown(event) {
+  if (!menuOpen.value) return;
+  if (event.key === "Escape") {
+    event.preventDefault();
+    closeMenu({ refocus: true });
+    return;
+  }
+  if (event.key === "Tab") {
+    closeMenu();
+    return;
+  }
+  const buttons = menuButtons();
+  if (!buttons.length) return;
+  const at = buttons.indexOf(document.activeElement);
+  const step = { ArrowDown: 1, ArrowUp: -1 }[event.key];
+  if (step) {
+    event.preventDefault();
+    buttons[(at + step + buttons.length) % buttons.length].focus();
+  } else if (event.key === "Home" || event.key === "End") {
+    event.preventDefault();
+    buttons[event.key === "Home" ? 0 : buttons.length - 1].focus();
+  }
+}
+function onOutsidePointer(event) {
+  if (menuOpen.value && !profileMenu.value?.contains(event.target)) closeMenu();
+}
+onMounted(() => document.addEventListener("pointerdown", onOutsidePointer));
+onUnmounted(() => document.removeEventListener("pointerdown", onOutsidePointer));
+watch(
+  () => route.name,
+  () => closeMenu(),
+);
 </script>
 
 <template>
@@ -157,7 +245,7 @@ function pickMode(name) {
 
       <div class="flex items-center gap-2 sm:gap-3">
         <div
-          class="relative grid grid-cols-2 bg-gray-100 dark:bg-brand-800 rounded-lg p-0.5 sm:p-1"
+          class="relative grid grid-cols-2 h-8 sm:h-10 bg-gray-100 dark:bg-brand-800 rounded-lg p-0.5 sm:p-1"
           role="group"
           aria-label="Mode"
         >
@@ -177,7 +265,7 @@ function pickMode(name) {
               { name: 'edit', label: 'Edit', icon: 'mdi-pencil', hint: route.name === 'edit' ? 'Switch to View' : 'Add, change and organize links' },
             ]"
             :key="item.name"
-            class="relative z-10 px-2 py-1 sm:px-3 sm:py-1.5 text-sm rounded-md transition-colors flex items-center justify-center gap-1.5"
+            class="relative z-10 px-2 sm:px-3 text-sm rounded-md transition-colors flex items-center justify-center gap-1.5"
             :class="
               mode === item.name && onModePage
                 ? 'text-white'
@@ -193,7 +281,7 @@ function pickMode(name) {
         </div>
 
         <button
-          class="p-1.5 sm:p-2 rounded-md text-gray-700 dark:text-brand-200 hover:bg-gray-100 dark:hover:bg-brand-800"
+          class="w-8 h-8 sm:w-10 sm:h-10 shrink-0 flex items-center justify-center rounded-md text-gray-700 dark:text-brand-200 hover:bg-gray-100 dark:hover:bg-brand-800"
           :class="route.name === 'tools' && 'bg-gray-100 dark:bg-brand-800'"
           title="Tools: QR codes, encode and clean links"
           aria-label="Tools"
@@ -201,34 +289,63 @@ function pickMode(name) {
           data-testid="nav-tools-page"
           @click="goTo('tools')"
         >
-          <i class="mdi mdi-toolbox-outline text-lg" aria-hidden="true"></i>
+          <i class="mdi mdi-toolbox-outline text-lg leading-none" aria-hidden="true"></i>
         </button>
 
-        <button
-          v-if="authStore.canUpdate"
-          class="p-1.5 sm:p-2 rounded-md text-gray-700 dark:text-brand-200 hover:bg-gray-100 dark:hover:bg-brand-800"
-          :class="route.name === 'admin' && 'bg-gray-100 dark:bg-brand-800'"
-          title="Admin: server updates"
-          aria-label="Admin"
-          :aria-current="route.name === 'admin' ? 'page' : undefined"
-          data-testid="nav-admin"
-          @click="goTo('admin')"
-        >
-          <i class="mdi mdi-shield-account-outline text-lg" aria-hidden="true"></i>
-        </button>
+        <div ref="profileMenu" class="relative" data-testid="profile-menu" @keydown="onMenuKeydown">
+          <button
+            ref="profileButton"
+            class="w-8 h-8 sm:w-10 sm:h-10 shrink-0 rounded-full bg-brand-600 text-white text-sm font-semibold flex items-center justify-center"
+            :class="(menuOpen || ['profile', 'admin'].includes(route.name)) && 'ring-2 ring-brand-300 dark:ring-brand-500 ring-offset-2 ring-offset-white dark:ring-offset-brand-900'"
+            :title="`Your account (${authStore.user?.email || ''})`"
+            aria-label="Account menu"
+            aria-haspopup="menu"
+            :aria-expanded="menuOpen ? 'true' : 'false'"
+            data-testid="profile-button"
+            @click="toggleMenu"
+          >
+            {{ authStore.initials }}
+          </button>
+
+          <div
+            v-if="menuOpen"
+            ref="menuPanel"
+            class="absolute right-0 top-full mt-2 w-56 rounded-lg border border-gray-200 dark:border-brand-700 bg-white dark:bg-brand-900 shadow-lg py-1 z-40"
+            role="menu"
+            aria-label="Account"
+            data-testid="profile-menu-panel"
+          >
+            <p
+              v-if="authStore.user?.email"
+              class="px-3 py-2 text-xs text-gray-500 dark:text-brand-300 truncate border-b border-gray-100 dark:border-brand-800 mb-1"
+            >
+              {{ authStore.user.email }}
+            </p>
+            <button
+              v-for="item in menuItems"
+              :key="item.id"
+              type="button"
+              role="menuitem"
+              class="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-left hover:bg-gray-100 dark:hover:bg-brand-800 focus:bg-gray-100 dark:focus:bg-brand-800 focus:outline-none"
+              :class="[
+                item.id === 'logout'
+                  ? 'text-red-600 dark:text-red-400 border-t border-gray-100 dark:border-brand-800 mt-1'
+                  : 'text-gray-700 dark:text-brand-100',
+                item.current && 'font-semibold',
+              ]"
+              :title="item.hint"
+              :aria-current="item.current ? 'page' : undefined"
+              :data-testid="`menu-${item.id}`"
+              @click="item.run"
+            >
+              <i :class="item.icon" class="mdi text-lg leading-none" aria-hidden="true"></i>
+              {{ item.label }}
+            </button>
+          </div>
+        </div>
 
         <button
-          class="w-8 h-8 sm:w-9 sm:h-9 shrink-0 rounded-full bg-brand-600 text-white text-sm font-semibold"
-          :title="`Profile and settings (${authStore.user?.email || ''})`"
-          aria-label="Profile and settings"
-          :aria-current="route.name === 'profile' ? 'page' : undefined"
-          @click="goTo('profile')"
-        >
-          {{ authStore.initials }}
-        </button>
-
-        <button
-          class="p-1.5 sm:p-2 rounded-md text-gray-700 dark:text-brand-200 hover:bg-gray-100 dark:hover:bg-brand-800"
+          class="w-8 h-8 sm:w-10 sm:h-10 shrink-0 flex items-center justify-center rounded-md text-gray-700 dark:text-brand-200 hover:bg-gray-100 dark:hover:bg-brand-800"
           :title="theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'"
           :aria-label="theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'"
           @click="toggleTheme"
@@ -239,7 +356,8 @@ function pickMode(name) {
                 ? 'mdi mdi-weather-sunny'
                 : 'mdi mdi-weather-night'
             "
-            class="text-lg"
+            class="text-lg leading-none"
+            aria-hidden="true"
           ></i>
         </button>
       </div>
