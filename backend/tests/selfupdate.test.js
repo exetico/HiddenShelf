@@ -329,6 +329,16 @@ describe.skipIf(!hasGit)("self-updater", () => {
       expect(D).not.toBe(C);
     });
 
+    it("names a commit's release tag for the version the app shows", () => {
+      tag("v1.0.0", A);
+      const u = updater();
+      u.check();
+      expect(u.versionTag(A)).toBe("v1.0.0");
+      expect(u.versionTag(B)).toBe("");
+      expect(u.versionTag("nope")).toBe("");
+      expect(u.branch).toBe("main");
+    });
+
     it("is happy running something newer than the newest release", () => {
       tag("v1.0.0", A);
       rel({ imageCommit: B }).check();

@@ -196,7 +196,7 @@ This document provides a comprehensive overview of all features, functionality, 
 
 - Email display with user info
 - **Beta notice / Data retention disclaimer**: Amber notice box informing users the service is in beta and data may be reset; includes "export your data" button link to open ImportExportModal
-- **App version display**: Shows version from `appConfig.version` (fetched via `configApi.get()`)
+- **App version display**: "Hidden Shelf v1.2.0" (or "main · abc1234") from `appConfig.app_version` (fetched via `configApi.get()`); hidden when empty
 - **Join Shared Category section**:
   - Input field with placeholder "Paste share URL or code..."
   - **URL detection**: `extractShareCode()` regex extracts code from full URLs (e.g., `?share=CODE`) or raw codes
@@ -568,7 +568,7 @@ This document provides a comprehensive overview of all features, functionality, 
 
 ### Configuration (`/api/config`)
 
-- `GET` — Get public app config (version, site name, features)
+- `GET` — Get public app config (version, site name, features). `app_version` comes from `lib/version.js`: the release tag (`GIT_TAG`), else `<branch> · <short commit>` (`GIT_BRANCH`, `GIT_COMMIT`), else empty. make passes all three as build args; the supervisor sets them for a version installed from the app (tag from the updater's fetched `v*` tags, branch = `UPDATE_BRANCH`). `APP_VERSION` is gone
 
 ### Account (`/api/account`)
 

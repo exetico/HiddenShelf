@@ -32,7 +32,9 @@ RUN mkdir -p /app/db /app/var && chown -R node:node /app/db /app/var
 # The commit this image was built from (make passes it).
 # Last, so a new commit doesn't invalidate the cached layers above.
 ARG GIT_COMMIT=""
-ENV GIT_COMMIT=$GIT_COMMIT
+ARG GIT_TAG=""
+ARG GIT_BRANCH=""
+ENV GIT_COMMIT=$GIT_COMMIT GIT_TAG=$GIT_TAG GIT_BRANCH=$GIT_BRANCH
 
 # Set non-root user
 USER node

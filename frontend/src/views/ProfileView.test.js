@@ -43,7 +43,7 @@ vi.mock("@/services/api/configApi", () => ({
   configApi: {
     get: vi
       .fn()
-      .mockResolvedValue({ app_version: "1.2.3", site_name: "Hidden Shelf" }),
+      .mockResolvedValue({ app_version: "v1.2.3", site_name: "Hidden Shelf" }),
   },
 }));
 
@@ -69,7 +69,7 @@ describe("ProfileView", () => {
     authStore.user = { email: "test@example.com" };
     const appStore = useAppStore();
     appStore.settings = { brand_color: "#687061" };
-    appStore.appConfig = { app_version: "1.2.3", site_name: "Hidden Shelf" };
+    appStore.appConfig = { app_version: "v1.2.3", site_name: "Hidden Shelf" };
     // 10 links of your own; a shared one doesn't count towards deleting
     appStore.allLinks = [
       ...Array.from({ length: 10 }, (_, i) => ({ id: i + 1 })),
@@ -123,6 +123,7 @@ describe("ProfileView", () => {
   it("displays app version", () => {
     const wrapper = mountProfile();
     expect(wrapper.text()).toContain("Hidden Shelf v1.2.3");
+    expect(wrapper.text()).not.toContain("vv1.2.3");
   });
 
   it("hides app version when not available", () => {
