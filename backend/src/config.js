@@ -19,14 +19,14 @@ export function basePathFromEnv(value) {
 }
 
 /**
- * SIGNUP_MODE: "open" (anyone can make an account; the default), "approval"
- * (new people ask to join and an admin says yes or no) or "invite" (only
- * emails an admin added). An unknown value is treated as "invite", the
- * safest choice.
+ * SIGNUP_MODE: "open" (anyone can make an account), "approval" (new people
+ * ask to join and an admin says yes or no) or "invite" (only admins and
+ * emails an admin added). Missing or unknown means "invite": nobody new
+ * gets in unless the server says so.
  */
 export function signupModeFromEnv(mode) {
   const value = (mode || "").trim().toLowerCase();
-  if (!value) return "open";
+  if (!value) return "invite";
   if (["open", "approval", "invite"].includes(value)) return value;
   console.warn(
     `[config] Ignoring SIGNUP_MODE=${JSON.stringify(mode)}: use open, approval or invite. Using invite.`,

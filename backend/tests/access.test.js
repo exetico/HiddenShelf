@@ -89,10 +89,12 @@ const users = () => getDb().prepare("SELECT email FROM users").all().map((u) => 
 const entry = (email) => getDb().prepare("SELECT * FROM access_list WHERE email = ?").get(email);
 
 describe("SIGNUP_MODE", () => {
-  it("reads the mode, open by default and invite for typos", () => {
+  it("reads the mode: missing or unknown means invite", () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
-    expect(signupModeFromEnv(undefined)).toBe("open");
-    expect(signupModeFromEnv("")).toBe("open");
+    expect(signupModeFromEnv(undefined)).toBe("invite");
+    expect(signupModeFromEnv("")).toBe("invite");
+    expect(signupModeFromEnv("  ")).toBe("invite");
+    expect(signupModeFromEnv("Open")).toBe("open");
     expect(signupModeFromEnv("Approval")).toBe("approval");
     expect(signupModeFromEnv("invite")).toBe("invite");
     expect(warn).not.toHaveBeenCalled();

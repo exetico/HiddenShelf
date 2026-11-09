@@ -184,7 +184,7 @@ export const FAQ = [
   },
   {
     q: "I run my own Hidden Shelf. Who can make an account?",
-    a: "You choose with SIGNUP_MODE in .env (see the README): open lets anyone in, approval lets new people ask to join and you approve or deny them, and invite only lets in the emails you add. Admins (UPDATE_ADMIN_EMAILS) manage requests and the list under Who can join on the Admin page. You get one short email when someone asks, at most every six hours.",
+    a: "You choose with SIGNUP_MODE in .env (see the README). Unless you set it, only admins and the emails you add can join (invite). approval lets new people ask to join and you approve or deny them, and open lets anyone in. Admins (UPDATE_ADMIN_EMAILS) manage requests and the list under Who can join on the Admin page. You get one short email when someone asks, at most every six hours.",
   },
   {
     q: "I run my own Hidden Shelf. Can I update it from the app?",

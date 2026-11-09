@@ -36,8 +36,8 @@ services:
       - SESSION_LIFETIME=${SESSION_LIFETIME:-2592000}
       # Debug mode logs magic links instead of emailing them; dev only
       - DEBUG_MODE=${DEBUG_MODE:-false}
-      # open, approval or invite
-      - SIGNUP_MODE=${SIGNUP_MODE:-open}
+      # open, approval or invite. Empty: invite (nobody new unless let in)
+      - SIGNUP_MODE=${SIGNUP_MODE:-}
       - EMAIL_LOGIN_ENABLED=${EMAIL_LOGIN_ENABLED:-true}
       - TRUST_PROXY=${TRUST_PROXY:-}
       - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-}
