@@ -15,7 +15,7 @@ import { allowedCorsOrigin } from "../src/lib/helpers.js";
 
 // Routes
 import authRoutes, { loginAttempts } from "../src/routes/auth.js";
-import linksRoutes from "../src/routes/links.js";
+import linksRoutes, { checkUsage } from "../src/routes/links.js";
 import categoriesRoutes from "../src/routes/categories.js";
 import tagsRoutes from "../src/routes/tags.js";
 import sharesRoutes from "../src/routes/shares.js";
@@ -43,6 +43,7 @@ export function createTestApp() {
   closeDb();
   sessions.clear();
   loginAttempts.clear();
+  checkUsage.clear();
 
   // Init in-memory DB
   initDb(":memory:");
@@ -122,4 +123,5 @@ export function cleanup() {
   closeDb();
   sessions.clear();
   loginAttempts.clear();
+  checkUsage.clear();
 }

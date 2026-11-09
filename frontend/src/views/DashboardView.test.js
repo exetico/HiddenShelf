@@ -306,13 +306,15 @@ describe("DashboardView", () => {
     const tools = mountDashboard().find('[data-testid="dashboard-tools"]');
     const links = tools.findAll("a");
     expect(links.map((a) => [a.text(), a.attributes("href")])).toEqual([
-      ["QR code", "/tools"],
-      ["Encode / decode", "/tools?tool=encode"],
-      ["Clean link", "/tools?tool=clean"],
-      ["Inspect link", "/tools?tool=inspect"],
+      ["Check links", "/tools?tool=check"],
+      ["Duplicates", "/tools?tool=duplicates"],
+      ["Tidy up", "/tools?tool=tidy"],
+      ["Add many links", "/tools?tool=add-many"],
+      ["QR code", "/tools?tool=qr"],
+      ["Inspect a link", "/tools?tool=inspect"],
     ]);
     await links[2].trigger("click");
-    expect(mockPush).toHaveBeenCalledWith({ name: "tools", query: { tool: "clean" } });
+    expect(mockPush).toHaveBeenCalledWith({ name: "tools", query: { tool: "tidy" } });
     mockPush.mockClear();
     await links[2].trigger("click", { ctrlKey: true });
     expect(mockPush).not.toHaveBeenCalled();
