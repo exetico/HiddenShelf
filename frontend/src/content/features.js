@@ -28,6 +28,11 @@ export const FEATURE_GROUPS = [
         text: "Drag links into the order you want, put your categories in order, and mark favorites.",
       },
       {
+        icon: "mdi-view-list-outline",
+        title: "Cards or a compact list",
+        text: "On the Edit page, switch between cards and a tight list with one row per link and the same actions. This browser remembers your choice.",
+      },
+      {
         icon: "mdi-delete-restore",
         title: "Trash with undo",
         text: "Deleted links go to the trash first, so you can restore them.",
