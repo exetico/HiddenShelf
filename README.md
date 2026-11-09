@@ -77,7 +77,20 @@ links.example.com {
 }
 ```
 
-A proxy on the same machine or Docker network is trusted automatically for client IPs. If the proxy runs elsewhere or is a CDN, set `TRUST_PROXY=true`.
+With nginx, pass the client address on like this:
+
+```nginx
+location / {
+    proxy_pass http://127.0.0.1:3000;
+    proxy_set_header Host $host;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+}
+```
+
+A proxy on the same machine or Docker network is trusted automatically for client IPs. The app reads `X-Forwarded-For` from the right and skips private addresses, so the last address your proxy saw counts, not one a visitor made up. If the proxy runs elsewhere or is a CDN, set `TRUST_PROXY=true`; only then is Cloudflare's `CF-Connecting-IP` read.
+
+Sign-in links are limited so the form can't be used to flood an inbox: one link a minute and 5 an hour per email address, and 10 requests per IP in 15 minutes. The limits are kept in memory and reset when the app restarts.
 
 ### 5. Log in
 
@@ -182,7 +195,7 @@ Set these in `.env`. Docker Compose passes them to the container. When running N
 | `DEBUG_MODE`           | `false`                               | Log magic links instead of emailing them, show detailed errors. Dev only |
 | `SIGNUP_ENABLED`       | `true`                                | Allow new user registration             |
 | `EMAIL_LOGIN_ENABLED`  | `true`                                | `false`: no magic link login and no email at all; Google sign-in only |
-| `TRUST_PROXY`          | (auto)                                | `true`/`false`: trust `X-Forwarded-For` for client IPs. Auto trusts it only from private addresses |
+| `TRUST_PROXY`          | (auto)                                | `true`/`false`: trust `X-Forwarded-For` for client IPs. Auto trusts it only from private addresses. `true` also reads `CF-Connecting-IP` |
 | `GOOGLE_CLIENT_ID`     | ``                                    | Google OAuth client ID                  |
 | `GOOGLE_CLIENT_SECRET` | ``                                    | Google OAuth client secret              |
 | `GOOGLE_REDIRECT_URI`  | `{SITE_URL}/api/auth/google/callback` | OAuth redirect. Leave empty; the server warns if it doesn't end in `/api/auth/google/callback` |

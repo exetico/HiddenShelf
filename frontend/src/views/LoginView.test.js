@@ -2,6 +2,8 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 import { mount, flushPromises } from "@vue/test-utils";
 import { createPinia, setActivePinia } from "pinia";
 import { useAuthStore } from "@/stores/auth";
+import { useToastStore } from "@/stores/toast";
+import { authApi } from "@/services/api/authApi";
 import LoginView from "@/views/LoginView.vue";
 
 // Mock API
@@ -173,5 +175,23 @@ describe("LoginView", () => {
     const art = wrapper.find('[data-testid="shelf-backdrop"]');
     expect(art.exists()).toBe(true);
     expect(art.attributes("aria-hidden")).toBe("true");
+  });
+
+  it("shows the server's wait message calmly when links were asked for too often", async () => {
+    const message =
+      "A sign-in link was already sent to this address. Check your inbox and spam folder, or ask for a new one in 1 minute.";
+    authApi.sendMagicLink.mockRejectedValueOnce(
+      Object.assign(new Error(message), { status: 429 }),
+    );
+    const wrapper = mountLogin({});
+    await flushPromises();
+    await wrapper.find('input[type="email"]').setValue("me@example.com");
+    await wrapper.find("form").trigger("submit");
+    await flushPromises();
+
+    const toasts = useToastStore().items;
+    expect(toasts.at(-1)).toMatchObject({ type: "info", message });
+    // Still on the form, so they can try again later
+    expect(wrapper.find('input[type="email"]').exists()).toBe(true);
   });
 });
