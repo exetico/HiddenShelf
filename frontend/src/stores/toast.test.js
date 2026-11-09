@@ -73,4 +73,10 @@ describe("toast store", () => {
 
     expect(store.items[0].id).not.toBe(store.items[1].id);
   });
+
+  it("keeps at most three toasts, dropping the oldest", () => {
+    const store = useToastStore();
+    ["A", "B", "C", "D"].forEach((m) => store.info(m));
+    expect(store.items.map((t) => t.message)).toEqual(["B", "C", "D"]);
+  });
 });

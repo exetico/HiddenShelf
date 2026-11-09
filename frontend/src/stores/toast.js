@@ -2,6 +2,8 @@ import { defineStore } from "pinia";
 
 let nextId = 1;
 const TOAST_DURATION = 3500;
+// More than this at once is noise; the oldest goes first
+const MAX_TOASTS = 3;
 
 export const useToastStore = defineStore("toast", {
   state: () => ({
@@ -19,6 +21,9 @@ export const useToastStore = defineStore("toast", {
         duration,
         createdAt: Date.now(),
       });
+      if (this.items.length > MAX_TOASTS) {
+        this.items = this.items.slice(-MAX_TOASTS);
+      }
       window.setTimeout(() => this.remove(id), duration);
     },
     async runAction(item) {
