@@ -135,12 +135,16 @@ This document provides a comprehensive overview of all features, functionality, 
 #### Tools (`ToolsView.vue`, `/tools`)
 
 - Linked from the dashboard and the toolbox button in the top bar (`nav-tools-page`)
-- The open tool is in the address (`?tool=encode|clean|inspect`; none means QR)
-- Everything runs in the browser (`lib/urlTools.js`); nothing is sent to the server
-- **QR code**: For any address or text (`LinkQrCode`, with a `hint` prop). Addresses over `LONG_QR_URL` (80) characters show a hint to save the link and use its public link, with "Add link" (`editor.create({ url })`)
-- **Encode / decode**: `encodeURIComponent` (a query value) or `encodeURI` (a whole address); decoding reads `+` as a space and explains invalid input
-- **Clean link**: `cleanTracking()` removes `utm_*`, `pk_*`, `mtm_*`, `fbclid`, `gclid`, `msclkid` and other tracking parameters, lists them, and offers copy or "Add link"
-- **Inspect link**: `urlParts()` shows protocol, host, port, path, fragment and query parameters (tracking ones marked)
+- No `?tool=` shows the overview: a card per tool (`TOOLS` and `TOOL_GROUPS` in `lib/urlTools.js`, with `label`, `hint`, `description`, `accent`, `where`), grouped as "Look after your shelf" and "Work with a link". Shelf cards show what they found (broken/moved count, duplicate groups, links to tidy)
+- `?tool=KEY` opens one tool (`components/tools/*Tool.vue`, kept alive while switching): a header with what it does and where it runs, a back button and icon tabs to the other tools. Old `?tool=encode` and `?tool=clean` open Inspect (`toolFor()`)
+- Shelf tools work on your own links only (`ownLinks()`; shared categories' links are left out). Their logic is in `lib/shelfTools.js`
+- **Check links** (`CheckLinksTool`, `stores/linkCheck.js`): sends your link ids to `POST /api/links/check` in batches of 20 with a progress bar and Stop. Lists Broken (Edit, Trash), Moved (301/308 to a new address: "Use new address", "Update all") and Couldn't tell (sign-in, blocked, timeout); counts working links and links on your own network that aren't checked. Results stay in the store until the next run
+- **Duplicates** (`DuplicatesTool`, `findDuplicates()`): groups own links by `sameUrlKey()` (the server's `normalizeUrl` rules, plus tracking parameters ignored), oldest first. "Keep this one" trashes the others (confirm, Undo in the toast)
+- **Tidy up** (`TidyTool`, `TIDY_CHECKS`/`tidyReport()`): No category, No tags, Tracking in the address (Clean, Clean all), Title is just the address (`plainTitle()`; "Use it" saves `titleFromUrl()`). Other fixes open the link editor. Lists show 50, then "Show all"
+- **Add many links** (`AddManyTool`): `extractUrls()` picks addresses out of pasted text (with or without `https://`; needs a real TLD so "e.g." isn't one), marks those already on the shelf, optionally strips tracking, and creates up to 200 at once with a category and tags. Titles come from `titleFromUrl()`
+- **QR code** (`QrTool`, `LinkQrCode` with `large`): for any address or text; the box suggests your links (datalist). A public link's QR uses its short `/h/` address. Long addresses (over `LONG_QR_URL`) show a hint to save the link and make it public
+- **Inspect a link** (`InspectTool`): `cleanTracking()` result first (copy, Add to shelf), then `urlParts()` (protocol, host, port, path, fragment, decoded query parameters with tracking marked), and an "Encode or decode text" section (`encodeText`/`decodeText`)
+- **Saving QR codes** (`lib/saveImage.js`, used by `LinkQrCode` everywhere): on touch devices that can share files it opens the share sheet (Safari on iPhone can't save a `data:` download); otherwise it downloads from a `blob:` URL
 
 #### Help (`HelpView.vue`, `/help`)
 
@@ -227,10 +231,12 @@ This document provides a comprehensive overview of all features, functionality, 
 #### ToastList (`ToastList.vue`)
 
 - Renders toast notifications from `toastStore.items`
-- **CSS classes per type**: success (green), error (red), info (blue)
+- **Look**: the same surface as cards and dialogs (`bg-white` / `dark:bg-brand-900`, gray/brand border). The type shows only as a small MDI icon (success `mdi-check-circle`, error `mdi-alert-circle`, info `mdi-information`) and the color of the timer line. Each toast carries `data-type`
+- **Placement**: bottom center on phones (above the safe area), bottom right from `sm` up
 - **Progress bar**: Each toast has a `<div class="toast-progress">` with CSS `@keyframes shrink` animation, duration set to `item.duration` ms (default 3500ms)
-- **Click to dismiss**: Clicking a toast removes it immediately via `toastStore.remove(id)`
-- Multiple toasts stack vertically
+- **Dismiss**: click the toast or its close button (`title="Dismiss"`); both call `toastStore.remove(id)`
+- **Accessibility**: errors use `role="alert"`, the rest `role="status"`, inside an `aria-live="polite"` region
+- Multiple toasts stack vertically; the store keeps at most 3 and drops the oldest
 
 ## Link Management
 
@@ -514,6 +520,7 @@ This document provides a comprehensive overview of all features, functionality, 
 - `PUT ?id=X` — Update link
 - `DELETE ?id=X` — Delete link
 - `GET ?hash=X` — Get public link by hash
+- `POST /check` — Link checker `{ ids }` (own links, at most 20 per request, 1000 per user per hour, else 429). Answers `{ results: [{ id, url, status, code, reason, final_url }] }` with status `ok`, `moved` (301/308 to `final_url`), `broken` (404/410, unknown host, refused), `unsure` or `skipped`. `lib/linkCheck.js`: HEAD, then GET if HEAD is refused; 8 s timeout; up to 5 redirects; bodies never read. Never connects to private, loopback or link-local addresses: checked in the socket's DNS lookup (no rebinding) and for literal IPs, on every hop; such links are `skipped`
 
 ### Categories (`/api/categories`)
 
@@ -563,8 +570,8 @@ This document provides a comprehensive overview of all features, functionality, 
 ### Updates (`/api/updates`, `backend/src/routes/updates.js`, `backend/src/lib/updates.js`)
 
 - Admins only: the signed-in user's stored email must be in `UPDATE_ADMIN_EMAILS`. Everyone else gets 404
-- `GET /` — `current` (commit, date, subject), `available` (target, count, migrations, commits), `job` (last run: state, step, message), `rollback` (previous version, `restores_database`), `log`, `history` (last 20 requests), `fresh_login`, `reauth_minutes`, `updater_seen`/`updater_stale`
-- `POST /update`, `POST /rollback` — no body is read. Both need a sign-in within `UPDATE_REAUTH_MINUTES` (session `login_at`, set at each login; else 403 `reauth_required`), SITE_URL's exact `Origin`, no other request waiting or running, and a minute since the last one
+- `GET /` — `channel` (`releases`/`main`, as the updater reports it; `main` when it reports none), `updater_outdated` (the updater predates channels: an in-app update swapped the web app but the image's updater needs `make up`; the panel says so), `current` (commit, date, subject, `tag` when it is a release), `available` (target, `target_tag` = newest release, `ahead` = running something newer than it, count, migrations, commits), `job` (last run: state, step, message), `rollback` (previous version, `restores_database`), `log`, `history` (last 20 requests), `fresh_login`, `reauth_minutes`, `updater_seen`/`updater_stale`
+- `POST /update`, `POST /rollback` — no body is read. Both need a sign-in within `UPDATE_REAUTH_MINUTES` (session `login_at`, set at each login; else 403 `reauth_required`; the panel then shows "Confirm it's you": Google via `GET /api/auth/google?return_to=%23%2Fadmin`, or a magic link to the admin's own email with `return_to: "#/admin"`. No sign-out; a sign-in by the same user sets no `welcome` greeting), SITE_URL's exact `Origin`, no other request waiting or running, and a minute since the last one
 - `POST /check` — no body is read; SITE_URL's exact `Origin`, but no fresh sign-in (it changes nothing). 429 if the last check was under a minute ago, 409 while an update runs. Creates the empty flag `var/inbox/check` (an existing one is fine), with no `update_requests` row; returns the previous `checked_at` so the panel can wait for a newer one
 - A request inserts an `update_requests` row (`target_commit` = what the panel showed, for the log only), creates the empty flag `var/inbox/update` or `var/inbox/rollback`, and emails every admin. `syncResults()` copies the updater's result onto the newest waiting row of that action (`job_id` marks it handled; on GET and every minute) and emails again
 - `/api/auth/me` returns `can_update`. Only then does TopNav's account menu show Admin (`menu-admin`) and the router allow `/admin` (`AdminView.vue`, route meta `admin`; others go to the dashboard). The page holds `ServerUpdates.vue` (`frontend/src/components/admin/`)
@@ -572,7 +579,9 @@ This document provides a comprehensive overview of all features, functionality, 
 ### Self-update (`backend/src/supervisor.js`, `backend/src/selfupdate/updater.js`)
 
 - The image's CMD is the supervisor. It runs `backend/src/index.js` as a child (restarts it if it exits; three crashes in two minutes on an updated version fall back to the image's code) and, with `UPDATE_ADMIN_EMAILS` set, polls for flags every 3 s and runs `check` hourly
-- `var/` is the `app-var` volume: `repo.git` (bare, fetches `main` from `UPDATE_REPO_URL`, https only), `releases/<commit>/` (built copies), `state/` (`current`, `previous`), `status/` (`check`, `current`, `available`, `job`, `rollback`, `log`), `inbox/`
+- `UPDATE_CHANNEL` (`config.updateChannel`): `releases` (default) targets the newest `vX.Y.Z` tag (semver order, no pre-releases) that is an ancestor of `main`; tags elsewhere are ignored. Running something newer than that release is fine (`ahead=yes`, nothing to install). `main` targets the tip of `main`
+- Counting: `rev-list --first-parent` from the running commit, so a merged PR is one change. GitHub's "Merge pull request #N from …" subjects are shown as the PR title (first body line) plus `(#N)`, in `available`, `current` and `rollback`
+- `var/` is the `app-var` volume: `repo.git` (bare, fetches `main` and, for releases, `refs/tags/v*` from `UPDATE_REPO_URL`, https only), `releases/<commit>/` (built copies), `state/` (`current`, `previous`), `status/` (`check`, `current`, `available`, `job`, `rollback`, `log`), `inbox/`
 - Flags are never read: `lstat`, delete, ignore if older than 10 minutes, and act only with a waiting `update_requests` row of that action from the last 10 minutes. The `check` flag needs no row; it runs `check` unless the last one was under a minute ago
 - Update: fast-forward of the running commit only; 1 GB free; `git archive` + `npm ci` + frontend build into `releases/.tmp-<commit>` (site stays up); backup `db/backups/pre-update-*.sqlite` (keeps 10); stop, start the new code, wait 60 s for `/api/health`, else restore the backup and start the old code
 - Rollback: one step back to `state/previous`; restores the database when the update added migrations, after `pre-rollback-*.sqlite`
@@ -631,7 +640,8 @@ This document provides a comprehensive overview of all features, functionality, 
 - **One-time Tokens**: Magic links expire after single use (15 minutes)
 - **Secure Generation**: `crypto.randomBytes()`-based token generation
 - **Session Timeout**: 30-day session lifetime
-- **Rate Limiting**: In-memory rate limiter on POST `/api/auth/login` — 10 attempts per IP per 15-minute window, returns HTTP 429 when exceeded. Uses `getClientIp()` helper with `X-Forwarded-For` support. Limiter state stored in `loginAttempts` Map (exported for test cleanup).
+- **Rate Limiting**: In-memory fixed-window limiter on POST `/api/auth/login` (`LOGIN_LIMITS` in `routes/auth.js`): per IP 10 per 15 minutes; per email address (lowercased) 1 per minute and 5 per hour. A request is only counted when every window allows it. Over a limit: HTTP 429 with `Retry-After`, `retry_after` (seconds) and a friendly `error` that says how long to wait; LoginView shows it as an info toast. The answer is the same whether or not the address has an account (accounts are created on `/verify`), so the form can't be used to find users. Limiter state is the `loginAttempts` Map (exported for test cleanup); it resets on restart.
+- **Client IP** (`getClientIp()` in `lib/helpers.js`): forwarding headers are only read from a trusted proxy (`TRUST_PROXY`: `true`, `false`, or auto = from private/loopback addresses). `X-Forwarded-For` is read from the right, skipping private addresses, because the leftmost entries are whatever the visitor sent. Values that aren't IPs are ignored. `CF-Connecting-IP` is only read with `TRUST_PROXY=true`.
 - **Google email must be verified**: the callback refuses a Google account whose `verified_email` is false, since emails decide account linking and update admins
 - **In-app updates**: no Docker socket anywhere; a click sends nothing but itself (an empty flag the updater never reads). Admin allowlist from env, recent sign-in, exact-origin check, audit log and admin emails. Trade-off: updated code lives in a volume the app can write (see Self-update above)
 
@@ -691,7 +701,7 @@ This document provides a comprehensive overview of all features, functionality, 
 - Session lifetime (`SESSION_LIFETIME`); sessions are stored in the SQLite `sessions` table
 - Debug mode, signup toggle (`DEBUG_MODE`, `SIGNUP_ENABLED`)
 - Google OAuth credentials (`GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`)
-- In-app updates (`UPDATE_ADMIN_EMAILS`, `UPDATE_REAUTH_MINUTES`, `UPDATE_REPO_URL`; `UPDATE_VAR_DIR` defaults to `./var`)
+- In-app updates (`UPDATE_ADMIN_EMAILS`, `UPDATE_REAUTH_MINUTES`, `UPDATE_REPO_URL`, `UPDATE_CHANNEL`; `UPDATE_VAR_DIR` defaults to `./var`)
 
 ### User Settings (stored in DB)
 
@@ -753,8 +763,8 @@ This document provides a comprehensive overview of all features, functionality, 
 | `tests/config.test.js`      | 1     | Public app config endpoint                                                                                                                                          |
 | `tests/security.test.js`    | 22    | Open redirect prevention, input validation (length + protocol), rate limiting, debug mode, session cookies, CORS, XSS                                               |
 | `tests/codeQuality.test.js` | 11    | Category delete orphans, category ownership validation, batch tag fetching, bulk delete (transaction + isolation + auth), short URL validation, category updated_at |
-| `tests/updates.test.js`     | 13    | Admin-only update endpoints, re-login window, Origin check, one at a time, result sync and emails, health check, status file parsing                                |
-| `tests/selfupdate.test.js`  | 10    | Self-updater with real git and fake npm: check, update, flag never read (links, pipes, folders), old flags, no matching request, failed build, auto-rollback, manual rollback, image vs release at start |
+| `tests/updates.test.js`     | 16    | Admin-only update endpoints, re-login window, Origin check, one at a time, result sync and emails, health check, status file parsing, release channel fields           |
+| `tests/selfupdate.test.js`  | 15    | Self-updater with real git and fake npm: check, update, flag never read (links, pipes, folders), old flags, no matching request, failed build, auto-rollback, manual rollback, image vs release at start, a merged PR counts once, releases channel (newest tag on main, no pre-releases or side-branch tags, ahead of the newest release) |
 | `tests/migrations.test.js`  | 14    | All 7 migrations run successfully, idempotency, per-migration schema checks, foreign key constraints, cascade behavior                                              |
 
 **Backend Total: 129 tests across 11 files**

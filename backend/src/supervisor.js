@@ -88,6 +88,7 @@ if (updatesOn) {
       imageCommit: config.gitCommit,
       repoUrl: config.updateRepoUrl,
       branch: config.updateBranch,
+      channel: config.updateChannel,
       dbPath: path.resolve(config.dbPath),
       controller,
     });

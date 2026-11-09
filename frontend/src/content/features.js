@@ -82,9 +82,19 @@ export const FEATURE_GROUPS = [
     features: [
       {
         icon: "mdi-toolbox-outline",
-        title: "Link tools",
-        text: "Make QR codes, encode and decode URLs, strip tracking parameters and inspect a link. All in your browser.",
+        title: "Shelf tools",
+        text: "Find links that no longer work, duplicates, and links without a category or tags, and fix them in one place.",
         front: true,
+      },
+      {
+        icon: "mdi-playlist-plus",
+        title: "Add many links at once",
+        text: "Paste a list, an email or your open tabs, and every new link in it is added to the category you pick.",
+      },
+      {
+        icon: "mdi-qrcode",
+        title: "QR codes and link inspector",
+        text: "Make a QR code for any address and save it as a picture. See what's inside a link and copy it without tracking.",
       },
       {
         icon: "mdi-swap-horizontal",
@@ -125,6 +135,10 @@ export const FAQ = [
     a: "Enter your email and we send you a sign-in link; there's no password. If the server has it set up, you can also sign in with Google.",
   },
   {
+    q: "I didn't get the sign-in email. Can I ask for another?",
+    a: "Look in your spam folder first. You can ask for a new link after a minute, and up to 5 times an hour for the same address; the sign-in page tells you how long to wait.",
+  },
+  {
     q: "Who can see my links?",
     a: "Only you. A link becomes visible to others only when you make it public, or share the category it's in.",
   },
@@ -154,7 +168,11 @@ export const FAQ = [
   },
   {
     q: "Do the tools send what I type anywhere?",
-    a: "No. QR codes, encoding, cleaning and inspecting links all happen in your browser. Nothing leaves it unless you save the link to your shelf.",
+    a: "No. QR codes, inspecting links, adding many links and finding duplicates all happen in your browser; only links you choose to add are saved. Check links is the one exception: your Hidden Shelf server visits each of your links to see if it still works. It doesn't visit addresses on your own network.",
+  },
+  {
+    q: "Why does Check links say it couldn't tell?",
+    a: "Some sites need you to sign in, or turn away automatic checks, so the server can't see the page. Open the link to see for yourself. Links on your own network (like 192.168.x.x or nas.lan) aren't checked at all.",
   },
   {
     q: "Are there keyboard shortcuts?",
@@ -162,7 +180,7 @@ export const FAQ = [
   },
   {
     q: "I run my own Hidden Shelf. Can I update it from the app?",
-    a: "Yes. List the admins in UPDATE_ADMIN_EMAILS (see the README) and they get an Admin page (open the menu behind your initials, top right, and pick Admin) with Server updates, with the new changes listed and Update and Roll back buttons. The server looks for new versions every hour, and Check for updates looks right away. The database is backed up before every update, and a version that doesn't start is undone by itself.",
+    a: "Yes. List the admins in UPDATE_ADMIN_EMAILS (see the README) and they get an Admin page (open the menu behind your initials, top right, and pick Admin) with Server updates, with the new changes listed and Update and Roll back buttons. By default it only offers versions published as a release on GitHub, so a merge never reaches your server by accident (UPDATE_CHANNEL=main offers every change instead). The server looks for new versions every hour, and Check for updates looks right away. The database is backed up before every update, and a version that doesn't start is undone by itself.",
   },
   {
     q: "Can I get my data out?",

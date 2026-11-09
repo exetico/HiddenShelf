@@ -34,33 +34,59 @@ const auth = new Hono();
 
 // ─── Rate limiter for login endpoint ─────────────────────────────
 
-const loginAttempts = new Map(); // ip or "email:<address>" → { count, resetAt }
-const RATE_LIMIT_WINDOW = 15 * 60 * 1000; // 15 minutes
-const RATE_LIMIT_MAX = 10; // max attempts per window
+// Fixed windows kept in memory (they reset when the server restarts).
+// "ip:<address>" stops one visitor trying many addresses; the
+// "email:<address>" ones stop many visitors flooding one inbox.
+const loginAttempts = new Map(); // key → { count, resetAt }
+const MINUTE = 60 * 1000;
+export const LOGIN_LIMITS = {
+  ip: [{ max: 10, window: 15 * MINUTE }],
+  email: [
+    { max: 1, window: MINUTE }, // one link at a time
+    { max: 5, window: 60 * MINUTE },
+  ],
+};
 
-function checkRateLimit(key) {
+/**
+ * Checks every window for a key and counts the request only if all allow
+ * it. Returns 0 when allowed, else the seconds until the next request is.
+ */
+function takeLoginAttempt(kind, value) {
   const now = Date.now();
-  const entry = loginAttempts.get(key);
+  let wait = 0;
+  const entries = LOGIN_LIMITS[kind].map(({ max, window }) => {
+    const key = `${kind}:${window}:${value}`;
+    let entry = loginAttempts.get(key);
+    if (!entry || entry.resetAt <= now) {
+      entry = { count: 0, resetAt: now + window };
+      loginAttempts.set(key, entry);
+    }
+    if (entry.count >= max) wait = Math.max(wait, entry.resetAt - now);
+    return entry;
+  });
+  if (wait) return Math.ceil(wait / 1000);
+  for (const entry of entries) entry.count++;
+  return 0;
+}
 
-  if (!entry || entry.resetAt < now) {
-    loginAttempts.set(key, { count: 1, resetAt: now + RATE_LIMIT_WINDOW });
-    return true; // allowed
-  }
+function waitText(seconds) {
+  if (seconds < 60) return `${seconds} ${seconds === 1 ? "second" : "seconds"}`;
+  const minutes = Math.ceil(seconds / 60);
+  return `${minutes} ${minutes === 1 ? "minute" : "minutes"}`;
+}
 
-  entry.count++;
-  if (entry.count > RATE_LIMIT_MAX) {
-    return false; // rate limited
-  }
-  return true;
+function tooManyRequests(c, seconds, message) {
+  c.header("Retry-After", String(seconds));
+  return c.json({ success: false, error: message, retry_after: seconds }, 429);
 }
 
 // Clean up rate limiter periodically
 setInterval(() => {
   const now = Date.now();
-  for (const [ip, entry] of loginAttempts) {
-    if (entry.resetAt < now) loginAttempts.delete(ip);
+  for (const [key, entry] of loginAttempts) {
+    if (entry.resetAt <= now) loginAttempts.delete(key);
   }
-}, 60_000);
+}, 60_000).unref?.();
 
 // ─── POST /login — request magic link ────────────────────────────
 
@@ -73,11 +99,12 @@ auth.post("/login", async (c) => {
   const rawRedirect = body.redirect_origin || null;
 
   // Rate limit by IP
-  const ip = getClientIp(c);
-  if (!checkRateLimit(ip)) {
-    return c.json(
-      { error: "Too many login attempts. Please try again later." },
-      429,
+  const ipWait = takeLoginAttempt("ip", getClientIp(c));
+  if (ipWait) {
+    return tooManyRequests(
+      c,
+      ipWait,
+      `That's a lot of sign-in requests from your network. Please try again in ${waitText(ipWait)}.`,
     );
   }
 
@@ -95,10 +122,13 @@ auth.post("/login", async (c) => {
   }
 
   // Also limit per address, so one inbox can't be flooded from many IPs
-  if (!checkRateLimit(`email:${email.toLowerCase()}`)) {
-    return c.json(
-      { error: "Too many login attempts. Please try again later." },
-      429,
+  // The same answer whether or not the address has an account
+  const emailWait = takeLoginAttempt("email", email.toLowerCase());
+  if (emailWait) {
+    return tooManyRequests(
+      c,
+      emailWait,
+      `A sign-in link was already sent to this address. Check your inbox and spam folder, or ask for a new one in ${waitText(emailWait)}.`,
     );
   }
 
@@ -178,10 +208,12 @@ auth.get("/verify", async (c) => {
   }
 
   // Set session
+  // Confirming who you are (admin updates) is not a new visit: no greeting
+  const sameUser = Number(c.session.get("user_id")) === Number(user.id);
   c.session.set("user_id", user.id);
   c.session.set("user_email", email);
   // The app greets once after login (read and cleared by /me)
-  c.session.set("welcome", isNewUser ? "new" : "back");
+  if (!sameUser) c.session.set("welcome", isNewUser ? "new" : "back");
   // When this sign-in happened; admin updates ask for a recent one
   c.session.set("login_at", Date.now());
   c.session.regenerate();
@@ -232,6 +264,11 @@ auth.get("/google", (c) => {
   if (rawRedirectOrigin && isAllowedRedirectOrigin(rawRedirectOrigin)) {
     c.session.set("oauth_redirect_origin", rawRedirectOrigin);
   }
+
+  // Where to land afterwards (checked by safeReturnTo when used), e.g.
+  // back on the Admin page after confirming who you are
+  const returnTo = c.req.query("return_to");
+  if (returnTo && returnTo.length <= MAX_LENGTHS.returnTo) c.session.set("return_to", returnTo);
 
   const state = generateToken(16);
   c.session.set("oauth2state", state);
@@ -338,9 +375,10 @@ auth.get("/google/callback", async (c) => {
     }
 
     // Set session
+    const sameUser = Number(c.session.get("user_id")) === Number(user.id);
     c.session.set("user_id", user.id);
     c.session.set("user_email", email);
-    c.session.set("welcome", isNewUser ? "new" : "back");
+    if (!sameUser) c.session.set("welcome", isNewUser ? "new" : "back");
     // When this sign-in happened; admin updates ask for a recent one
     c.session.set("login_at", Date.now());
     c.session.regenerate();

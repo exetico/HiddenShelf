@@ -43,5 +43,14 @@ export const linksApi = {
     request(`/api/links/restore?id=${id}`, { method: "POST" }),
   deleteForever: async (id) =>
     request(`/api/links?id=${id}&permanent=1`, { method: "DELETE" }),
+  // Asks each link's site if the page is still there (own links, at most
+  // 20 ids at a time): [{ id, url, status, code, reason, final_url }]
+  check: async (ids) => {
+    const response = await request("/api/links/check", {
+      method: "POST",
+      body: JSON.stringify({ ids }),
+    });
+    return response.results || [];
+  },
   emptyTrash: async () => request("/api/links/trash", { method: "DELETE" }),
 };

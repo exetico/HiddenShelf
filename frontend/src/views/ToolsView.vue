@@ -1,274 +1,211 @@
 <script setup>
-import { computed, ref } from "vue";
+import { computed } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import LinkQrCode from "@/components/links/LinkQrCode.vue";
-import { useLinkEditorStore } from "@/stores/linkEditor";
-import { useToastStore } from "@/stores/toast";
-import {
-  LONG_QR_URL,
-  TOOLS,
-  cleanTracking,
-  decodeText,
-  encodeText,
-  parseUrl,
-  toolQuery,
-  urlParts,
-} from "@/lib/urlTools";
+import CheckLinksTool from "@/components/tools/CheckLinksTool.vue";
+import DuplicatesTool from "@/components/tools/DuplicatesTool.vue";
+import TidyTool from "@/components/tools/TidyTool.vue";
+import AddManyTool from "@/components/tools/AddManyTool.vue";
+import QrTool from "@/components/tools/QrTool.vue";
+import InspectTool from "@/components/tools/InspectTool.vue";
+import { ACCENTS, TONES } from "@/components/tools/styles";
+import { useAppStore } from "@/stores/app";
+import { useLinkCheckStore } from "@/stores/linkCheck";
+import { TOOLS, TOOL_GROUPS, toolFor, toolQuery } from "@/lib/urlTools";
+import { findDuplicates, ownLinks, tidyReport } from "@/lib/shelfTools";
 
-// Small link tools. Everything runs in the browser; nothing typed here is
-// sent to the server unless you save it to your shelf.
+// The Tools page: an overview of every tool, and the open tool (?tool=).
+// Shelf tools work on your own links; the link tools run in your browser.
 const route = useRoute();
 const router = useRouter();
-const editor = useLinkEditorStore();
-const toast = useToastStore();
+const appStore = useAppStore();
+const linkCheck = useLinkCheckStore();
 
-// The open tool is in the address (?tool=), so the dashboard can link to it
-const active = computed(() =>
-  TOOLS.some((t) => t.key === route.query.tool) ? route.query.tool : TOOLS[0].key,
-);
-function pick(key) {
-  router.replace({ name: "tools", query: toolQuery(key) });
+const COMPONENTS = {
+  check: CheckLinksTool,
+  duplicates: DuplicatesTool,
+  tidy: TidyTool,
+  "add-many": AddManyTool,
+  qr: QrTool,
+  inspect: InspectTool,
+};
+
+const toolsIn = (group) => TOOLS.filter((t) => t.group === group);
+const active = computed(() => toolFor(route.query.tool));
+function open(key) {
+  router.push({ name: "tools", query: toolQuery(key) });
 }
 
-async function copy(text, message = "Copied") {
-  try {
-    await navigator.clipboard.writeText(text);
-    toast.success(message);
-  } catch {
-    toast.error("Couldn't copy to the clipboard");
+const WHERE = {
+  browser: { icon: "mdi-shield-lock-outline", text: "Runs in your browser" },
+  server: { icon: "mdi-server-network", text: "Your server visits each link" },
+};
+
+// What each shelf tool has found, for its card
+const insights = computed(() => {
+  if (!appStore.linksLoaded) return {};
+  const own = ownLinks(appStore.allLinks);
+  const dupes = findDuplicates(appStore.allLinks);
+  const report = tidyReport(appStore.allLinks);
+  const toTidy = new Set(Object.values(report).flat().map((l) => l.id)).size;
+  const plural = (n, word) => `${n} ${word}${n === 1 ? "" : "s"}`;
+
+  let check = { text: `${plural(own.length, "link")} to check`, tone: "quiet" };
+  if (linkCheck.running) check = { text: `Checking ${linkCheck.done} of ${linkCheck.total}…`, tone: "quiet" };
+  else if (linkCheck.checkedAt) {
+    const { broken, moved } = linkCheck.counts;
+    check =
+      broken || moved
+        ? { text: [broken && `${broken} broken`, moved && `${moved} moved`].filter(Boolean).join(" · "), tone: broken ? "bad" : "warn" }
+        : { text: "All links work", tone: "good" };
   }
-}
-
-// QR code
-const qrText = ref("");
-const qrValue = computed(() => {
-  const text = qrText.value.trim();
-  if (!text) return "";
-  return parseUrl(text)?.href || text;
+  return {
+    check,
+    duplicates: dupes.length
+      ? { text: `${plural(dupes.length, "page")} saved twice or more`, tone: "warn" }
+      : { text: "No duplicates", tone: "good" },
+    tidy: toTidy
+      ? { text: `${plural(toTidy, "link")} to look at`, tone: "warn" }
+      : { text: "All tidy", tone: "good" },
+  };
 });
-const qrIsLong = computed(() => qrValue.value.length > LONG_QR_URL && Boolean(parseUrl(qrValue.value)));
-function saveToShelf(url) {
-  editor.create({ url });
-}
-
-// Encode / decode
-const codeText = ref("");
-const codeMode = ref("component");
-const encoded = computed(() => encodeText(codeText.value, codeMode.value));
-const decoded = computed(() => {
-  try {
-    return { text: decodeText(codeText.value), error: "" };
-  } catch {
-    return { text: "", error: "This isn't valid percent-encoding (a % must be followed by two hex digits)." };
-  }
-});
-
-// Clean link
-const cleanText = ref("");
-const cleaned = computed(() => (cleanText.value.trim() ? cleanTracking(cleanText.value) : null));
-
-// Inspect link
-const inspectText = ref("");
-const parts = computed(() => (inspectText.value.trim() ? urlParts(inspectText.value) : null));
-
-const INPUT =
-  "w-full px-3 py-2 rounded-md border border-gray-300 dark:border-brand-700 bg-white dark:bg-brand-800 text-gray-900 dark:text-white";
-const OUTLINE =
-  "inline-flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-md border border-gray-300 dark:border-brand-700 text-gray-800 dark:text-brand-100 hover:bg-gray-50 dark:hover:bg-brand-800";
 </script>
 
 <template>
-  <section class="space-y-4" data-testid="tools-page">
-    <header>
-      <h1 class="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">Tools</h1>
-      <p class="text-sm text-gray-500 dark:text-brand-400">
-        Small helpers for links. They run in your browser; nothing is sent
-        anywhere unless you save it to your shelf.
-      </p>
-    </header>
-
-    <!-- Scrolls sideways on narrow phones instead of wrapping -->
-    <div
-      class="flex gap-1 overflow-x-auto -mx-1 px-1 pb-1"
-      role="tablist"
-      aria-label="Tools"
-    >
-      <button
-        v-for="tool in TOOLS"
-        :key="tool.key"
-        role="tab"
-        :aria-selected="active === tool.key"
-        :title="tool.hint"
-        class="flex items-center gap-1.5 whitespace-nowrap px-3 py-1.5 text-sm rounded-md border transition-colors"
-        :class="
-          active === tool.key
-            ? 'bg-brand-600 border-brand-600 text-white'
-            : 'border-gray-300 dark:border-brand-700 text-gray-800 dark:text-brand-100 hover:bg-white dark:hover:bg-brand-800'
-        "
-        :data-testid="`tool-tab-${tool.key}`"
-        @click="pick(tool.key)"
+  <section class="space-y-5" data-testid="tools-page">
+    <!-- Overview -->
+    <template v-if="!active">
+      <header
+        class="relative overflow-hidden rounded-xl border border-gray-200 dark:border-brand-800 bg-white dark:bg-brand-900 bg-linear-to-br from-transparent from-40% to-brand-500/15 p-5 sm:p-6"
       >
-        <i class="mdi" :class="tool.icon" aria-hidden="true"></i>
-        {{ tool.label }}
-      </button>
-    </div>
+        <i
+          class="mdi mdi-toolbox-outline pointer-events-none absolute -right-4 -bottom-8 text-[9rem] leading-none text-brand-500 opacity-15 dark:opacity-20 -rotate-12"
+          aria-hidden="true"
+        ></i>
+        <h1 class="relative text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">Tools</h1>
+        <p class="relative mt-1 max-w-xl text-sm sm:text-base text-gray-600 dark:text-brand-300">
+          Keep your shelf in shape and get more out of a link. Find broken
+          links and duplicates, tidy up, add a pile of links at once, or make
+          a QR code.
+        </p>
+      </header>
 
-    <article
-      class="bg-white dark:bg-brand-900 rounded-lg border border-gray-200 dark:border-brand-800 p-4 sm:p-5 space-y-3"
-      role="tabpanel"
-      :data-testid="`tool-${active}`"
-    >
-      <!-- QR code -->
-      <template v-if="active === 'qr'">
-        <label class="block text-sm font-medium" for="qr-text">Address or text</label>
-        <input
-          id="qr-text"
-          v-model="qrText"
-          :class="INPUT"
-          placeholder="https://example.com"
-          autocomplete="off"
-          data-testid="qr-input"
-        />
-        <LinkQrCode
-          v-if="qrValue"
-          :url="qrValue"
-          name="qr"
-          hint="Scan it with a phone camera."
-        />
-        <div
-          v-if="qrIsLong"
-          class="flex flex-wrap items-center gap-2 rounded-md bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-800 p-3 text-sm text-amber-900 dark:text-amber-100"
-          data-testid="qr-long-hint"
-        >
-          <i class="mdi mdi-lightbulb-on-outline" aria-hidden="true"></i>
-          <p class="flex-1 min-w-[12rem]">
-            Long addresses make dense codes that are harder to scan. Save it to
-            your shelf, then use "Public link" on it for a short address and a
-            simpler code.
-          </p>
+      <div v-for="group in TOOL_GROUPS" :key="group.key" class="space-y-2">
+        <h2 class="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-brand-400">
+          {{ group.label }}
+        </h2>
+        <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           <button
+            v-for="tool in toolsIn(group.key)"
+            :key="tool.key"
             type="button"
-            :class="OUTLINE"
-            title="Add this address to your shelf"
-            data-testid="qr-save"
-            @click="saveToShelf(qrValue)"
+            class="group relative overflow-hidden text-left rounded-xl border border-gray-200 dark:border-brand-800 bg-white dark:bg-brand-900 bg-linear-to-br from-transparent from-50% p-4 transition-all hover:-translate-y-0.5 hover:shadow-md hover:border-brand-400 dark:hover:border-brand-600 focus-visible:outline-2 focus-visible:outline-brand-500"
+            :class="ACCENTS[tool.accent].glow"
+            :title="tool.hint"
+            :data-testid="`tool-card-${tool.key}`"
+            @click="open(tool.key)"
           >
-            <i class="mdi mdi-plus" aria-hidden="true"></i> Add link
+            <i
+              class="mdi pointer-events-none absolute -right-3 -bottom-5 text-7xl leading-none opacity-10 dark:opacity-15 -rotate-12 transition-transform duration-300 group-hover:-rotate-6"
+              :class="[tool.icon, ACCENTS[tool.accent].art]"
+              aria-hidden="true"
+            ></i>
+            <span class="relative flex items-start gap-3">
+              <span class="grid place-items-center shrink-0 w-10 h-10 rounded-lg text-xl" :class="ACCENTS[tool.accent].tile">
+                <i class="mdi" :class="tool.icon" aria-hidden="true"></i>
+              </span>
+              <span class="min-w-0">
+                <span class="block font-semibold text-gray-900 dark:text-white">{{ tool.label }}</span>
+                <span class="block text-sm text-gray-600 dark:text-brand-300">{{ tool.hint }}.</span>
+              </span>
+            </span>
+            <span class="relative mt-3 flex flex-wrap items-center gap-2 text-xs">
+              <span
+                v-if="insights[tool.key]"
+                class="px-2 py-0.5 rounded-full font-medium"
+                :class="TONES[insights[tool.key].tone]"
+                :data-testid="`tool-insight-${tool.key}`"
+              >
+                {{ insights[tool.key].text }}
+              </span>
+              <span v-else class="text-gray-500 dark:text-brand-400">
+                <i class="mdi" :class="WHERE[tool.where].icon" aria-hidden="true"></i>
+                {{ WHERE[tool.where].text }}
+              </span>
+            </span>
           </button>
         </div>
-      </template>
+      </div>
+    </template>
 
-      <!-- Encode / decode -->
-      <template v-else-if="active === 'encode'">
-        <label class="block text-sm font-medium" for="code-text">Text</label>
-        <textarea
-          id="code-text"
-          v-model="codeText"
-          rows="3"
-          :class="INPUT"
-          placeholder="Paste text or an address"
-          data-testid="code-input"
-        ></textarea>
-        <fieldset class="flex flex-wrap gap-4 text-sm">
-          <legend class="sr-only">How much to encode</legend>
-          <label class="flex items-center gap-1.5" title="Encode everything, for one query value">
-            <input v-model="codeMode" type="radio" value="component" /> A query value
-          </label>
-          <label class="flex items-center gap-1.5" title="Keep : / ? # & = so it stays a working address">
-            <input v-model="codeMode" type="radio" value="url" data-testid="code-mode-url" /> A whole address
-          </label>
-        </fieldset>
-        <div class="grid gap-3 sm:grid-cols-2">
-          <div class="space-y-1">
-            <div class="flex items-center justify-between">
-              <h2 class="text-sm font-medium">Encoded</h2>
-              <button type="button" class="text-sm text-brand-600 dark:text-brand-300" title="Copy the encoded text" :disabled="!codeText" @click="copy(encoded)">
-                <i class="mdi mdi-content-copy" aria-hidden="true"></i> Copy
-              </button>
-            </div>
-            <output class="block min-h-10 break-all font-mono text-sm rounded-md bg-gray-50 dark:bg-brand-800 p-2" data-testid="code-encoded">{{ encoded }}</output>
-          </div>
-          <div class="space-y-1">
-            <div class="flex items-center justify-between">
-              <h2 class="text-sm font-medium">Decoded</h2>
-              <button type="button" class="text-sm text-brand-600 dark:text-brand-300" title="Copy the decoded text" :disabled="!decoded.text" @click="copy(decoded.text)">
-                <i class="mdi mdi-content-copy" aria-hidden="true"></i> Copy
-              </button>
-            </div>
-            <output v-if="!decoded.error" class="block min-h-10 break-all font-mono text-sm rounded-md bg-gray-50 dark:bg-brand-800 p-2" data-testid="code-decoded">{{ decoded.text }}</output>
-            <p v-else class="text-sm text-red-600 dark:text-red-400" data-testid="code-error">{{ decoded.error }}</p>
-          </div>
+    <!-- One tool -->
+    <template v-else>
+      <nav class="flex items-center gap-2 -mb-1" aria-label="Tools">
+        <button
+          type="button"
+          class="inline-flex items-center gap-1 text-sm text-gray-600 dark:text-brand-300 hover:text-gray-900 dark:hover:text-white"
+          title="Back to all tools"
+          data-testid="tools-back"
+          @click="open('')"
+        >
+          <i class="mdi mdi-arrow-left" aria-hidden="true"></i> All tools
+        </button>
+        <!-- Jump straight to another tool; scrolls sideways on phones -->
+        <div class="ml-auto flex gap-1 overflow-x-auto" role="tablist" aria-label="Switch tool">
+          <button
+            v-for="tool in TOOLS"
+            :key="tool.key"
+            type="button"
+            role="tab"
+            :aria-selected="active.key === tool.key"
+            :title="tool.label"
+            class="grid place-items-center shrink-0 w-8 h-8 rounded-md text-lg transition-colors"
+            :class="
+              active.key === tool.key
+                ? ACCENTS[tool.accent].tile
+                : 'text-gray-500 dark:text-brand-400 hover:bg-gray-100 dark:hover:bg-brand-800'
+            "
+            :data-testid="`tool-tab-${tool.key}`"
+            @click="open(tool.key)"
+          >
+            <i class="mdi" :class="tool.icon" aria-hidden="true"></i>
+            <span class="sr-only">{{ tool.label }}</span>
+          </button>
         </div>
-      </template>
+      </nav>
 
-      <!-- Clean link -->
-      <template v-else-if="active === 'clean'">
-        <label class="block text-sm font-medium" for="clean-text">Address</label>
-        <input
-          id="clean-text"
-          v-model="cleanText"
-          :class="INPUT"
-          placeholder="https://example.com/?utm_source=newsletter"
-          autocomplete="off"
-          data-testid="clean-input"
-        />
-        <p v-if="cleanText.trim() && !cleaned" class="text-sm text-red-600 dark:text-red-400">
-          That doesn't look like a web address.
-        </p>
-        <template v-else-if="cleaned">
-          <output class="block break-all font-mono text-sm rounded-md bg-gray-50 dark:bg-brand-800 p-2" data-testid="clean-output">{{ cleaned.url }}</output>
-          <p class="text-sm text-gray-600 dark:text-brand-300" data-testid="clean-removed">
-            {{
-              cleaned.removed.length
-                ? `Removed ${cleaned.removed.join(", ")}.`
-                : "No tracking found; the address is unchanged."
-            }}
-          </p>
-          <div class="flex flex-wrap gap-2">
-            <button type="button" :class="OUTLINE" title="Copy the clean address" @click="copy(cleaned.url)">
-              <i class="mdi mdi-content-copy" aria-hidden="true"></i> Copy
-            </button>
-            <button type="button" :class="OUTLINE" title="Add the clean address to your shelf" data-testid="clean-save" @click="saveToShelf(cleaned.url)">
-              <i class="mdi mdi-plus" aria-hidden="true"></i> Add link
-            </button>
+      <article
+        class="bg-white dark:bg-brand-900 rounded-xl border border-gray-200 dark:border-brand-800 overflow-hidden"
+        role="tabpanel"
+        :data-testid="`tool-${active.key}`"
+      >
+        <header
+          class="flex items-start gap-3 sm:gap-4 p-4 sm:p-5 border-b border-gray-100 dark:border-brand-800 bg-white dark:bg-brand-900 bg-linear-to-br from-transparent from-50%"
+          :class="ACCENTS[active.accent].glow"
+        >
+          <span class="grid place-items-center shrink-0 w-11 h-11 sm:w-12 sm:h-12 rounded-xl text-2xl" :class="ACCENTS[active.accent].tile">
+            <i class="mdi" :class="active.icon" aria-hidden="true"></i>
+          </span>
+          <div class="min-w-0">
+            <h1 class="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">{{ active.label }}</h1>
+            <p class="mt-0.5 text-sm text-gray-600 dark:text-brand-300 max-w-2xl" data-testid="tool-description">
+              {{ active.description }}
+            </p>
+            <p class="mt-1.5 text-xs text-gray-500 dark:text-brand-400">
+              <i class="mdi" :class="WHERE[active.where].icon" aria-hidden="true"></i>
+              {{
+                active.where === "server"
+                  ? "Your Hidden Shelf server visits each link to see if it still works. Only your own links are checked, and nothing is shared."
+                  : "Runs in your browser. Nothing you type here is sent anywhere unless you save it to your shelf."
+              }}
+            </p>
           </div>
-        </template>
-      </template>
-
-      <!-- Inspect link -->
-      <template v-else>
-        <label class="block text-sm font-medium" for="inspect-text">Address</label>
-        <input
-          id="inspect-text"
-          v-model="inspectText"
-          :class="INPUT"
-          placeholder="https://example.com/path?q=search"
-          autocomplete="off"
-          data-testid="inspect-input"
-        />
-        <p v-if="inspectText.trim() && !parts" class="text-sm text-red-600 dark:text-red-400">
-          That doesn't look like a web address.
-        </p>
-        <dl v-else-if="parts" class="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm" data-testid="inspect-parts">
-          <dt class="text-gray-500 dark:text-brand-400">Protocol</dt><dd class="font-mono break-all">{{ parts.protocol }}</dd>
-          <dt class="text-gray-500 dark:text-brand-400">Host</dt><dd class="font-mono break-all">{{ parts.host }}</dd>
-          <template v-if="parts.port"><dt class="text-gray-500 dark:text-brand-400">Port</dt><dd class="font-mono">{{ parts.port }}</dd></template>
-          <dt class="text-gray-500 dark:text-brand-400">Path</dt><dd class="font-mono break-all">{{ parts.path }}</dd>
-          <template v-if="parts.hash"><dt class="text-gray-500 dark:text-brand-400">Fragment</dt><dd class="font-mono break-all">{{ parts.hash }}</dd></template>
-        </dl>
-        <table v-if="parts?.params.length" class="w-full text-sm" data-testid="inspect-params">
-          <caption class="text-left font-medium pb-1">Query parameters</caption>
-          <tbody>
-            <tr v-for="(param, i) in parts.params" :key="i" class="border-t border-gray-100 dark:border-brand-800">
-              <th scope="row" class="py-1 pr-3 text-left font-mono font-normal align-top break-all">
-                {{ param.name }}
-                <span v-if="param.tracking" class="ml-1 text-xs text-amber-700 dark:text-amber-300">tracking</span>
-              </th>
-              <td class="py-1 font-mono break-all">{{ param.value }}</td>
-            </tr>
-          </tbody>
-        </table>
-      </template>
-    </article>
+        </header>
+        <div class="p-4 sm:p-5">
+          <KeepAlive>
+            <component :is="COMPONENTS[active.key]" :key="active.key" />
+          </KeepAlive>
+        </div>
+      </article>
+    </template>
   </section>
 </template>

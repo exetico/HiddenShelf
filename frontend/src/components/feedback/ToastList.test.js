@@ -27,31 +27,34 @@ describe("ToastList", () => {
     expect(wrapper.text()).toContain("Hello");
   });
 
-  it("applies correct class for success type", () => {
+  it("shows the status icon for success type", () => {
     const store = useToastStore();
     store.success("OK");
 
     const wrapper = mountToastList();
-    const toast = wrapper.find(".bg-green-600");
+    const toast = wrapper.find('[data-type="success"]');
     expect(toast.exists()).toBe(true);
+    expect(toast.find("i.mdi-check-circle").exists()).toBe(true);
   });
 
-  it("applies correct class for error type", () => {
+  it("shows the status icon for error type", () => {
     const store = useToastStore();
     store.error("Bad");
 
     const wrapper = mountToastList();
-    const toast = wrapper.find(".bg-red-600");
+    const toast = wrapper.find('[data-type="error"]');
     expect(toast.exists()).toBe(true);
+    expect(toast.find("i.mdi-alert-circle").exists()).toBe(true);
   });
 
-  it("applies correct class for info type", () => {
+  it("shows the status icon for info type", () => {
     const store = useToastStore();
     store.info("Note");
 
     const wrapper = mountToastList();
-    const toast = wrapper.find(".bg-blue-600");
+    const toast = wrapper.find('[data-type="info"]');
     expect(toast.exists()).toBe(true);
+    expect(toast.find("i.mdi-information").exists()).toBe(true);
   });
 
   it("renders progress bar with correct animation duration", () => {
@@ -69,7 +72,7 @@ describe("ToastList", () => {
     store.success("Click me");
 
     const wrapper = mountToastList();
-    await wrapper.find(".cursor-pointer").trigger("click");
+    await wrapper.find(".toast").trigger("click");
     expect(store.items).toHaveLength(0);
   });
 
@@ -106,5 +109,37 @@ describe("ToastList", () => {
     expect(store.items).toHaveLength(1);
     vi.advanceTimersByTime(2000);
     expect(store.items).toHaveLength(0);
+  });
+
+  it("uses the theme surface instead of a solid status color", () => {
+    const store = useToastStore();
+    store.error("Bad");
+    const toast = mountToastList().find(".toast");
+    expect(toast.classes()).toContain("bg-white/95");
+    expect(toast.classes()).toContain("dark:bg-brand-900/95");
+    expect(toast.classes().some((c) => /^bg-(red|green|blue)-/.test(c))).toBe(false);
+  });
+
+  it("announces errors as alerts and the rest as status", () => {
+    const store = useToastStore();
+    store.error("Bad");
+    store.success("Good");
+    const wrapper = mountToastList();
+    expect(wrapper.find('[data-type="error"]').attributes("role")).toBe("alert");
+    expect(wrapper.find('[data-type="success"]').attributes("role")).toBe("status");
+  });
+
+  it("closes with the dismiss button", async () => {
+    const store = useToastStore();
+    store.info("Note");
+    const wrapper = mountToastList();
+    await wrapper.find('button[title="Dismiss"]').trigger("click");
+    expect(store.items).toHaveLength(0);
+  });
+
+  it("sits at the bottom of the screen", () => {
+    const classes = mountToastList().find("div.fixed").classes();
+    expect(classes.some((c) => c.startsWith("bottom-"))).toBe(true);
+    expect(classes.some((c) => c.startsWith("top-"))).toBe(false);
   });
 });
