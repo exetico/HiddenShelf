@@ -127,3 +127,7 @@ html.dark body {
   content-visibility: auto;
   contain-intrinsic-size: auto 7rem;
 }
+.shelf-row {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 2.5rem;
+}

@@ -8,6 +8,7 @@ import { shownCount } from "@/lib/linkCount";
 import { useToastStore } from "@/stores/toast";
 import { useLinkEditorStore } from "@/stores/linkEditor";
 import LinkCardEdit from "@/components/links/LinkCardEdit.vue";
+import LinkRowEdit from "@/components/links/LinkRowEdit.vue";
 import CategoryManager from "@/components/categories/CategoryManager.vue";
 import TagManager from "@/components/tags/TagManager.vue";
 import TrashModal from "@/components/links/TrashModal.vue";
@@ -30,6 +31,30 @@ const toastStore = useToastStore();
 // The bar's secondary buttons: no fill, a visible border
 const OUTLINE =
   "flex items-center gap-1.5 whitespace-nowrap px-3 py-1.5 sm:px-4 sm:py-2 text-sm sm:text-base rounded-md border border-gray-300 dark:border-brand-700 text-gray-800 dark:text-brand-100 hover:bg-white dark:hover:bg-brand-800";
+
+// Cards or a compact list. Remembered in this browser only; a missing
+// or unknown value means cards.
+const LAYOUT_KEY = "hiddenshelf_edit_layout";
+function readLayout() {
+  try {
+    return localStorage.getItem(LAYOUT_KEY) === "list" ? "list" : "cards";
+  } catch {
+    return "cards";
+  }
+}
+const layout = ref(readLayout());
+function setLayout(value) {
+  layout.value = value;
+  try {
+    localStorage.setItem(LAYOUT_KEY, value);
+  } catch {
+    // private mode: the choice lasts until the page closes
+  }
+}
+const LAYOUTS = [
+  { value: "cards", icon: "mdi-view-grid-outline", label: "Cards", title: "Show the links as cards" },
+  { value: "list", icon: "mdi-view-list-outline", label: "List", title: "Show the links as a compact list" },
+];
 
 const showCategoryModal = ref(false);
 const showTagModal = ref(false);
@@ -235,11 +260,54 @@ async function handleDelete(id) {
       >
         {{ shownCount(appStore.links.length, appStore.total, filtering) }}
       </p>
-      <SortSelect />
+      <div class="flex items-center gap-2">
+        <div
+          class="inline-flex rounded-md border border-gray-300 dark:border-brand-700 bg-white dark:bg-brand-900 p-px"
+          role="group"
+          aria-label="Layout"
+          data-testid="layout-toggle"
+        >
+          <button
+            v-for="option in LAYOUTS"
+            :key="option.value"
+            type="button"
+            class="inline-flex items-center justify-center w-7 h-[1.625rem] sm:h-7 rounded text-base leading-none"
+            :class="
+              layout === option.value
+                ? 'bg-brand-600 text-white'
+                : 'text-gray-500 hover:bg-gray-100 dark:text-brand-300 dark:hover:bg-brand-800'
+            "
+            :title="option.title"
+            :aria-label="option.label"
+            :aria-pressed="layout === option.value"
+            :data-testid="`layout-${option.value}`"
+            @click="setLayout(option.value)"
+          >
+            <i class="mdi" :class="option.icon" aria-hidden="true"></i>
+          </button>
+        </div>
+        <SortSelect />
+      </div>
     </div>
 
+    <!-- Compact list: one tight row per link, same actions as the cards -->
+    <ul
+      v-if="appStore.links.length && layout === 'list'"
+      class="bg-white dark:bg-brand-900 border border-gray-200 dark:border-brand-800 rounded-lg divide-y divide-gray-100 dark:divide-brand-800 overflow-hidden"
+      data-testid="link-list"
+    >
+      <LinkRowEdit
+        v-for="link in appStore.links"
+        :key="link.id"
+        class="shelf-row"
+        :link="link"
+        @edit="openEdit"
+        @delete="handleDelete"
+      />
+    </ul>
+
     <div
-      v-if="appStore.links.length"
+      v-else-if="appStore.links.length"
       class="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2 lg:grid-cols-3"
       data-testid="link-grid"
     >

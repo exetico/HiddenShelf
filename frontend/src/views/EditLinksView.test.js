@@ -15,6 +15,14 @@ vi.mock("@/components/links/LinkCardEdit.vue", () => ({
     emits: ["edit", "delete"],
   },
 }));
+vi.mock("@/components/links/LinkRowEdit.vue", () => ({
+  default: {
+    name: "LinkRowEdit",
+    template: '<li class="link-row">{{ link.title }}</li>',
+    props: ["link"],
+    emits: ["edit", "delete"],
+  },
+}));
 vi.mock("@/components/links/LinkFormModal.vue", () => ({
   default: {
     name: "LinkFormModal",
@@ -314,5 +322,53 @@ describe("EditLinksView", () => {
     expect(trash).toEqual(expect.arrayContaining([...tags, "ml-auto"]));
     expect(tags).toContain("border");
     expect(tags.some((c) => c.startsWith("bg-"))).toBe(false);
+  });
+
+  describe("cards or list", () => {
+    beforeEach(() => localStorage.clear());
+
+    it("shows cards by default, with Cards pressed", () => {
+      const wrapper = mountEdit();
+      expect(wrapper.findAll(".link-card")).toHaveLength(3);
+      expect(wrapper.find('[data-testid="link-list"]').exists()).toBe(false);
+      expect(wrapper.find('[data-testid="layout-cards"]').attributes("aria-pressed")).toBe("true");
+      expect(wrapper.find('[data-testid="layout-list"]').attributes("aria-pressed")).toBe("false");
+    });
+
+    it("switches to a compact list with the same links and actions, and remembers it", async () => {
+      const wrapper = mountEdit();
+      await wrapper.find('[data-testid="layout-list"]').trigger("click");
+      expect(wrapper.find('[data-testid="link-grid"]').exists()).toBe(false);
+      const rows = wrapper.findAll(".link-row");
+      expect(rows.map((r) => r.text())).toEqual(["Alpha", "Beta", "Gamma"]);
+      expect(localStorage.getItem("hiddenshelf_edit_layout")).toBe("list");
+
+      // Rows open the same editor and trash as the cards
+      const editor = useLinkEditorStore();
+      const openSpy = vi.spyOn(editor, "open").mockImplementation(() => {});
+      const appStore = useAppStore();
+      appStore.trashLink = vi.fn().mockResolvedValue();
+      const row = wrapper.findAllComponents({ name: "LinkRowEdit" })[1];
+      row.vm.$emit("edit", appStore.allLinks[1]);
+      row.vm.$emit("delete", 2);
+      await flushPromises();
+      expect(openSpy).toHaveBeenCalledWith(appStore.allLinks[1]);
+      expect(appStore.trashLink).toHaveBeenCalledWith(appStore.allLinks[1]);
+
+      // Opening the page again keeps the list
+      expect(mountEdit().find('[data-testid="link-list"]').exists()).toBe(true);
+    });
+
+    it("falls back to cards for an unknown saved value", () => {
+      localStorage.setItem("hiddenshelf_edit_layout", "tiles");
+      expect(mountEdit().find('[data-testid="link-grid"]').exists()).toBe(true);
+    });
+
+    it("keeps the switch out of the toolbar, beside the sort", () => {
+      const wrapper = mountEdit();
+      expect(wrapper.find('[data-testid="edit-toolbar"] [data-testid="layout-toggle"]').exists()).toBe(false);
+      const toggle = wrapper.find('[data-testid="layout-toggle"]');
+      expect(toggle.element.parentElement.querySelector('[data-testid="sort-select"]')).not.toBeNull();
+    });
   });
 });
