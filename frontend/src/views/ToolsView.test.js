@@ -4,9 +4,10 @@ import { createPinia, setActivePinia } from "pinia";
 import { reactive } from "vue";
 import { useAppStore } from "@/stores/app";
 import { useDialogStore } from "@/stores/dialog";
-import { useLinkCheckStore } from "@/stores/linkCheck";
 import { useLinkEditorStore } from "@/stores/linkEditor";
 import { linksApi } from "@/services/api/linksApi";
+import { categoriesApi } from "@/services/api/categoriesApi";
+import * as download from "@/lib/download";
 import ToolsView from "@/views/ToolsView.vue";
 
 const mockRoute = reactive({ name: "tools", query: {} });
@@ -20,9 +21,12 @@ vi.mock("vue-router", () => ({
 vi.mock("qrcode", () => ({
   default: { toDataURL: vi.fn().mockResolvedValue("data:image/png;base64,AA") },
 }));
+vi.mock("@/services/api/categoriesApi", () => ({
+  categoriesApi: { create: vi.fn(async ({ name }) => ({ id: name === "Recipes" ? 50 : 51, name })) },
+}));
+vi.mock("@/lib/download", () => ({ downloadText: vi.fn() }));
 vi.mock("@/services/api/linksApi", () => ({
   linksApi: {
-    check: vi.fn(),
     create: vi.fn().mockResolvedValue({}),
     update: vi.fn().mockResolvedValue({}),
     remove: vi.fn().mockResolvedValue({}),
@@ -66,14 +70,16 @@ describe("ToolsView", () => {
       const wrapper = mountTools();
       const cards = wrapper.findAll('[data-testid^="tool-card-"]');
       expect(cards.map((c) => c.attributes("data-testid").replace("tool-card-", ""))).toEqual([
-        "check",
         "duplicates",
         "tidy",
         "add-many",
+        "bookmarks",
+        "share-list",
         "qr",
         "inspect",
       ]);
       expect(wrapper.text()).toContain("Look after your shelf");
+      expect(wrapper.text()).toContain("Bring links in, send them out");
       expect(wrapper.text()).toContain("Work with a link");
       await wrapper.find('[data-testid="tool-card-tidy"]').trigger("click");
       expect(mockPush).toHaveBeenCalledWith({ name: "tools", query: { tool: "tidy" } });
@@ -89,19 +95,12 @@ describe("ToolsView", () => {
       const wrapper = mountTools();
       expect(wrapper.find('[data-testid="tool-insight-duplicates"]').text()).toBe("1 page saved twice or more");
       expect(wrapper.find('[data-testid="tool-insight-tidy"]').text()).toBe("1 link to look at");
-      expect(wrapper.find('[data-testid="tool-insight-check"]').text()).toBe("3 links to check");
-
-      const check = useLinkCheckStore();
-      check.checkedAt = Date.now();
-      check.results = { 1: { id: 1, status: "broken" } };
-      await flushPromises();
-      expect(wrapper.find('[data-testid="tool-insight-check"]').text()).toBe("1 broken");
     });
 
     it("sends old tool addresses to the tool they were merged into", () => {
       mockRoute.query = { tool: "clean" };
       expect(mountTools().find('[data-testid="tool-inspect"]').exists()).toBe(true);
-      mockRoute.query = { tool: "nope" };
+      mockRoute.query = { tool: "check" }; // removed tool
       expect(mountTools().find('[data-testid="tool-card-qr"]').exists()).toBe(true);
     });
   });
@@ -112,49 +111,6 @@ describe("ToolsView", () => {
     expect(wrapper.find('[data-testid="tool-description"]').text()).toMatch(/same page/);
     await wrapper.find('[data-testid="tools-back"]').trigger("click");
     expect(mockPush).toHaveBeenCalledWith({ name: "tools", query: {} });
-  });
-
-  describe("Check links", () => {
-    it("checks your own links in batches and lists broken and moved ones", async () => {
-      appStore.allLinks = [
-        ...Array.from({ length: 21 }, (_, i) => link(i + 1, `https://site${i + 1}.dk/`)),
-        link(99, "https://shared.dk/", { is_from_shared_category: 1 }),
-      ];
-      linksApi.check.mockImplementation(async (ids) =>
-        ids.map((id) => ({
-          id,
-          status: id === 1 ? "broken" : id === 2 ? "moved" : "ok",
-          reason: id === 1 ? "The page is gone (404)" : "",
-          final_url: id === 2 ? "https://new.dk/" : null,
-        })),
-      );
-      mockRoute.query = { tool: "check" };
-      const wrapper = mountTools();
-      await wrapper.find('[data-testid="check-start"]').trigger("click");
-      await flushPromises();
-
-      expect(linksApi.check).toHaveBeenCalledTimes(2);
-      expect(linksApi.check.mock.calls[0][0]).toHaveLength(20);
-      expect(linksApi.check.mock.calls.flat(2)).not.toContain(99);
-      expect(wrapper.find('[data-testid="check-broken"]').text()).toContain("The page is gone (404)");
-      expect(wrapper.find('[data-testid="check-moved"]').text()).toContain("Now at https://new.dk/");
-
-      appStore.updateLink = vi.fn().mockResolvedValue();
-      await wrapper.find('[data-testid="check-use-new"]').trigger("click");
-      await flushPromises();
-      expect(appStore.updateLink).toHaveBeenCalledWith(2, { url: "https://new.dk/" });
-      expect(wrapper.find('[data-testid="check-moved"]').exists()).toBe(false);
-    });
-
-    it("shows the server's message when checking stops", async () => {
-      appStore.allLinks = [link(1, "https://a.dk")];
-      linksApi.check.mockRejectedValue(new Error("Try again in 5 minutes."));
-      mockRoute.query = { tool: "check" };
-      const wrapper = mountTools();
-      await wrapper.find('[data-testid="check-start"]').trigger("click");
-      await flushPromises();
-      expect(wrapper.find('[data-testid="check-error"]').text()).toBe("Try again in 5 minutes.");
-    });
   });
 
   describe("Duplicates", () => {
@@ -296,12 +252,114 @@ describe("ToolsView", () => {
     });
   });
 
+  it("has no row of tool icons over an open tool, only the way back", () => {
+    mockRoute.query = { tool: "qr" };
+    const wrapper = mountTools();
+    expect(wrapper.find('[data-testid^="tool-tab-"]').exists()).toBe(false);
+    expect(wrapper.find('[data-testid="tools-back"]').exists()).toBe(true);
+  });
+
+  describe("Browser bookmarks", () => {
+    const FILE = `<!DOCTYPE NETSCAPE-Bookmark-file-1>
+<DL><p>
+  <DT><H3 PERSONAL_TOOLBAR_FOLDER="true">Bookmarks bar</H3>
+  <DL><p>
+    <DT><A HREF="https://have.dk/">Have it</A>
+    <DT><H3>Recipes</H3>
+    <DL><p>
+      <DT><A HREF="https://food.dk/soup" TAGS="dinner">Soup</A>
+    </DL><p>
+    <DT><H3>work</H3>
+    <DL><p>
+      <DT><A HREF="https://jira.dk/">Jira</A>
+    </DL><p>
+    <DT><A HREF="javascript:alert(1)">Bookmarklet</A>
+  </DL><p>
+</DL><p>`;
+
+    async function choose(wrapper, text) {
+      const input = wrapper.find('[data-testid="bookmarks-file"]');
+      Object.defineProperty(input.element, "files", { value: [{ name: "bookmarks.html", text: async () => text }], configurable: true });
+      await input.trigger("change");
+      await flushPromises();
+    }
+
+    it("imports new links, with folders as categories", async () => {
+      appStore.allLinks = [link(1, "https://have.dk")];
+      appStore.categories = [{ id: 7, name: "Work" }];
+      appStore.loadCategories = vi.fn().mockResolvedValue();
+      mockRoute.query = { tool: "bookmarks" };
+      const wrapper = mountTools();
+      await choose(wrapper, FILE);
+      expect(wrapper.find('[data-testid="bookmarks-summary"]').text()).toMatch(/2 new\s*1 already/);
+      expect(wrapper.find('[data-testid="bookmarks-folders"]').text()).toContain("Recipes");
+
+      await wrapper.find('[data-testid="bookmarks-import-start"]').trigger("click");
+      await flushPromises();
+      // "work" goes into the existing "Work"; only Recipes is a new category
+      expect(categoriesApi.create).toHaveBeenCalledTimes(1);
+      expect(categoriesApi.create).toHaveBeenCalledWith({ name: "Recipes" });
+      expect(linksApi.create).toHaveBeenCalledWith({ url: "https://food.dk/soup", title: "Soup", category_id: 50, tags: ["dinner"] });
+      expect(linksApi.create).toHaveBeenCalledWith({ url: "https://jira.dk/", title: "Jira", category_id: 7, tags: [] });
+      expect(linksApi.create).toHaveBeenCalledTimes(2);
+    });
+
+    it("explains a file without links", async () => {
+      mockRoute.query = { tool: "bookmarks" };
+      const wrapper = mountTools();
+      await choose(wrapper, "<p>hello</p>");
+      expect(wrapper.find('[data-testid="bookmarks-error"]').exists()).toBe(true);
+    });
+
+    it("saves your own links as a bookmarks file", async () => {
+      appStore.allLinks = [link(1, "https://a.dk"), link(2, "https://b.dk", { is_from_shared_category: 1 })];
+      mockRoute.query = { tool: "bookmarks" };
+      const wrapper = mountTools();
+      await wrapper.find('[data-testid="bookmarks-export-save"]').trigger("click");
+      const [html, name] = download.downloadText.mock.calls[0];
+      expect(name).toMatch(/^hidden-shelf-bookmarks-\d{4}-\d\d-\d\d\.html$/);
+      expect(html).toContain('HREF="https://a.dk"');
+      expect(html).not.toContain("b.dk");
+    });
+  });
+
+  describe("Copy as a list", () => {
+    it("lists a category in the chosen format and copies it", async () => {
+      appStore.allLinks = [link(1, "https://a.dk", { title: "Alpha" }), link(2, "https://b.dk", { title: "Beta", category_id: 2 })];
+      appStore.categories = [{ id: 1, name: "Work" }, { id: 2, name: "Home" }];
+      const writeText = vi.fn().mockResolvedValue();
+      Object.defineProperty(navigator, "clipboard", { value: { writeText }, configurable: true });
+      mockRoute.query = { tool: "share-list" };
+      const wrapper = mountTools();
+      await wrapper.find('[data-testid="share-list-source"]').setValue("cat:1");
+      expect(wrapper.find('[data-testid="share-list-output"]').element.value).toBe("## Work\n\n- [Alpha](https://a.dk)");
+      await wrapper.find('[data-testid="share-list-format-text"]').setValue();
+      expect(wrapper.find('[data-testid="share-list-output"]').element.value).toBe("Work\n\n\nAlpha\nhttps://a.dk");
+      await wrapper.find('[data-testid="share-list-copy"]').trigger("click");
+      expect(writeText).toHaveBeenCalledWith("Work\n\n\nAlpha\nhttps://a.dk");
+    });
+  });
+
+  it("makes a QR code that joins a Wi-Fi network", async () => {
+    mockRoute.query = { tool: "qr" };
+    const wrapper = mountTools();
+    await wrapper.find('[data-testid="qr-mode-wifi"]').trigger("click");
+    await wrapper.find('[data-testid="wifi-ssid"]').setValue("Home;Net");
+    await wrapper.find('[data-testid="wifi-password"]').setValue("pa:ss");
+    await flushPromises();
+    const QRCode = (await import("qrcode")).default;
+    expect(QRCode.toDataURL).toHaveBeenLastCalledWith(String.raw`WIFI:T:WPA;S:Home\;Net;P:pa\:ss;;`, expect.anything());
+    // The alt text doesn't read the password out
+    expect(wrapper.find('[data-testid="link-qr"] img').attributes("alt")).toBe("QR code to join the Wi-Fi network Home;Net");
+  });
+
   it("has a hover title on every button, in every tool", async () => {
     appStore.allLinks = [
       link(1, "https://a.dk/?utm_source=x", { category_id: null, tags: [] }),
       link(2, "https://a.dk/"),
     ];
-    for (const tool of ["", "check", "duplicates", "tidy", "add-many", "qr", "inspect"]) {
+    appStore.tags = [{ id: 1, name: "t", usage_count: 2 }];
+    for (const tool of ["", "duplicates", "tidy", "add-many", "bookmarks", "share-list", "qr", "inspect"]) {
       mockRoute.query = tool ? { tool } : {};
       const missing = mountTools()
         .findAll("button")

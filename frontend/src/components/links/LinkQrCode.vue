@@ -11,6 +11,8 @@ const props = defineProps({
   name: { type: String, default: "link" },
   hint: { type: String, default: "Scan it to open the public link on another device." },
   large: { type: Boolean, default: false },
+  // Read out instead of "QR code for <url>" (a Wi-Fi code holds a password)
+  alt: { type: String, default: "" },
 });
 
 const image = ref("");
@@ -54,7 +56,7 @@ async function save() {
     <img
       v-if="image"
       :src="image"
-      :alt="`QR code for ${url}`"
+      :alt="alt || `QR code for ${url}`"
       class="rounded-md bg-white p-1 border border-gray-200 dark:border-brand-700"
       :class="large ? 'w-56 h-56 sm:w-48 sm:h-48 shadow-sm' : 'w-32 h-32'"
     />

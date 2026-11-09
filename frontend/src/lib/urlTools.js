@@ -110,21 +110,10 @@ export function decodeText(text) {
 export const LONG_QR_URL = 80;
 
 // The Tools page's tools, in the order the page shows them. `group` puts
-// a tool under "Look after your shelf" or "Work with a link"; `where` says
-// whether it runs in the browser or asks the server. The dashboard links
-// to each one.
+// a tool under one of TOOL_GROUPS. All of them run in the browser: the
+// server is only asked to save what you choose to save. The dashboard
+// links to each one.
 export const TOOLS = [
-  {
-    key: "check",
-    group: "shelf",
-    label: "Check links",
-    icon: "mdi-link-variant-off",
-    accent: "sky",
-    hint: "Find links that no longer work",
-    description:
-      "Visits every link on your shelf and tells you which pages are gone, which have moved to a new address, and which couldn't be checked. Fix or remove them in one place.",
-    where: "server",
-  },
   {
     key: "duplicates",
     group: "shelf",
@@ -134,7 +123,6 @@ export const TOOLS = [
     hint: "Find links you saved more than once",
     description:
       "Finds links that point to the same page, even when one has https, www. or tracking the other doesn't. Keep the one you want and move the rest to the trash.",
-    where: "browser",
   },
   {
     key: "tidy",
@@ -145,46 +133,63 @@ export const TOOLS = [
     hint: "Links without a category or tags, and tracking to remove",
     description:
       "Lists links that would be easier to find with a little care: no category, no tags, a title that's just the address, or tracking in the address. Fix them one by one, or clean all tracking at once.",
-    where: "browser",
   },
   {
     key: "add-many",
-    group: "links",
+    group: "move",
     label: "Add many links",
     icon: "mdi-playlist-plus",
     accent: "violet",
     hint: "Paste a list of links and add them all at once",
     description:
       "Paste links from anywhere: a list, an email, a chat or your browser's open tabs. Hidden Shelf picks out the addresses, skips the ones you already have, and adds the rest to the category you choose.",
-    where: "browser",
+  },
+  {
+    key: "bookmarks",
+    group: "move",
+    label: "Browser bookmarks",
+    icon: "mdi-bookmark-multiple-outline",
+    accent: "sky",
+    hint: "Bring in your browser's bookmarks, or make a file for it",
+    description:
+      "Import the bookmarks file that Chrome, Firefox, Safari or Edge exports: folders become categories and links you already have are skipped. Or save your shelf as a bookmarks file to import into a browser.",
+  },
+  {
+    key: "share-list",
+    group: "move",
+    label: "Copy as a list",
+    icon: "mdi-format-list-bulleted-square",
+    accent: "orange",
+    hint: "A category or tag as Markdown, text or HTML to paste anywhere",
+    description:
+      "Turn a category, a tag or your favorites into a list to paste into a chat, a note, an email or a README. Pick Markdown, plain text, HTML or CSV, then copy it or save it as a file.",
   },
   {
     key: "qr",
-    group: "links",
+    group: "link",
     label: "QR code",
     icon: "mdi-qrcode",
     accent: "rose",
-    hint: "Turn an address or text into a QR code",
+    hint: "A QR code for an address, text or your Wi-Fi",
     description:
-      "Make a QR code for any address or text, to show on screen, print or put on a slide. Save it as a picture. Pick one of your links, or type something new.",
-    where: "browser",
+      "Make a QR code for any address or text, or one that joins your Wi-Fi, to show on screen or print and stick on the fridge. Save it as a picture.",
   },
   {
     key: "inspect",
-    group: "links",
+    group: "link",
     label: "Inspect a link",
     icon: "mdi-magnify-scan",
     accent: "slate",
     hint: "See what's in an address, and strip its tracking",
     description:
       "Breaks an address into its parts, shows each query parameter decoded, and flags the ones that only track you. Copy a clean version, or decode and encode text for an address.",
-    where: "browser",
   },
 ];
 
 export const TOOL_GROUPS = [
   { key: "shelf", label: "Look after your shelf" },
-  { key: "links", label: "Work with a link" },
+  { key: "move", label: "Bring links in, send them out" },
+  { key: "link", label: "Work with a link" },
 ];
 
 // Tools that were merged into another; old links to them still work
