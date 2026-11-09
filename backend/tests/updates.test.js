@@ -225,4 +225,16 @@ describe("In-app updates", () => {
     expect(status.updater_seen).toBe(false);
     expect(status.available.target).toBeNull();
   });
+
+  it("reports the release channel and only well-formed release tags", () => {
+    const now = Math.floor(Date.now() / 1000);
+    writeStatus("check", `checked_at=${now}\nok=yes\nbranch=main\nchannel=releases\ntarget=${B}\ntarget_tag=v1.2.0\nahead=no\ncount=3\n`);
+    writeStatus("current", `commit=${A}\ndate=1\nsubject=First\ntag=v1.1.0; rm -rf /\n`);
+    const status = readStatus();
+    expect(status.channel).toBe("releases");
+    expect(status.available).toMatchObject({ target: B, target_tag: "v1.2.0", ahead: false, count: 3 });
+    expect(status.current.tag).toBeNull();
+    writeStatus("check", `checked_at=${now}\nok=yes\nchannel=nightly\n`);
+    expect(readStatus().channel).toBe(config.updateChannel);
+  });
 });

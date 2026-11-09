@@ -5,7 +5,9 @@
  * no input: an admin's click only creates an empty flag file, var/inbox/update,
  * var/inbox/rollback or var/inbox/check, which is never read, only checked
  * for and deleted.
- * What to install is decided here, from the main branch of UPDATE_REPO_URL.
+ * What to install is decided here, from UPDATE_REPO_URL: with the
+ * "releases" channel (the default) the newest vX.Y.Z tag that is on main,
+ * with the "main" channel the tip of main.
  *
  * Layout of var/ (a Docker volume, so updates survive a restart):
  *   repo.git/            bare clone used to fetch main and compare versions
@@ -28,6 +30,11 @@ const require = createRequire(import.meta.url);
 const Database = require("better-sqlite3");
 
 const HEX40 = /^[0-9a-f]{40}$/;
+// Release tags: v1.2.3 only (no pre-releases, no other names)
+const RELEASE_TAG = /^v(\d{1,6})\.(\d{1,6})\.(\d{1,6})$/;
+// The subject GitHub gives the merge commit of a pull request; the PR's
+// title is the first line of the body
+const PR_MERGE = /^Merge pull request #(\d+) from \S+$/;
 const FLAG_MAX_AGE_MS = 10 * 60 * 1000;
 const MIN_FREE_BYTES = 1024 * 1024 * 1024;
 const KEEP_BACKUPS = 10;
@@ -44,6 +51,7 @@ export function createUpdater({
   imageCommit = "",
   repoUrl,
   branch = "main",
+  channel = "releases",
   dbPath,
   controller,
   healthTimeoutMs = 60_000,
@@ -51,6 +59,7 @@ export function createUpdater({
   env = process.env,
 }) {
   if (!repoUrl) throw new Error("No repository to update from");
+  if (!["releases", "main"].includes(channel)) throw new Error(`Unknown update channel ${channel}`);
   const dirs = {
     repo: path.join(varDir, "repo.git"),
     releases: path.join(varDir, "releases"),
@@ -189,47 +198,104 @@ export function createUpdater({
 
   // ─── check ─────────────────────────────────────────────────────
 
-  function fetchMain() {
-    git("fetch", "--quiet", repoUrl, `+refs/heads/${branch}:refs/heads/${branch}`);
+  function fetchUpstream() {
+    const refs = [`+refs/heads/${branch}:refs/heads/${branch}`];
+    // Tags may be moved on GitHub, so take them as they are now
+    if (channel === "releases") refs.push("+refs/tags/v*:refs/tags/v*");
+    git("fetch", "--quiet", "--no-tags", repoUrl, ...refs);
     return git("rev-parse", `refs/heads/${branch}`);
+  }
+
+  /** Release tags, newest version first: [{ tag, commit }]. */
+  function releases() {
+    return git("for-each-ref", "--format=%(refname:short)", "refs/tags/v*").split("\n")
+      .map((tag) => [tag, tag.match(RELEASE_TAG)])
+      .filter(([, m]) => m)
+      .sort(([, a], [, b]) => (b[1] - a[1]) || (b[2] - a[2]) || (b[3] - a[3]))
+      .map(([tag]) => ({ tag, commit: git("rev-parse", `refs/tags/${tag}^{commit}`) }));
+  }
+
+  /** The release tag on exactly this commit, if any. */
+  function tagOf(commit, list = releases()) {
+    return list.find((r) => r.commit === commit)?.tag || "";
+  }
+
+  /**
+   * A commit's one-line description. GitHub's "Merge pull request #41
+   * from owner/branch" becomes the PR's title with its number.
+   */
+  function describe(commit) {
+    const [subject = "", ...body] = git("log", "-1", "--format=%s%n%b", commit).split("\n");
+    const pr = subject.match(PR_MERGE);
+    const title = pr && body.map((l) => l.trim()).find(Boolean);
+    return title ? `${title} (#${pr[1]})` : subject;
   }
 
   function writeCurrent() {
     const c = runningCommit();
-    let line = "";
-    if (hasCommit(c)) line = git("log", "-1", "--format=%ct%x09%s", c);
-    const [date, subject] = line.split("\t");
-    publish("current", HEX40.test(c || "") ? kv({ commit: c, date: date || "", subject: subject || "" }) : "");
+    let date = "";
+    let subject = "";
+    let tag = "";
+    if (hasCommit(c)) {
+      date = git("log", "-1", "--format=%ct", c);
+      subject = describe(c);
+      tag = tagOf(c);
+    }
+    publish("current", HEX40.test(c || "") ? kv({ commit: c, date, subject, tag }) : "");
   }
 
   function check() {
     lastCheckAt = Date.now();
-    const result = { ok: true, error: "", target: "", count: 0, migrations: false, list: "" };
+    const result = {
+      ok: true, error: "", target: "", target_tag: "", count: 0, migrations: false, list: "", ahead: false,
+    };
+    let tip = "";
     try {
-      result.target = fetchMain();
+      tip = fetchUpstream();
     } catch {
       Object.assign(result, { ok: false, error: "Could not reach GitHub to check for updates." });
     }
     const running = runningCommit();
+    const notOnBranch = `This server runs code that isn't on ${branch}. Update from the terminal.`;
     if (result.ok) {
       if (!HEX40.test(running || "")) {
         Object.assign(result, { ok: false, error: "This image doesn't say which version it is. Run make up once from the terminal." });
-      } else if (!hasCommit(running)) {
-        Object.assign(result, { ok: false, error: `This server runs code that isn't on ${branch}. Update from the terminal.` });
-      } else if (running !== result.target) {
-        if (isAncestor(running, result.target)) {
-          result.count = Number(git("rev-list", "--count", `${running}..${result.target}`));
-          result.list = git("log", "-n", "50", "--format=%H%x09%ct%x09%s", `${running}..${result.target}`);
-          result.migrations = git("diff", "--name-only", running, result.target, "--", "backend/migrations") !== "";
+      } else if (!hasCommit(running) || !isAncestor(running, tip)) {
+        Object.assign(result, { ok: false, error: notOnBranch });
+      } else if (channel === "main") {
+        result.target = tip;
+      } else {
+        // The newest release that is on the branch: a tag on some other
+        // branch is never installed
+        const release = releases().find((r) => isAncestor(r.commit, tip));
+        if (release) {
+          result.target_tag = release.tag;
+          if (isAncestor(running, release.commit)) result.target = release.commit;
+          else {
+            // Running something newer than the newest release (from the
+            // terminal, or from the main channel): nothing to do
+            result.target = running;
+            result.ahead = true;
+          }
         } else {
-          Object.assign(result, { ok: false, error: `This server runs code that isn't on ${branch}. Update from the terminal.` });
+          result.target = running;
         }
       }
     }
+    if (result.ok && result.target !== running) {
+      // One entry per change on the branch: a merged pull request counts
+      // once, not as its commits plus GitHub's merge commit
+      const range = `${running}..${result.target}`;
+      const commits = git("rev-list", "--first-parent", "-n", "50", range).split("\n").filter(Boolean);
+      result.count = Number(git("rev-list", "--first-parent", "--count", range));
+      result.list = commits.map((c) => `${c}\t${git("log", "-1", "--format=%ct", c)}\t${describe(c)}`).join("\n");
+      result.migrations = git("diff", "--name-only", running, result.target, "--", "backend/migrations") !== "";
+    }
     publish("available", result.list.split("\n").map(clean).filter(Boolean).join("\n") + "\n");
     publish("check", kv({
-      checked_at: unix(), ok: result.ok ? "yes" : "no", error: result.error, branch,
-      target: result.target, count: result.count, migrations: result.migrations ? "yes" : "no",
+      checked_at: unix(), ok: result.ok ? "yes" : "no", error: result.error, branch, channel,
+      target: result.target, target_tag: result.target_tag, ahead: result.ahead ? "yes" : "no",
+      count: result.count, migrations: result.migrations ? "yes" : "no",
     }));
     writeCurrent();
     return result;
@@ -328,14 +394,14 @@ export function createUpdater({
       writeState("previous", { commit: old, backup, db_restore: result.migrations });
       setCurrent(result.target);
       publish("rollback", kv({
-        commit: old, subject: hasCommit(old) ? git("log", "-1", "--format=%s", old) : "",
+        commit: old, subject: hasCommit(old) ? describe(old) : "", tag: hasCommit(old) ? tagOf(old) : "",
         date: hasCommit(old) ? git("log", "-1", "--format=%ct", old) : "",
         db_restore: result.migrations ? "yes" : "no", updated_at: unix(),
       }));
       pruneReleases();
       pruneBackups();
       log("== Done");
-      writeJob("succeeded", "Done", `Updated to ${result.target.slice(0, 7)}.`);
+      writeJob("succeeded", "Done", `Updated to ${result.target_tag || result.target.slice(0, 7)}.`);
       check();
       return;
     }

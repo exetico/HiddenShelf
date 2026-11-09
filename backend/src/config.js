@@ -105,6 +105,9 @@ const config = {
   updateBranch: /^[A-Za-z0-9._\/-]+$/.test(process.env.UPDATE_BRANCH || "")
     ? process.env.UPDATE_BRANCH
     : "main",
+  // What the updater installs: "releases" (the newest vX.Y.Z tag on the
+  // branch; recommended) or "main" (every change as soon as it is merged)
+  updateChannel: process.env.UPDATE_CHANNEL === "main" ? "main" : "releases",
 
   // The commit the image was built from (Docker build arg)
   gitCommit: /^[0-9a-f]{40}$/.test(process.env.GIT_COMMIT || "")

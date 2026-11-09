@@ -48,6 +48,9 @@ services:
       - UPDATE_REAUTH_MINUTES=${UPDATE_REAUTH_MINUTES:-10}
       # Where updates come from (https only). Change it if you run a fork.
       - UPDATE_REPO_URL=${UPDATE_REPO_URL:-https://github.com/exetico/HiddenShelf.git}
+      # releases (recommended): only versions tagged vX.Y.Z on main.
+      # main: every change as soon as it is merged.
+      - UPDATE_CHANNEL=${UPDATE_CHANNEL:-releases}
     restart: unless-stopped
     networks:
       - hiddenshelf-network

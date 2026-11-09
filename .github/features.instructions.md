@@ -562,8 +562,8 @@ This document provides a comprehensive overview of all features, functionality, 
 ### Updates (`/api/updates`, `backend/src/routes/updates.js`, `backend/src/lib/updates.js`)
 
 - Admins only: the signed-in user's stored email must be in `UPDATE_ADMIN_EMAILS`. Everyone else gets 404
-- `GET /` — `current` (commit, date, subject), `available` (target, count, migrations, commits), `job` (last run: state, step, message), `rollback` (previous version, `restores_database`), `log`, `history` (last 20 requests), `fresh_login`, `reauth_minutes`, `updater_seen`/`updater_stale`
-- `POST /update`, `POST /rollback` — no body is read. Both need a sign-in within `UPDATE_REAUTH_MINUTES` (session `login_at`, set at each login; else 403 `reauth_required`), SITE_URL's exact `Origin`, no other request waiting or running, and a minute since the last one
+- `GET /` — `channel` (`releases`/`main`), `current` (commit, date, subject, `tag` when it is a release), `available` (target, `target_tag` = newest release, `ahead` = running something newer than it, count, migrations, commits), `job` (last run: state, step, message), `rollback` (previous version, `restores_database`), `log`, `history` (last 20 requests), `fresh_login`, `reauth_minutes`, `updater_seen`/`updater_stale`
+- `POST /update`, `POST /rollback` — no body is read. Both need a sign-in within `UPDATE_REAUTH_MINUTES` (session `login_at`, set at each login; else 403 `reauth_required`; the panel then shows "Confirm it's you": Google via `GET /api/auth/google?return_to=%23%2Fadmin`, or a magic link to the admin's own email with `return_to: "#/admin"`. No sign-out; a sign-in by the same user sets no `welcome` greeting), SITE_URL's exact `Origin`, no other request waiting or running, and a minute since the last one
 - `POST /check` — no body is read; SITE_URL's exact `Origin`, but no fresh sign-in (it changes nothing). 429 if the last check was under a minute ago, 409 while an update runs. Creates the empty flag `var/inbox/check` (an existing one is fine), with no `update_requests` row; returns the previous `checked_at` so the panel can wait for a newer one
 - A request inserts an `update_requests` row (`target_commit` = what the panel showed, for the log only), creates the empty flag `var/inbox/update` or `var/inbox/rollback`, and emails every admin. `syncResults()` copies the updater's result onto the newest waiting row of that action (`job_id` marks it handled; on GET and every minute) and emails again
 - `/api/auth/me` returns `can_update`. Only then does TopNav show the Admin button (`nav-admin`) and the router allow `/admin` (`AdminView.vue`, route meta `admin`; others go to the dashboard). The page holds `ServerUpdates.vue` (`frontend/src/components/admin/`)
@@ -571,7 +571,9 @@ This document provides a comprehensive overview of all features, functionality, 
 ### Self-update (`backend/src/supervisor.js`, `backend/src/selfupdate/updater.js`)
 
 - The image's CMD is the supervisor. It runs `backend/src/index.js` as a child (restarts it if it exits; three crashes in two minutes on an updated version fall back to the image's code) and, with `UPDATE_ADMIN_EMAILS` set, polls for flags every 3 s and runs `check` hourly
-- `var/` is the `app-var` volume: `repo.git` (bare, fetches `main` from `UPDATE_REPO_URL`, https only), `releases/<commit>/` (built copies), `state/` (`current`, `previous`), `status/` (`check`, `current`, `available`, `job`, `rollback`, `log`), `inbox/`
+- `UPDATE_CHANNEL` (`config.updateChannel`): `releases` (default) targets the newest `vX.Y.Z` tag (semver order, no pre-releases) that is an ancestor of `main`; tags elsewhere are ignored. Running something newer than that release is fine (`ahead=yes`, nothing to install). `main` targets the tip of `main`
+- Counting: `rev-list --first-parent` from the running commit, so a merged PR is one change. GitHub's "Merge pull request #N from …" subjects are shown as the PR title (first body line) plus `(#N)`, in `available`, `current` and `rollback`
+- `var/` is the `app-var` volume: `repo.git` (bare, fetches `main` and, for releases, `refs/tags/v*` from `UPDATE_REPO_URL`, https only), `releases/<commit>/` (built copies), `state/` (`current`, `previous`), `status/` (`check`, `current`, `available`, `job`, `rollback`, `log`), `inbox/`
 - Flags are never read: `lstat`, delete, ignore if older than 10 minutes, and act only with a waiting `update_requests` row of that action from the last 10 minutes. The `check` flag needs no row; it runs `check` unless the last one was under a minute ago
 - Update: fast-forward of the running commit only; 1 GB free; `git archive` + `npm ci` + frontend build into `releases/.tmp-<commit>` (site stays up); backup `db/backups/pre-update-*.sqlite` (keeps 10); stop, start the new code, wait 60 s for `/api/health`, else restore the backup and start the old code
 - Rollback: one step back to `state/previous`; restores the database when the update added migrations, after `pre-rollback-*.sqlite`
@@ -690,7 +692,7 @@ This document provides a comprehensive overview of all features, functionality, 
 - Session lifetime (`SESSION_LIFETIME`); sessions are stored in the SQLite `sessions` table
 - Debug mode, signup toggle (`DEBUG_MODE`, `SIGNUP_ENABLED`)
 - Google OAuth credentials (`GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`)
-- In-app updates (`UPDATE_ADMIN_EMAILS`, `UPDATE_REAUTH_MINUTES`, `UPDATE_REPO_URL`; `UPDATE_VAR_DIR` defaults to `./var`)
+- In-app updates (`UPDATE_ADMIN_EMAILS`, `UPDATE_REAUTH_MINUTES`, `UPDATE_REPO_URL`, `UPDATE_CHANNEL`; `UPDATE_VAR_DIR` defaults to `./var`)
 
 ### User Settings (stored in DB)
 
@@ -752,8 +754,8 @@ This document provides a comprehensive overview of all features, functionality, 
 | `tests/config.test.js`      | 1     | Public app config endpoint                                                                                                                                          |
 | `tests/security.test.js`    | 22    | Open redirect prevention, input validation (length + protocol), rate limiting, debug mode, session cookies, CORS, XSS                                               |
 | `tests/codeQuality.test.js` | 11    | Category delete orphans, category ownership validation, batch tag fetching, bulk delete (transaction + isolation + auth), short URL validation, category updated_at |
-| `tests/updates.test.js`     | 13    | Admin-only update endpoints, re-login window, Origin check, one at a time, result sync and emails, health check, status file parsing                                |
-| `tests/selfupdate.test.js`  | 10    | Self-updater with real git and fake npm: check, update, flag never read (links, pipes, folders), old flags, no matching request, failed build, auto-rollback, manual rollback, image vs release at start |
+| `tests/updates.test.js`     | 16    | Admin-only update endpoints, re-login window, Origin check, one at a time, result sync and emails, health check, status file parsing, release channel fields           |
+| `tests/selfupdate.test.js`  | 15    | Self-updater with real git and fake npm: check, update, flag never read (links, pipes, folders), old flags, no matching request, failed build, auto-rollback, manual rollback, image vs release at start, a merged PR counts once, releases channel (newest tag on main, no pre-releases or side-branch tags, ahead of the newest release) |
 | `tests/migrations.test.js`  | 14    | All 7 migrations run successfully, idempotency, per-migration schema checks, foreign key constraints, cascade behavior                                              |
 
 **Backend Total: 129 tests across 11 files**
