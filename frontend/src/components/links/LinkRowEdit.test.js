@@ -110,4 +110,22 @@ describe("LinkRowEdit", () => {
     await wrapper.trigger("contextmenu");
     expect(useContextMenuStore().open).toBe(true);
   });
+
+  it("keeps fixed slots in a fixed order, so the columns line up", () => {
+    const order = (w) =>
+      w
+        .findAll('[data-testid$="-slot"], [data-testid="public-indicator"], [data-testid="private-indicator"]')
+        .map((el) => el.attributes("data-testid"));
+    // Private, no visits, no redirect: the slots are still there, empty
+    const bare = mountRow({ is_public: 0 });
+    expect(order(bare)).toEqual(["visits-slot", "redirect-slot", "private-indicator", "date-slot"]);
+    expect(bare.find('[data-testid="visits-slot"]').text()).toBe("");
+    expect(bare.find('[data-testid="redirect-slot"]').text()).toBe("");
+    const full = mountRow({ total_visits: 4, direct_redirect: 1 });
+    expect(order(full)).toEqual(["visits-slot", "redirect-slot", "public-indicator", "date-slot"]);
+    // Each slot has a fixed width
+    for (const id of ["visits-slot", "redirect-slot", "date-slot"]) {
+      expect(full.find(`[data-testid="${id}"]`).classes().some((c) => /^w-/.test(c))).toBe(true);
+    }
+  });
 });

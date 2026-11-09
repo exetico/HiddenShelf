@@ -295,7 +295,7 @@ This document provides a comprehensive overview of all features, functionality, 
 
 ### Link Row — Edit Mode list (`LinkRowEdit.vue`)
 
-- One tight `<li>` per link with the same information and actions as `LinkCardEdit`: icon in the category color, title, URL, favorite star, Edit and Delete (icon buttons), share chip or lock, visits, direct-redirect mark, date, up to 2 tag pills with "+N"
+- One tight `<li>` per link with the same information and actions as `LinkCardEdit`: icon in the category color, title, URL, up to 2 tag pills with "+N", then fixed-width columns that stay in place when empty (visits, direct-redirect mark, share chip or lock, date), then favorite star, Edit and Delete (icon buttons)
 - Phones: title over URL, with the status and actions. From `sm`: one line. Tags from `md`, date from `lg`, the description from `xl` as one plain line (markdown marks stripped)
 - Right-click opens the same link menu as the card
 

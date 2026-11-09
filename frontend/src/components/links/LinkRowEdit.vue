@@ -104,24 +104,27 @@ const plainDescription = computed(() =>
       >
     </div>
 
-    <!-- Quiet status icons, as on the card -->
+    <!-- Status columns. Each has a fixed width and keeps its place when
+         empty, so the columns line up from row to row: visits, redirect,
+         share or lock, then the date. -->
     <div
       class="flex items-center gap-2 shrink-0 text-xs text-gray-400 dark:text-brand-500"
     >
-      <span v-if="addedOn" class="hidden lg:inline" :title="`Added ${addedOn}`">{{ addedOn }}</span>
-      <span
-        v-if="link.is_public && link.total_visits > 0"
-        class="max-sm:hidden"
-        :title="`${link.total_visits} ${link.total_visits === 1 ? 'visit' : 'visits'} in total`"
-      >
-        <i class="mdi mdi-eye-outline"></i> {{ link.total_visits }}
+      <span class="max-sm:hidden w-10 text-right whitespace-nowrap tabular-nums" data-testid="visits-slot">
+        <span
+          v-if="link.is_public && link.total_visits > 0"
+          :title="`${link.total_visits} ${link.total_visits === 1 ? 'visit' : 'visits'} in total`"
+          ><i class="mdi mdi-eye-outline"></i> {{ link.total_visits }}</span
+        >
       </span>
-      <i
-        v-if="link.is_public && link.direct_redirect"
-        class="mdi mdi-lightning-bolt text-sm max-sm:hidden"
-        title="Direct redirect: the public link goes straight to the site"
-        data-testid="redirect-indicator"
-      ></i>
+      <span class="max-sm:hidden w-4 text-center" data-testid="redirect-slot">
+        <i
+          v-if="link.is_public && link.direct_redirect"
+          class="mdi mdi-lightning-bolt text-sm"
+          title="Direct redirect: the public link goes straight to the site"
+          data-testid="redirect-indicator"
+        ></i>
+      </span>
       <button
         v-if="link.is_public"
         type="button"
@@ -140,6 +143,12 @@ const plainDescription = computed(() =>
       >
         <i class="mdi mdi-lock-outline text-sm" aria-hidden="true"></i>
       </span>
+      <span
+        class="hidden lg:inline-block w-24 text-right whitespace-nowrap tabular-nums"
+        data-testid="date-slot"
+        :title="addedOn ? `Added ${addedOn}` : undefined"
+        >{{ addedOn }}</span
+      >
     </div>
 
     <div class="flex items-center shrink-0 text-base leading-none">
