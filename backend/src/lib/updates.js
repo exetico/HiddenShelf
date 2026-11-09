@@ -113,8 +113,11 @@ export function readStatus() {
     check_ok: check.ok === "yes",
     check_error: check.error || "",
     branch: check.branch || "main",
-    // Before the updater reports one, the server's setting
-    channel: ["main", "releases"].includes(check.channel) ? check.channel : config.updateChannel,
+    // What the updater says it follows. An updater from before releases
+    // existed reports none: it still follows main, and the image needs
+    // make up to get the new one (an in-app update only swaps the web app)
+    channel: ["main", "releases"].includes(check.channel) ? check.channel : "main",
+    updater_outdated: checkedAt !== null && !["main", "releases"].includes(check.channel),
     current: commitOrNull(current.commit)
       ? { commit: current.commit, date: int(current.date), subject: current.subject || "", tag: tagOrNull(current.tag) }
       : null,

@@ -59,7 +59,7 @@ const available = computed(() => status.value?.available || { count: 0, commits:
 const lastResult = computed(() =>
   job.value && job.value.state !== "running" ? job.value : null,
 );
-const releases = computed(() => status.value?.channel !== "main");
+const releases = computed(() => status.value?.channel === "releases");
 const plural = (n, word) => `${n} ${word}${n === 1 ? "" : "s"}`;
 // "v1.2.0" when it is a release, else the short commit
 const versionName = (v) => v?.tag || short(v?.commit);
@@ -77,8 +77,9 @@ const availableText = computed(() => {
 const upToDateText = computed(() => {
   const a = available.value;
   if (!releases.value) return "You're on the latest version.";
-  if (!a.target_tag) return "There are no releases yet. Publish one on GitHub to update from here.";
-  if (a.ahead) return `You're on a newer version than the latest release (${a.target_tag}).`;
+  // Self-hosters see this too: nothing to do but wait for the next release
+  if (!a.target_tag) return "You're up to date. New versions show up here when they are released.";
+  if (a.ahead) return `You're up to date: this server runs a newer version than the latest release (${a.target_tag}). The next release shows up here.`;
   return `You're on the latest release (${a.target_tag}).`;
 });
 
@@ -267,12 +268,11 @@ onBeforeUnmount(() => clearTimeout(timer));
             <summary class="cursor-pointer text-xs text-gray-500 dark:text-brand-400">What's this?</summary>
             <p class="text-xs text-gray-600 dark:text-brand-300 mt-1 max-w-prose">
               <template v-if="releases">
-                Update installs only versions you publish as a release (a tag like
-                <code>v1.2.0</code> on {{ status.branch }}), so a merge never reaches the
-                server by accident.
+                Update installs only released versions (tagged like <code>v1.2.0</code>
+                on {{ status.branch }}), not every change as soon as it is made.
               </template>
               <template v-else>
-                Update installs whatever is on {{ status.branch }}, as soon as it is merged.
+                Update installs every change on {{ status.branch }} as soon as it is made.
                 Following releases is safer:
               </template>
               Change it with <code>UPDATE_CHANNEL</code> (<code>releases</code> or
@@ -292,6 +292,15 @@ onBeforeUnmount(() => clearTimeout(timer));
         The updater hasn't checked in yet. It starts with the app when
         <code>UPDATE_ADMIN_EMAILS</code> is set; give it a minute after
         <code>make up</code>, then reload.
+      </p>
+      <p
+        v-else-if="status.updater_outdated"
+        class="text-sm rounded-md bg-amber-50 dark:bg-amber-900/30 text-amber-800 dark:text-amber-200 p-3"
+        data-testid="updater-outdated"
+      >
+        To finish the last update, run <code>make up</code> on the server once. The part
+        that installs updates only changes that way, and until then it still follows
+        every change on {{ status.branch }}.
       </p>
       <p
         v-else-if="status.updater_stale"
