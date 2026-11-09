@@ -96,8 +96,6 @@ Sign-in links are limited so the form can't be used to flood an inbox: one link 
 
 Open your `SITE_URL`, enter your email and click the link you receive (or use Google). The first login creates your account. To stop just anyone from joining, set `SIGNUP_MODE` in `.env` and run `make up` again: `approval` lets new people ask to join, and you approve or deny them on the Admin page; `invite` only lets in the emails you add there. Both need you in `UPDATE_ADMIN_EMAILS`.
 
-`SIGNUP_ENABLED` is gone; use `SIGNUP_MODE`. If your `.env` still has `SIGNUP_ENABLED=false`, sign-up stays closed (`invite`) and the log says so until you set `SIGNUP_MODE` and delete the old line.
-
 ### Login without email
 
 If you don't want to run SMTP, set up Google sign-in and add `EMAIL_LOGIN_ENABLED=false` to `.env`. The login page then only offers Google, no email is ever sent, and the `SMTP_*` settings are ignored. The server logs an error at startup if neither login method is available.

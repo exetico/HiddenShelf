@@ -23,22 +23,10 @@ export function basePathFromEnv(value) {
  * (new people ask to join and an admin says yes or no) or "invite" (only
  * emails an admin added). An unknown value is treated as "invite", the
  * safest choice.
- *
- * SIGNUP_ENABLED is gone. A server whose .env still says
- * SIGNUP_ENABLED=false (and no SIGNUP_MODE) had sign-up closed, so it stays
- * closed ("invite") with a warning, instead of opening up after an update.
  */
-export function signupModeFromEnv(mode, removedFlag) {
+export function signupModeFromEnv(mode) {
   const value = (mode || "").trim().toLowerCase();
-  if (!value) {
-    if ((removedFlag || "").trim() === "false") {
-      console.warn(
-        "[config] SIGNUP_ENABLED was removed. Sign-up stays closed (invite) until you set SIGNUP_MODE (open, approval or invite) and delete SIGNUP_ENABLED from .env.",
-      );
-      return "invite";
-    }
-    return "open";
-  }
+  if (!value) return "open";
   if (["open", "approval", "invite"].includes(value)) return value;
   console.warn(
     `[config] Ignoring SIGNUP_MODE=${JSON.stringify(mode)}: use open, approval or invite. Using invite.`,
@@ -103,7 +91,7 @@ const config = {
   debugMode: (process.env.DEBUG_MODE || "false") === "true",
 
   // Who can make a new account (see signupModeFromEnv)
-  signupMode: signupModeFromEnv(process.env.SIGNUP_MODE, process.env.SIGNUP_ENABLED),
+  signupMode: signupModeFromEnv(process.env.SIGNUP_MODE),
 
   // Magic link login by email. Off: no email is ever sent (SMTP unused) and
   // Google sign-in is the only way to log in.

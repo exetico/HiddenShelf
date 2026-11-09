@@ -100,16 +100,6 @@ describe("SIGNUP_MODE", () => {
     expect(warn).toHaveBeenCalledOnce();
   });
 
-  it("keeps a server closed when its .env still has the removed SIGNUP_ENABLED=false", () => {
-    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
-    expect(signupModeFromEnv("", "false")).toBe("invite");
-    expect(warn.mock.calls[0][0]).toMatch(/SIGNUP_ENABLED was removed/);
-    // SIGNUP_MODE wins, and a leftover "true" changes nothing
-    expect(signupModeFromEnv("approval", "false")).toBe("approval");
-    expect(signupModeFromEnv("", "true")).toBe("open");
-    expect(warn).toHaveBeenCalledOnce();
-  });
-
   it("works like invite when there's no admin to approve", async () => {
     config.updateAdminEmails = [];
     expect(signupMode()).toBe("invite");
