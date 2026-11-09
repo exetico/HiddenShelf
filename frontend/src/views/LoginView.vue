@@ -218,6 +218,30 @@ function clearRememberedEmail() {
           Login isn't set up on this server yet.
         </p>
 
+        <!-- Sign-up isn't open: what happens after signing in, said the
+             same way for everyone (it never tells who has an account) -->
+        <div
+          v-if="signupMode !== 'open' && (emailLogin || googleLogin)"
+          class="mb-6 flex gap-3 rounded-lg bg-brand-50 dark:bg-brand-800/60 border border-brand-200 dark:border-brand-700 p-3 text-sm text-brand-700 dark:text-brand-200"
+          data-testid="join-hint"
+        >
+          <i class="mdi mdi-account-key-outline text-xl text-brand-500" aria-hidden="true"></i>
+          <div v-if="signupMode === 'approval'">
+            <p class="font-medium text-brand-900 dark:text-white">New here? Sign in first.</p>
+            <p>
+              Members sign in as usual. If you don't have an account yet,
+              you can then ask to join, and an admin decides.
+            </p>
+          </div>
+          <div v-else>
+            <p class="font-medium text-brand-900 dark:text-white">Accounts here are by invitation.</p>
+            <p>
+              If an admin added your email, signing in creates your account.
+              If not, you'll see a note saying so, and nothing is created.
+            </p>
+          </div>
+        </div>
+
         <!-- Remembered Email -->
         <div
           v-if="emailLogin && rememberedEmail && email !== rememberedEmail"
@@ -405,18 +429,6 @@ function clearRememberedEmail() {
           <span>Sign in with Google</span>
         </button>
 
-        <!-- Sign-up isn't open: say how new people get in -->
-        <p
-          v-if="signupMode !== 'open' && (emailLogin || googleLogin)"
-          class="mt-6 text-sm text-center text-brand-600 dark:text-brand-400"
-          data-testid="join-hint"
-        >
-          <template v-if="signupMode === 'approval'">
-            New here? Sign in as above, and you can ask to join.
-          </template>
-          <template v-else>New accounts are by invitation only.</template>
-        </p>
-
         <!-- Beta Warning -->
         <div
           class="mt-6 p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg border border-yellow-200 dark:border-yellow-800"
@@ -443,6 +455,19 @@ function clearRememberedEmail() {
         <p class="text-sm text-brand-500 dark:text-brand-500">
           Click the link in the email to sign in. The link expires in 15
           minutes.
+        </p>
+        <p
+          v-if="signupMode !== 'open'"
+          class="mt-3 text-sm text-brand-500 dark:text-brand-500"
+          data-testid="sent-join-hint"
+        >
+          <template v-if="signupMode === 'approval'">
+            New here? The link takes you to a page where you can ask to join.
+          </template>
+          <template v-else>
+            New here? The link creates your account if an admin invited you,
+            and tells you if not.
+          </template>
         </p>
         <button
           title="Send the link to another email"

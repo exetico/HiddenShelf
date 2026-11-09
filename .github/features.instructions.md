@@ -88,7 +88,7 @@ This document provides a comprehensive overview of all features, functionality, 
 - Welcome back flow for returning users
 - **Share code handling during login**: If a `?share=CODE` param is present, it's saved to `sessionStorage` before login so it survives the auth redirect. After login, `checkPendingShare()` in the app store picks it up and triggers the join flow.
 - Beta service disclaimer and data retention warnings
-- **Who can join** (`SIGNUP_MODE`, see Ask to join below): when sign-up isn't open, a line under the sign-in card (`join-hint`) says new people can ask to join (`approval`) or that it's by invitation only (`invite`)
+- **Who can join** (`SIGNUP_MODE`, see Ask to join below): when sign-up isn't open, a box above the sign-in buttons (`join-hint`) says what signing in does for someone new: in `approval` they can then ask to join and an admin decides; in `invite` an invited email gets its account and anyone else sees a note, with nothing created. The Check your email screen repeats it (`sent-join-hint`). Same words for every address, so nothing tells whether an account exists
 - Automatic session validation on app load via `authApi.me()`
 
 ### Implementation

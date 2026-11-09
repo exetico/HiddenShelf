@@ -197,18 +197,36 @@ describe("LoginView", () => {
   });
 
   describe("when sign-up isn't open", () => {
-    it("says new people can ask to join", async () => {
+    async function sendLink(mode) {
+      localStorage.clear();
+      loginMethods.signup_mode = mode;
+      const wrapper = mountLogin();
+      await flushPromises();
+      await wrapper.find("#email").setValue("someone@example.com");
+      await wrapper.find('[data-testid="login-form"]').trigger("submit");
+      await flushPromises();
+      return wrapper;
+    }
+
+    it("approval: explains, before signing in, that new people can then ask to join", async () => {
       loginMethods.signup_mode = "approval";
       const wrapper = mountLogin();
       await flushPromises();
-      expect(wrapper.find('[data-testid="join-hint"]').text()).toMatch(/ask to join/);
+      const hint = wrapper.find('[data-testid="join-hint"]');
+      expect(hint.text()).toMatch(/New here\? Sign in first/);
+      expect(hint.text()).toMatch(/ask to join, and an admin decides/);
+      // Shown above the sign-in form, so it's read before pressing anything
+      const html = wrapper.html();
+      expect(html.indexOf('data-testid="join-hint"')).toBeLessThan(html.indexOf('data-testid="login-form"'));
     });
 
-    it("says it's by invitation only", async () => {
+    it("invite: explains what signing in does for invited and other people", async () => {
       loginMethods.signup_mode = "invite";
       const wrapper = mountLogin();
       await flushPromises();
-      expect(wrapper.find('[data-testid="join-hint"]').text()).toMatch(/invitation only/);
+      const hint = wrapper.find('[data-testid="join-hint"]').text();
+      expect(hint).toMatch(/by invitation/);
+      expect(hint).toMatch(/nothing is created/);
     });
 
     it("says nothing when anyone can join", async () => {
@@ -216,6 +234,27 @@ describe("LoginView", () => {
       const wrapper = mountLogin();
       await flushPromises();
       expect(wrapper.find('[data-testid="join-hint"]').exists()).toBe(false);
+    });
+
+    it("after sending the link, says where it leads someone new", async () => {
+      expect((await sendLink("approval")).find('[data-testid="sent-join-hint"]').text()).toMatch(/ask to join/);
+      expect((await sendLink("invite")).find('[data-testid="sent-join-hint"]').text()).toMatch(/if an admin invited you/);
+      expect((await sendLink("open")).find('[data-testid="sent-join-hint"]').exists()).toBe(false);
+    });
+
+    it("words it the same for every address, so it never tells who has an account", async () => {
+      const texts = [];
+      for (const address of ["member@example.com", "stranger@example.com"]) {
+        localStorage.clear();
+        loginMethods.signup_mode = "approval";
+        const wrapper = mountLogin();
+        await flushPromises();
+        await wrapper.find("#email").setValue(address);
+        await wrapper.find('[data-testid="login-form"]').trigger("submit");
+        await flushPromises();
+        texts.push(wrapper.find('[data-testid="sent-join-hint"]').text());
+      }
+      expect(texts[0]).toBe(texts[1]);
     });
   });
 });
