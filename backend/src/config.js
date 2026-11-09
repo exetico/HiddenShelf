@@ -19,14 +19,26 @@ export function basePathFromEnv(value) {
 }
 
 /**
- * SIGNUP_MODE: "open" (anyone can make an account), "approval" (new people
- * ask to join and an admin says yes or no) or "invite" (only emails an admin
- * added). Unset, the older SIGNUP_ENABLED decides: true → open, false →
- * approval. An unknown value is treated as "invite", the safest choice.
+ * SIGNUP_MODE: "open" (anyone can make an account; the default), "approval"
+ * (new people ask to join and an admin says yes or no) or "invite" (only
+ * emails an admin added). An unknown value is treated as "invite", the
+ * safest choice.
+ *
+ * SIGNUP_ENABLED is gone. A server whose .env still says
+ * SIGNUP_ENABLED=false (and no SIGNUP_MODE) had sign-up closed, so it stays
+ * closed ("invite") with a warning, instead of opening up after an update.
  */
-export function signupModeFromEnv(mode, enabled) {
+export function signupModeFromEnv(mode, removedFlag) {
   const value = (mode || "").trim().toLowerCase();
-  if (!value) return (enabled || "true").trim() === "false" ? "approval" : "open";
+  if (!value) {
+    if ((removedFlag || "").trim() === "false") {
+      console.warn(
+        "[config] SIGNUP_ENABLED was removed. Sign-up stays closed (invite) until you set SIGNUP_MODE (open, approval or invite) and delete SIGNUP_ENABLED from .env.",
+      );
+      return "invite";
+    }
+    return "open";
+  }
   if (["open", "approval", "invite"].includes(value)) return value;
   console.warn(
     `[config] Ignoring SIGNUP_MODE=${JSON.stringify(mode)}: use open, approval or invite. Using invite.`,
@@ -38,7 +50,7 @@ export function signupModeFromEnv(mode, enabled) {
 // Secrets are left out of the check; they may contain anything.
 for (const [name, value] of Object.entries(process.env)) {
   if (
-    /^(SITE_|BASE_PATH|SMTP_(HOST|PORT|USER|ENCRYPTION)|FROM_|DEBUG_MODE|SIGNUP_ENABLED|SIGNUP_MODE|EMAIL_LOGIN_ENABLED|TRUST_PROXY|GOOGLE_(CLIENT_ID|REDIRECT_URI)|MAGIC_LINK_EXPIRY|SESSION_)/.test(name) &&
+    /^(SITE_|BASE_PATH|SMTP_(HOST|PORT|USER|ENCRYPTION)|FROM_|DEBUG_MODE|SIGNUP_MODE|EMAIL_LOGIN_ENABLED|TRUST_PROXY|GOOGLE_(CLIENT_ID|REDIRECT_URI)|MAGIC_LINK_EXPIRY|SESSION_)/.test(name) &&
     /(^|\s)#/.test(value)
   ) {
     console.warn(

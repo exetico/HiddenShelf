@@ -37,7 +37,7 @@ async function loadLoginMethods() {
       email: cfg.email_login_enabled !== false,
       google: Boolean(cfg.google_auth_enabled),
     };
-    signupMode.value = cfg.signup_mode || (cfg.signup_enabled === false ? "invite" : "open");
+    signupMode.value = cfg.signup_mode || "open";
   } catch {
     methods.value = { email: true, google: true };
   }

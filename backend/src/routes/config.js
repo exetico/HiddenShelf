@@ -16,7 +16,6 @@ configRoute.get("/", (c) => {
     message: "Success",
     app_version: config.appVersion,
     site_name: config.siteName,
-    signup_enabled: signupMode() === "open",
     // open, approval (new people can ask to join) or invite (admins add people)
     signup_mode: signupMode(),
     email_login_enabled: config.emailLoginEnabled,

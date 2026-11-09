@@ -96,6 +96,8 @@ Sign-in links are limited so the form can't be used to flood an inbox: one link 
 
 Open your `SITE_URL`, enter your email and click the link you receive (or use Google). The first login creates your account. To stop just anyone from joining, set `SIGNUP_MODE` in `.env` and run `make up` again: `approval` lets new people ask to join, and you approve or deny them on the Admin page; `invite` only lets in the emails you add there. Both need you in `UPDATE_ADMIN_EMAILS`.
 
+`SIGNUP_ENABLED` is gone; use `SIGNUP_MODE`. If your `.env` still has `SIGNUP_ENABLED=false`, sign-up stays closed (`invite`) and the log says so until you set `SIGNUP_MODE` and delete the old line.
+
 ### Login without email
 
 If you don't want to run SMTP, set up Google sign-in and add `EMAIL_LOGIN_ENABLED=false` to `.env`. The login page then only offers Google, no email is ever sent, and the `SMTP_*` settings are ignored. The server logs an error at startup if neither login method is available.
@@ -193,8 +195,7 @@ Set these in `.env`. Docker Compose passes them to the container. When running N
 | `FROM_EMAIL`           | `noreply@example.com`                 | Sender email                            |
 | `FROM_NAME`            | `Hidden Shelf`                        | Sender name                             |
 | `DEBUG_MODE`           | `false`                               | Log magic links instead of emailing them, show detailed errors. Dev only |
-| `SIGNUP_MODE`          | (from `SIGNUP_ENABLED`)               | Who can make an account: `open` (anyone), `approval` (new people ask to join, an admin approves), `invite` (only emails an admin added). Admins are `UPDATE_ADMIN_EMAILS` |
-| `SIGNUP_ENABLED`       | `true`                                | Older setting, used when `SIGNUP_MODE` is empty: `true` is `open`, `false` is `approval` |
+| `SIGNUP_MODE`          | `open`                                | Who can make an account: `open` (anyone), `approval` (new people ask to join, an admin approves), `invite` (only emails an admin added). Admins are `UPDATE_ADMIN_EMAILS` |
 | `EMAIL_LOGIN_ENABLED`  | `true`                                | `false`: no magic link login and no email at all; Google sign-in only |
 | `TRUST_PROXY`          | (auto)                                | `true`/`false`: trust `X-Forwarded-For` for client IPs. Auto trusts it only from private addresses. `true` also reads `CF-Connecting-IP` |
 | `GOOGLE_CLIENT_ID`     | ``                                    | Google OAuth client ID                  |

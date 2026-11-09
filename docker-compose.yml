@@ -36,9 +36,11 @@ services:
       - SESSION_LIFETIME=${SESSION_LIFETIME:-2592000}
       # Debug mode logs magic links instead of emailing them; dev only
       - DEBUG_MODE=${DEBUG_MODE:-false}
-      # open, approval or invite. Empty: SIGNUP_ENABLED decides
+      # open, approval or invite. Empty means open
       - SIGNUP_MODE=${SIGNUP_MODE:-}
-      - SIGNUP_ENABLED=${SIGNUP_ENABLED:-true}
+      # Removed setting. Passed on only so an old .env with
+      # SIGNUP_ENABLED=false keeps sign-up closed (see README)
+      - SIGNUP_ENABLED=${SIGNUP_ENABLED:-}
       - EMAIL_LOGIN_ENABLED=${EMAIL_LOGIN_ENABLED:-true}
       - TRUST_PROXY=${TRUST_PROXY:-}
       - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-}

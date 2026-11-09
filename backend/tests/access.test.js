@@ -89,14 +89,24 @@ const users = () => getDb().prepare("SELECT email FROM users").all().map((u) => 
 const entry = (email) => getDb().prepare("SELECT * FROM access_list WHERE email = ?").get(email);
 
 describe("SIGNUP_MODE", () => {
-  it("reads the mode, falling back to SIGNUP_ENABLED and to invite for typos", () => {
+  it("reads the mode, open by default and invite for typos", () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
-    expect(signupModeFromEnv(undefined, undefined)).toBe("open");
+    expect(signupModeFromEnv(undefined)).toBe("open");
+    expect(signupModeFromEnv("")).toBe("open");
+    expect(signupModeFromEnv("Approval")).toBe("approval");
+    expect(signupModeFromEnv("invite")).toBe("invite");
+    expect(warn).not.toHaveBeenCalled();
+    expect(signupModeFromEnv("opne")).toBe("invite");
+    expect(warn).toHaveBeenCalledOnce();
+  });
+
+  it("keeps a server closed when its .env still has the removed SIGNUP_ENABLED=false", () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    expect(signupModeFromEnv("", "false")).toBe("invite");
+    expect(warn.mock.calls[0][0]).toMatch(/SIGNUP_ENABLED was removed/);
+    // SIGNUP_MODE wins, and a leftover "true" changes nothing
+    expect(signupModeFromEnv("approval", "false")).toBe("approval");
     expect(signupModeFromEnv("", "true")).toBe("open");
-    expect(signupModeFromEnv("", "false")).toBe("approval");
-    expect(signupModeFromEnv("Approval", "true")).toBe("approval");
-    expect(signupModeFromEnv("invite", "true")).toBe("invite");
-    expect(signupModeFromEnv("opne", "true")).toBe("invite");
     expect(warn).toHaveBeenCalledOnce();
   });
 
@@ -105,7 +115,6 @@ describe("SIGNUP_MODE", () => {
     expect(signupMode()).toBe("invite");
     const data = await json(await app.request("/api/config"));
     expect(data.signup_mode).toBe("invite");
-    expect(data.signup_enabled).toBe(false);
   });
 
   it("open: anyone who signs in gets an account, as before", async () => {
@@ -113,7 +122,7 @@ describe("SIGNUP_MODE", () => {
     const { res } = await signInWithLink("new@example.com");
     expect(res.headers.get("location")).not.toContain("/join");
     expect(users()).toEqual(["new@example.com"]);
-    expect((await json(await app.request("/api/config"))).signup_enabled).toBe(true);
+    expect((await json(await app.request("/api/config"))).signup_mode).toBe("open");
   });
 });
 

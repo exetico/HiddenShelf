@@ -23,7 +23,8 @@ describe("Config API", () => {
     expect(data.success).toBe(true);
     expect(data.app_version).toBeDefined();
     expect(data.site_name).toBeDefined();
-    expect(typeof data.signup_enabled).toBe("boolean");
+    expect(["open", "approval", "invite"]).toContain(data.signup_mode);
+    expect(data.signup_enabled).toBeUndefined();
     expect(typeof data.google_auth_enabled).toBe("boolean");
   });
 });

@@ -580,7 +580,7 @@ This document provides a comprehensive overview of all features, functionality, 
 
 ### Ask to join (`/api/access`, `backend/src/routes/access.js`, `backend/src/lib/access.js`)
 
-- `SIGNUP_MODE`: `open` (anyone who signs in gets an account), `approval` (someone new asks; an admin approves or denies; listed emails join at once), `invite` (only listed emails). Unset: `SIGNUP_ENABLED=true` → `open`, `false` → `approval`. An unknown value → `invite`. `approval` with no `UPDATE_ADMIN_EMAILS` works like `invite`. `GET /api/config` has `signup_mode` (and `signup_enabled`, true only for `open`)
+- `SIGNUP_MODE`: `open` (anyone who signs in gets an account), `approval` (someone new asks; an admin approves or denies; listed emails join at once), `invite` (only listed emails). Default `open`. An unknown value → `invite`. `SIGNUP_ENABLED` was removed; a leftover `SIGNUP_ENABLED=false` with no `SIGNUP_MODE` gives `invite` and a startup warning, so a closed server never opens after an update. `approval` with no `UPDATE_ADMIN_EMAILS` works like `invite`. `GET /api/config` has `signup_mode`
 - Admins (`UPDATE_ADMIN_EMAILS`) can always make their account. Signing in (`/api/auth/verify`, Google callback) with an email that has no account and may not join: no account, no `user_id`; the session gets `join_email` (lower-case) and `join_at`, and the browser goes to `/join`. An approved email gets its account and its `access_list` row is deleted. The login form answers exactly as before, so nothing tells whether an address has an account or a request
 - `GET /me` — `{ mode, email, status: none|pending|approved|denied|null, can_ask }` for the session's proved email only, for an hour after signing in (`JOIN_WINDOW_MS`)
 - `POST /request` `{ note? }` — needs that proved email (401 otherwise; an email in the body is ignored). Note: string, trimmed, at most `MAX_LENGTHS.joinNote` (500). 5 per IP an hour (429 with `Retry-After`). Asking again returns the current status and changes nothing. Refused (503) while `MAX_PENDING` (200) are waiting or the list has `MAX_ENTRIES` (2000). Sends nothing to the requester; admins get one short notice with no requester content, at most every 6 hours (`NOTIFY_GAP_MS`, in memory)
@@ -718,7 +718,7 @@ This document provides a comprehensive overview of all features, functionality, 
 - Site URL, name, branding (`SITE_URL`, `SITE_NAME`)
 - Email/SMTP settings for magic links (`SMTP_HOST`, `SMTP_PORT`, etc.)
 - Session lifetime (`SESSION_LIFETIME`); sessions are stored in the SQLite `sessions` table
-- Debug mode, signup toggle (`DEBUG_MODE`, `SIGNUP_ENABLED`)
+- Debug mode, who can join (`DEBUG_MODE`, `SIGNUP_MODE`)
 - Google OAuth credentials (`GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`)
 - In-app updates (`UPDATE_ADMIN_EMAILS`, `UPDATE_REAUTH_MINUTES`, `UPDATE_REPO_URL`, `UPDATE_CHANNEL`; `UPDATE_VAR_DIR` defaults to `./var`)
 
