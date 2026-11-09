@@ -7,6 +7,7 @@ import ToolsView from "@/views/ToolsView.vue";
 import AdminView from "@/views/AdminView.vue";
 import HelpView from "@/views/HelpView.vue";
 import LoginView from "@/views/LoginView.vue";
+import JoinView from "@/views/JoinView.vue";
 import { useAuthStore } from "@/stores/auth";
 import { useToastStore } from "@/stores/toast";
 import { cleanUrlFromLegacyHash } from "@/lib/appUrl";
@@ -24,6 +25,8 @@ const routes = [
     component: LoginView,
     meta: { public: true },
   },
+  // Someone new asks to join (when sign-up isn't open to everyone)
+  { path: "/join", name: "join", component: JoinView, meta: { public: true } },
   { path: "/", redirect: "/dashboard" },
   { path: "/dashboard", name: "dashboard", component: DashboardView },
   { path: "/view", name: "view", component: ViewLinksView },

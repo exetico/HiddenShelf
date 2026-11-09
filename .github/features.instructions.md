@@ -88,6 +88,7 @@ This document provides a comprehensive overview of all features, functionality, 
 - Welcome back flow for returning users
 - **Share code handling during login**: If a `?share=CODE` param is present, it's saved to `sessionStorage` before login so it survives the auth redirect. After login, `checkPendingShare()` in the app store picks it up and triggers the join flow.
 - Beta service disclaimer and data retention warnings
+- **Who can join** (`SIGNUP_MODE`, see Ask to join below): when sign-up isn't open, a line under the sign-in card (`join-hint`) says new people can ask to join (`approval`) or that it's by invitation only (`invite`)
 - Automatic session validation on app load via `authApi.me()`
 
 ### Implementation
@@ -130,7 +131,12 @@ This document provides a comprehensive overview of all features, functionality, 
 #### Admin (`AdminView.vue`, `/admin`)
 
 - Admins only (`UPDATE_ADMIN_EMAILS`, `authStore.canUpdate`): Admin in the account menu behind the initials button (`menu-admin`); anyone else is sent to the dashboard
-- Holds things about the whole server, not one account: today only Server updates (see Updates below)
+- Holds things about the whole server, not one account: Who can join (`JoinRequests.vue`, see Ask to join below) and Server updates (see Updates below)
+
+#### Join (`JoinView.vue`, `/join`)
+
+- Public. Someone new lands here after signing in (magic link or Google) when they may not make an account yet. States (`data-state`): `signin` (no proved email in the session), `ask` (note up to `LIMITS.joinNote`, Ask to join), `pending`, `approved`, `denied`, `invite` (invite-only, not on the list)
+- Only ever shows and asks for the session's own proved email (`accessApi.me()`)
 
 #### Tools (`ToolsView.vue`, `/tools`)
 
@@ -494,6 +500,11 @@ This document provides a comprehensive overview of all features, functionality, 
 - `id` (32 hex), `action` (`update`/`rollback`), `target_commit` (what the panel showed), `user_id`, `email`, `ip`, `created_at` (Unix seconds), `result` (`succeeded`/`failed`/`rolled_back`, NULL while waiting), `message`, `finished_at`, `job_id` (the updater run that handled it)
 - The audit log of in-app updates. The updater only checks, read only, that a waiting row exists
 
+#### access_list (migration 015)
+
+- `id`, `email` (unique, lower-case, `COLLATE NOCASE`), `status` (`pending`/`approved`/`denied`), `note` (the requester's words, shown as text only), `created_at`, `decided_at` (Unix seconds), `decided_by` (the admin's email)
+- Who may join when sign-up isn't open. A row is removed once its account exists
+
 ### Migration System
 
 - Sequential SQL files in `backend/migrations/`
@@ -566,6 +577,14 @@ This document provides a comprehensive overview of all features, functionality, 
 ### Health (`/api/health`)
 
 - `GET` — `{ ok: true }` when the app answers and the database can be read (503 otherwise). Used by the host updater
+
+### Ask to join (`/api/access`, `backend/src/routes/access.js`, `backend/src/lib/access.js`)
+
+- `SIGNUP_MODE`: `open` (anyone who signs in gets an account), `approval` (someone new asks; an admin approves or denies; listed emails join at once), `invite` (only listed emails). Empty or unknown → `invite`. `approval` with no `UPDATE_ADMIN_EMAILS` works like `invite`. `GET /api/config` has `signup_mode`
+- Admins (`UPDATE_ADMIN_EMAILS`) can always make their account. Signing in (`/api/auth/verify`, Google callback) with an email that has no account and may not join: no account, no `user_id`; the session gets `join_email` (lower-case) and `join_at`, and the browser goes to `/join`. An approved email gets its account and its `access_list` row is deleted. The login form answers exactly as before, so nothing tells whether an address has an account or a request
+- `GET /me` — `{ mode, email, status: none|pending|approved|denied|null, can_ask }` for the session's proved email only, for an hour after signing in (`JOIN_WINDOW_MS`)
+- `POST /request` `{ note? }` — needs that proved email (401 otherwise; an email in the body is ignored). Note: string, trimmed, at most `MAX_LENGTHS.joinNote` (500). 5 per IP an hour (429 with `Retry-After`). Asking again returns the current status and changes nothing. Refused (503) while `MAX_PENDING` (200) are waiting or the list has `MAX_ENTRIES` (2000). Sends nothing to the requester; admins get one short notice with no requester content, at most every 6 hours (`NOTIFY_GAP_MS`, in memory)
+- Admin (`UPDATE_ADMIN_EMAILS`; 404 for anyone else; changes need SITE_URL's exact `Origin`): `GET /admin` (`mode`, `configured_mode`, `entries`), `POST /admin/invite` `{ email }` (valid, ≤ 254; 409 if it has an account; sends nothing, or approves a waiting request), `POST /admin/:id/approve` (emails the person once, when it changes to approved), `POST /admin/:id/deny` (sends nothing), `DELETE /admin/:id` (a removed denied email can ask again)
 
 ### Updates (`/api/updates`, `backend/src/routes/updates.js`, `backend/src/lib/updates.js`)
 
@@ -699,7 +718,7 @@ This document provides a comprehensive overview of all features, functionality, 
 - Site URL, name, branding (`SITE_URL`, `SITE_NAME`)
 - Email/SMTP settings for magic links (`SMTP_HOST`, `SMTP_PORT`, etc.)
 - Session lifetime (`SESSION_LIFETIME`); sessions are stored in the SQLite `sessions` table
-- Debug mode, signup toggle (`DEBUG_MODE`, `SIGNUP_ENABLED`)
+- Debug mode, who can join (`DEBUG_MODE`, `SIGNUP_MODE`)
 - Google OAuth credentials (`GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`)
 - In-app updates (`UPDATE_ADMIN_EMAILS`, `UPDATE_REAUTH_MINUTES`, `UPDATE_REPO_URL`, `UPDATE_CHANNEL`; `UPDATE_VAR_DIR` defaults to `./var`)
 

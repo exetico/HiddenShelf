@@ -47,6 +47,8 @@ SMTP_PASS=your-password
 SMTP_ENCRYPTION=tls
 # An address your SMTP provider is set up to send for
 FROM_EMAIL=login@links.example.com
+# You, the admin: the only one who can make an account at first
+UPDATE_ADMIN_EMAILS=you@example.com
 ```
 
 Keep comments in `.env` on their own lines. Some Docker Compose versions read `NAME=value # comment` as part of the value.
@@ -94,7 +96,13 @@ Sign-in links are limited so the form can't be used to flood an inbox: one link 
 
 ### 5. Log in
 
-Open your `SITE_URL`, enter your email and click the link you receive (or use Google). The first login creates your account. When everyone who needs an account has one, set `SIGNUP_ENABLED=false` in `.env` and run `make up` again to close registration.
+Open your `SITE_URL`, enter the email you put in `UPDATE_ADMIN_EMAILS` and click the link you receive (or use Google). The first login creates your account.
+
+Nobody else can join until you say so. `SIGNUP_MODE` in `.env` decides (run `make up` after changing it):
+
+- `invite` (also what an empty value means): only the emails you add under Who can join on the Admin page.
+- `approval`: new people can ask to join, and you approve or deny them on the Admin page.
+- `open`: anyone who signs in gets an account.
 
 ### Login without email
 
@@ -193,7 +201,7 @@ Set these in `.env`. Docker Compose passes them to the container. When running N
 | `FROM_EMAIL`           | `noreply@example.com`                 | Sender email                            |
 | `FROM_NAME`            | `Hidden Shelf`                        | Sender name                             |
 | `DEBUG_MODE`           | `false`                               | Log magic links instead of emailing them, show detailed errors. Dev only |
-| `SIGNUP_ENABLED`       | `true`                                | Allow new user registration             |
+| `SIGNUP_MODE`          | `invite`                              | Who can make an account: `invite` (only admins and emails an admin added; also an empty or unknown value), `approval` (new people ask to join, an admin approves), `open` (anyone). Admins are `UPDATE_ADMIN_EMAILS` |
 | `EMAIL_LOGIN_ENABLED`  | `true`                                | `false`: no magic link login and no email at all; Google sign-in only |
 | `TRUST_PROXY`          | (auto)                                | `true`/`false`: trust `X-Forwarded-For` for client IPs. Auto trusts it only from private addresses. `true` also reads `CF-Connecting-IP` |
 | `GOOGLE_CLIENT_ID`     | ``                                    | Google OAuth client ID                  |

@@ -7,10 +7,15 @@ vi.mock("@/services/api/updatesApi", () => ({
   updatesApi: { status: vi.fn(() => new Promise(() => {})) },
 }));
 
+vi.mock("@/services/api/accessApi", () => ({
+  accessApi: { adminList: vi.fn(() => new Promise(() => {})) },
+}));
+
 describe("AdminView", () => {
   it("holds the server updates panel", () => {
     const wrapper = mount(AdminView, { global: { plugins: [createPinia()] } });
     expect(wrapper.find("h1").text()).toBe("Admin");
     expect(wrapper.find('[data-testid="server-updates"]').exists()).toBe(true);
+    expect(wrapper.find('[data-testid="join-requests"]').exists()).toBe(true);
   });
 });

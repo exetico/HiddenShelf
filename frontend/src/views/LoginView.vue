@@ -27,6 +27,8 @@ const shareNotice = ref(false);
 const methods = ref(null);
 const emailLogin = computed(() => methods.value?.email === true);
 const googleLogin = computed(() => methods.value?.google === true);
+// open, approval or invite: who can make a new account
+const signupMode = ref("open");
 
 async function loadLoginMethods() {
   try {
@@ -35,6 +37,7 @@ async function loadLoginMethods() {
       email: cfg.email_login_enabled !== false,
       google: Boolean(cfg.google_auth_enabled),
     };
+    signupMode.value = cfg.signup_mode || "invite";
   } catch {
     methods.value = { email: true, google: true };
   }
@@ -67,7 +70,7 @@ onMounted(() => {
       invalid_state: "Security check failed. Please try logging in again.",
       oauth_failed: "Google login failed. Please try again or use email login.",
       signup_disabled:
-        "New user registration is disabled. Please contact an administrator.",
+        "This server isn't taking new accounts. Ask an admin to let you in.",
       email_login_disabled:
         "Email login is turned off on this server. Sign in with Google instead.",
     };
@@ -401,6 +404,18 @@ function clearRememberedEmail() {
           </svg>
           <span>Sign in with Google</span>
         </button>
+
+        <!-- Sign-up isn't open: say how new people get in -->
+        <p
+          v-if="signupMode !== 'open' && (emailLogin || googleLogin)"
+          class="mt-6 text-sm text-center text-brand-600 dark:text-brand-400"
+          data-testid="join-hint"
+        >
+          <template v-if="signupMode === 'approval'">
+            New here? Sign in as above, and you can ask to join.
+          </template>
+          <template v-else>New accounts are by invitation only.</template>
+        </p>
 
         <!-- Beta Warning -->
         <div

@@ -10,6 +10,8 @@ export const LIMITS = {
   categoryName: 100,
   tagName: 50,
   tagsPerLink: 50,
+  // The note when asking to join
+  joinNote: 500,
 };
 
 const LABELS = {

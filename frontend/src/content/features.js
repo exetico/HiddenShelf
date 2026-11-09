@@ -135,6 +135,10 @@ export const FAQ = [
     a: "Enter your email and we send you a sign-in link; there's no password. If the server has it set up, you can also sign in with Google.",
   },
   {
+    q: "I signed in, but it says I need to ask to join. Why?",
+    a: "Some servers don't let just anyone make an account. Depending on how it's set up, you can ask to join right there, with a short note for the admin, or the admin adds you to a list. When an admin approves your request you get an email, and then you sign in as usual. Asking only works for the address you just signed in with, so nobody can ask in your name.",
+  },
+  {
     q: "I didn't get the sign-in email. Can I ask for another?",
     a: "Look in your spam folder first. You can ask for a new link after a minute, and up to 5 times an hour for the same address; the sign-in page tells you how long to wait.",
   },
@@ -177,6 +181,10 @@ export const FAQ = [
   {
     q: "Are there keyboard shortcuts?",
     a: "On a computer, you can start typing a search as soon as the app opens. Press / to search and N to add a link. Esc closes dialogs; if a link form has unsaved changes, it asks first.",
+  },
+  {
+    q: "I run my own Hidden Shelf. Who can make an account?",
+    a: "You choose with SIGNUP_MODE in .env (see the README). Unless you set it, only admins and the emails you add can join (invite). approval lets new people ask to join and you approve or deny them, and open lets anyone in. Admins (UPDATE_ADMIN_EMAILS) manage requests and the list under Who can join on the Admin page. You get one short email when someone asks, at most every six hours.",
   },
   {
     q: "I run my own Hidden Shelf. Can I update it from the app?",

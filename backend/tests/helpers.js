@@ -26,6 +26,8 @@ import accountRoutes from "../src/routes/account.js";
 import { publicLinkRoutes } from "../src/routes/publicLink.js";
 import updatesRoutes from "../src/routes/updates.js";
 import healthRoutes from "../src/routes/health.js";
+import accessRoutes, { requestAttempts } from "../src/routes/access.js";
+import { resetNoticeTimer } from "../src/lib/access.js";
 import { appShellRoutes } from "../src/routes/appShell.js";
 
 const linkTemplatePath = fileURLToPath(
@@ -44,6 +46,8 @@ export function createTestApp() {
   sessions.clear();
   loginAttempts.clear();
   checkUsage.clear();
+  requestAttempts.clear();
+  resetNoticeTimer();
 
   // Init in-memory DB
   initDb(":memory:");
@@ -74,6 +78,7 @@ export function createTestApp() {
   app.route("/api/account", accountRoutes);
   app.route("/api/updates", updatesRoutes);
   app.route("/api/health", healthRoutes);
+  app.route("/api/access", accessRoutes);
   app.route("/", publicLinkRoutes({ templatePath: linkTemplatePath }));
   app.route("/", appShellRoutes({ indexPath: appIndexPath }));
 
@@ -124,4 +129,6 @@ export function cleanup() {
   sessions.clear();
   loginAttempts.clear();
   checkUsage.clear();
+  requestAttempts.clear();
+  resetNoticeTimer();
 }

@@ -28,6 +28,7 @@ import {
 } from "../lib/helpers.js";
 import { requireAuth } from "../middleware/auth.js";
 import { isUpdateAdmin } from "../lib/updates.js";
+import { mayJoin, joined, rememberJoinEmail } from "../lib/access.js";
 import config from "../config.js";
 
 const auth = new Hono();
@@ -196,15 +197,18 @@ auth.get("/verify", async (c) => {
   const isNewUser = !user;
 
   if (!user) {
-    if (!config.signupEnabled) {
-      return c.redirect(
-        `${config.siteUrl}${baseUrl("/login")}?error=signup_disabled`,
-      );
+    // Not open to everyone and not let in yet: they proved the email, so
+    // they may ask to join (lib/access.js)
+    if (!mayJoin(email)) {
+      rememberJoinEmail(c.session, email);
+      c.session.regenerate();
+      return c.redirect(`${config.siteUrl}${baseUrl("/join")}`);
     }
     const result = db
       .prepare("INSERT INTO users (email) VALUES (?)")
       .run(email);
     user = { id: result.lastInsertRowid, email };
+    joined(email);
   }
 
   // Set session
@@ -216,6 +220,8 @@ auth.get("/verify", async (c) => {
   if (!sameUser) c.session.set("welcome", isNewUser ? "new" : "back");
   // When this sign-in happened; admin updates ask for a recent one
   c.session.set("login_at", Date.now());
+  c.session.delete("join_email");
+  c.session.delete("join_at");
   c.session.regenerate();
 
   // Determine redirect
@@ -361,14 +367,17 @@ auth.get("/google/callback", async (c) => {
         ).run("google", googleId, email, user.id);
       } else {
         // New user
-        if (!config.signupEnabled) {
-          return c.redirect(`${loginUrl}?error=signup_disabled`);
+        if (!mayJoin(email)) {
+          rememberJoinEmail(c.session, email);
+          c.session.regenerate();
+          return c.redirect(`${config.siteUrl}${baseUrl("/join")}`);
         }
         const result = db
           .prepare(
             "INSERT INTO users (email, oauth_provider, oauth_id, oauth_email) VALUES (?, ?, ?, ?)",
           )
           .run(email, "google", googleId, email);
+        joined(email);
         isNewUser = true;
         user = { id: result.lastInsertRowid, email };
       }
@@ -381,6 +390,8 @@ auth.get("/google/callback", async (c) => {
     if (!sameUser) c.session.set("welcome", isNewUser ? "new" : "back");
     // When this sign-in happened; admin updates ask for a recent one
     c.session.set("login_at", Date.now());
+    c.session.delete("join_email");
+    c.session.delete("join_at");
     c.session.regenerate();
 
     // Redirect

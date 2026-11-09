@@ -18,11 +18,27 @@ export function basePathFromEnv(value) {
   return "";
 }
 
+/**
+ * SIGNUP_MODE: "open" (anyone can make an account), "approval" (new people
+ * ask to join and an admin says yes or no) or "invite" (only admins and
+ * emails an admin added). Missing or unknown means "invite": nobody new
+ * gets in unless the server says so.
+ */
+export function signupModeFromEnv(mode) {
+  const value = (mode || "").trim().toLowerCase();
+  if (!value) return "invite";
+  if (["open", "approval", "invite"].includes(value)) return value;
+  console.warn(
+    `[config] Ignoring SIGNUP_MODE=${JSON.stringify(mode)}: use open, approval or invite. Using invite.`,
+  );
+  return "invite";
+}
+
 // A value with " #" in it is most likely a comment the .env parser kept.
 // Secrets are left out of the check; they may contain anything.
 for (const [name, value] of Object.entries(process.env)) {
   if (
-    /^(SITE_|BASE_PATH|SMTP_(HOST|PORT|USER|ENCRYPTION)|FROM_|DEBUG_MODE|SIGNUP_ENABLED|EMAIL_LOGIN_ENABLED|TRUST_PROXY|GOOGLE_(CLIENT_ID|REDIRECT_URI)|MAGIC_LINK_EXPIRY|SESSION_)/.test(name) &&
+    /^(SITE_|BASE_PATH|SMTP_(HOST|PORT|USER|ENCRYPTION)|FROM_|DEBUG_MODE|SIGNUP_MODE|EMAIL_LOGIN_ENABLED|TRUST_PROXY|GOOGLE_(CLIENT_ID|REDIRECT_URI)|MAGIC_LINK_EXPIRY|SESSION_)/.test(name) &&
     /(^|\s)#/.test(value)
   ) {
     console.warn(
@@ -74,8 +90,8 @@ const config = {
   // Development
   debugMode: (process.env.DEBUG_MODE || "false") === "true",
 
-  // Registration
-  signupEnabled: (process.env.SIGNUP_ENABLED || "true") === "true",
+  // Who can make a new account (see signupModeFromEnv)
+  signupMode: signupModeFromEnv(process.env.SIGNUP_MODE),
 
   // Magic link login by email. Off: no email is ever sent (SMTP unused) and
   // Google sign-in is the only way to log in.

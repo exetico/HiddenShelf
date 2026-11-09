@@ -169,6 +169,7 @@ export const MAX_LENGTHS = {
   email: 254,
   returnTo: 2048,
   referer: 2048,
+  joinNote: 500,
 };
 
 /** Largest API request body. A link at every limit is well under this. */
@@ -368,4 +369,20 @@ export function baseUrl(pathStr = "") {
   const base = (config?.basePath || "").replace(/\/$/, "");
   const p = pathStr.startsWith("/") ? pathStr : `/${pathStr}`;
   return base + p;
+}
+
+/**
+ * Exactly SITE_URL's origin (scheme, host and port), for admin actions that
+ * must come from the app itself. Local dev servers on another port are
+ * allowed only in development.
+ */
+export function isSameSiteOrigin(origin) {
+  if (!origin) return false;
+  try {
+    const url = new URL(origin);
+    if (url.origin === new URL(config.siteUrl).origin) return true;
+    return isDevSetup() && isLocalHostname(url.hostname);
+  } catch {
+    return false;
+  }
 }
