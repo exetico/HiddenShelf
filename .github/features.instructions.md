@@ -119,7 +119,7 @@ This document provides a comprehensive overview of all features, functionality, 
 #### Dashboard (`DashboardView.vue`)
 
 - Welcome message with user greeting
-- **Clickable statistics grid**: Cards for total links, categories, and tags — click any card to navigate to `/edit`
+- **Clickable statistics grid**: Cards for total links, categories, and tags (links → `/view`, the others → `/edit`). Drawn like the Tools page cards (`ACCENTS` from `components/tools/styles.js`): icon tile, corner glow and a faded big icon (`stat-art`)
 - **`totalCategories` includes shared categories**: The getter sums own categories + shared categories from `sharedCategories` state
 - **Visit stats section**: Shows total visits and top 5 most-visited links for the last 30 days (loaded via `appStore.loadVisitStats()` on mount); section is hidden when no visits have occurred
 - **4 quick action buttons**: View links → `/view`, Edit links → `/edit`, Profile → `/profile`, Import Data → `/profile`
@@ -142,7 +142,7 @@ This document provides a comprehensive overview of all features, functionality, 
 
 - Linked from the dashboard and the toolbox button in the top bar (`nav-tools-page`)
 - No `?tool=` shows the overview: a card per tool (`TOOLS` and `TOOL_GROUPS` in `lib/urlTools.js`, with `label`, `hint`, `description`, `accent`), grouped as "Look after your shelf", "Bring links in, send them out" and "Work with a link". Duplicates and Tidy up cards show what they found. Every tool runs in the browser and makes no server-side outbound requests (the old server link checker was removed as a DDoS risk; don't bring it back)
-- `?tool=KEY` opens one tool (`components/tools/*Tool.vue`, kept alive while switching): a header with what it does and a back button to the overview (no row of tool icons). Old `?tool=encode` and `?tool=clean` open Inspect (`toolFor()`)
+- `?tool=KEY` opens one tool (`components/tools/*Tool.vue`, kept alive while switching): a header with what it does and an "All tools" pill back to the overview on its own line above the card (no row of tool icons). Old `?tool=encode` and `?tool=clean` open Inspect (`toolFor()`)
 - Shelf tools work on your own links only (`ownLinks()`; shared categories' links are left out). Their logic is in `lib/shelfTools.js`
 - **Duplicates** (`DuplicatesTool`, `findDuplicates()`): groups own links by `sameUrlKey()` (the server's `normalizeUrl` rules, plus tracking parameters ignored), oldest first. "Keep this one" trashes the others (confirm, Undo in the toast)
 - **Tidy up** (`TidyTool`, `TIDY_CHECKS`/`tidyReport()`): No category, No tags, Tracking in the address (Clean, Clean all), Title is just the address (`plainTitle()`; "Use it" saves `titleFromUrl()`). Other fixes open the link editor. Lists show 50, then "Show all"
@@ -164,7 +164,7 @@ This document provides a comprehensive overview of all features, functionality, 
 - **Category-organized link display**: Links grouped under category headers with colored borders
 - **Link counter** (`shownCount` in `lib/linkCount.js`): "{total} links" for the whole shelf; "Showing X of Y links" while searching or filtering
 - **Collapsible category sections**: Click category header or chevron to collapse/expand; chevron rotates (`mdi-chevron-down` → `mdi-chevron-right`); collapsed state tracked per-category in `collapsedCategories` reactive Set
-- **Category filter bar** (`CategoryFilterBar.vue`): Filter visible links by category
+- **Category filter bar** (`CategoryFilterBar.vue`): Filter visible links by category. Favorites come first, with a small star badge on the icon's corner (absolutely placed, so the chip is no wider); hovering another chip shows an outlined star there to add it (asks first). Also used in Edit
 - **Context menu**: Right-click (desktop) or long-press (mobile) on link cards for quick actions
 - **No paging**: every link is on the page at once. Each category section has `shelf-section` (CSS `content-visibility: auto`, sized by `--shelf-rows`), so the browser skips drawing sections that are off screen
 - **Shared category owner badge**: Shows owner email next to shared category headers
@@ -176,7 +176,7 @@ This document provides a comprehensive overview of all features, functionality, 
 #### Edit Mode (`EditLinksView.vue`)
 
 - **Search input**: `<input type="search" placeholder="Search links...">` bound to `appStore.search`; results update as you type, with no request
-- **Category filter dropdown**: `<select>` with "All Categories" + category list, bound to `appStore.filterCategory`
+- **Category filter**: the same `CategoryFilterBar` chips as View from `sm` up (icons, counts, Uncategorized, shared, favorites, hidden), and `CategoryPicker` beside search on phones. Both set `appStore.filterCategory`; clicking the active chip shows all again
 - **Link counter**: Same as View mode
 - **Action buttons**: "+ Add link", "Categories", "Tags" — open respective modals
 - **Link cards** (`LinkCardEdit.vue`): Edit-mode cards with public/private emoji, edit/delete actions

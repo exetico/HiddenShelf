@@ -259,6 +259,15 @@ describe("ToolsView", () => {
     expect(wrapper.find('[data-testid="tools-back"]').exists()).toBe(true);
   });
 
+  it("gives the way back its own line, clear of the tool's card", () => {
+    mockRoute.query = { tool: "qr" };
+    const nav = mountTools().find('nav[aria-label="Tools"]');
+    // The page's space-y gap sits under it; a negative margin pulled the
+    // card up against the link
+    expect(nav.classes().some((c) => c.startsWith("-m"))).toBe(false);
+    expect(nav.find('[data-testid="tools-back"]').classes()).toContain("rounded-full");
+  });
+
   describe("Browser bookmarks", () => {
     const FILE = `<!DOCTYPE NETSCAPE-Bookmark-file-1>
 <DL><p>

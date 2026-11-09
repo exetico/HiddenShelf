@@ -9,6 +9,7 @@ import { useToastStore } from "@/stores/toast";
 import { linksApi } from "@/services/api/linksApi";
 import { filterHref, isPlainClick } from "@/lib/filterLinks";
 import { TOOLS, toolHref, toolQuery } from "@/lib/urlTools";
+import { ACCENTS } from "@/components/tools/styles";
 
 const helpHref = `${import.meta.env.BASE_URL.replace(/\/$/, "")}/help`;
 
@@ -53,17 +54,16 @@ const hiddenTagCount = computed(
   () => allTags.value.length - commonTags.value.length,
 );
 
-// Top tiles. The big faded icon on the right is decoration (art), so it
-// is hidden from screen readers.
+// Top tiles, drawn like the cards on the Tools page: an icon tile, a soft
+// glow towards the corner and a big faded icon cut off by the edge. The
+// big icon is decoration (art), so it is hidden from screen readers.
 const statTiles = computed(() => [
   {
     key: "links",
     label: "Links",
     value: totalLinks.value,
     icon: "mdi-link-variant",
-    tint: "to-sky-500/15 dark:to-sky-400/15",
-    iconColor: "text-sky-500 dark:text-sky-400",
-    bar: "bg-sky-500/70",
+    accent: "sky",
     title: "Browse your links",
     to: "view",
   },
@@ -72,9 +72,7 @@ const statTiles = computed(() => [
     label: "Categories",
     value: appStore.totalCategories,
     icon: "mdi-folder-multiple-outline",
-    tint: "to-amber-500/15 dark:to-amber-400/15",
-    iconColor: "text-amber-500 dark:text-amber-400",
-    bar: "bg-amber-500/70",
+    accent: "amber",
     title: "Manage your categories",
     to: "edit",
   },
@@ -83,9 +81,7 @@ const statTiles = computed(() => [
     label: "Tags",
     value: appStore.totalTags,
     icon: "mdi-tag-multiple-outline",
-    tint: "to-emerald-500/15 dark:to-emerald-400/15",
-    iconColor: "text-emerald-500 dark:text-emerald-400",
-    bar: "bg-emerald-500/70",
+    accent: "emerald",
     title: "Manage your tags",
     to: "edit",
   },
@@ -199,28 +195,29 @@ const topVisitedLinks = computed(() =>
       <button
         v-for="tile in statTiles"
         :key="tile.key"
-        class="group relative overflow-hidden bg-white dark:bg-brand-900 bg-linear-to-br from-transparent from-40% rounded-lg border border-gray-200 dark:border-brand-800 p-3 sm:p-5 text-left hover:border-brand-500 transition-colors"
-        :class="tile.tint"
+        class="group relative overflow-hidden text-left rounded-xl border border-gray-200 dark:border-brand-800 bg-white dark:bg-brand-900 bg-linear-to-br from-transparent from-50% p-3 sm:p-4 transition-all hover:-translate-y-0.5 hover:shadow-md hover:border-brand-400 dark:hover:border-brand-600 focus-visible:outline-2 focus-visible:outline-brand-500"
+        :class="ACCENTS[tile.accent].glow"
         :title="tile.title"
         :data-testid="`stat-${tile.key}`"
         @click="router.push({ name: tile.to })"
       >
-        <!-- Icon art: a thin color bar, a light tint towards the corner and
-             a big icon cut off by the tile's edge. No blur, so it stays crisp. -->
-        <span
-          class="pointer-events-none absolute inset-x-0 top-0 h-0.5"
-          :class="tile.bar"
-          aria-hidden="true"
-        ></span>
         <i
-          class="stat-art mdi pointer-events-none absolute -right-3 -bottom-4 sm:-right-2 sm:-bottom-5 text-6xl sm:text-8xl leading-none opacity-20 dark:opacity-25 -rotate-12 transition-all duration-300 group-hover:-rotate-6 group-hover:opacity-35"
-          :class="[tile.icon, tile.iconColor]"
+          class="stat-art mdi pointer-events-none absolute -right-3 -bottom-5 text-6xl sm:text-7xl leading-none opacity-10 dark:opacity-15 -rotate-12 transition-transform duration-300 group-hover:-rotate-6"
+          :class="[tile.icon, ACCENTS[tile.accent].art]"
           aria-hidden="true"
         ></i>
-        <p class="relative text-sm text-gray-600 dark:text-brand-300">
-          {{ tile.label }}
-        </p>
-        <p class="relative text-2xl sm:text-3xl font-bold">{{ tile.value }}</p>
+        <span class="relative flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
+          <span
+            class="grid place-items-center shrink-0 w-8 h-8 sm:w-10 sm:h-10 rounded-lg text-lg sm:text-xl"
+            :class="ACCENTS[tile.accent].tile"
+          >
+            <i class="mdi" :class="tile.icon" aria-hidden="true"></i>
+          </span>
+          <span class="min-w-0">
+            <span class="block text-xs sm:text-sm text-gray-600 dark:text-brand-300">{{ tile.label }}</span>
+            <span class="block text-2xl sm:text-3xl font-bold leading-tight text-gray-900 dark:text-white">{{ tile.value }}</span>
+          </span>
+        </span>
       </button>
     </div>
 

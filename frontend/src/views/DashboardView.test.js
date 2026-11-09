@@ -332,8 +332,10 @@ describe("DashboardView", () => {
     const tile = mountDashboard().find('[data-testid="stat-links"]');
     expect(tile.find(".blur-md").exists()).toBe(false);
     expect(tile.classes()).toEqual(
-      expect.arrayContaining(["bg-linear-to-br", "to-sky-500/15"]),
+      expect.arrayContaining(["bg-linear-to-br", "to-sky-500/10", "rounded-xl"]),
     );
+    // An icon tile beside the number, like the cards on the Tools page
+    expect(tile.find("span.rounded-lg i.mdi-link-variant").exists()).toBe(true);
   });
 
   it("opens a menu when you right-click a tag", async () => {
