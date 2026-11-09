@@ -60,6 +60,16 @@ categories.post("/", requireAuth(), async (c) => {
       c,
       `Category name must not exceed ${MAX_LENGTHS.categoryName} characters`,
     );
+  if (icon.length > MAX_LENGTHS.icon)
+    return errorResponse(
+      c,
+      `Icon must not exceed ${MAX_LENGTHS.icon} characters`,
+    );
+  if (color.length > MAX_LENGTHS.color)
+    return errorResponse(
+      c,
+      `Color must not exceed ${MAX_LENGTHS.color} characters`,
+    );
 
   // Check duplicate
   const existing = db
@@ -133,6 +143,16 @@ categories.put("/", requireAuth(), async (c) => {
     return errorResponse(
       c,
       `Category name must not exceed ${MAX_LENGTHS.categoryName} characters`,
+    );
+  if (icon.length > MAX_LENGTHS.icon)
+    return errorResponse(
+      c,
+      `Icon must not exceed ${MAX_LENGTHS.icon} characters`,
+    );
+  if (color.length > MAX_LENGTHS.color)
+    return errorResponse(
+      c,
+      `Color must not exceed ${MAX_LENGTHS.color} characters`,
     );
 
   db.prepare(

@@ -21,6 +21,7 @@ import config from "./config.js";
 import { initDb } from "./lib/database.js";
 import { sessionMiddleware } from "./middleware/session.js";
 import { requireJsonBody } from "./middleware/requireJson.js";
+import { limitBodySize } from "./middleware/bodyLimit.js";
 import { baseUrl, allowedCorsOrigin } from "./lib/helpers.js";
 
 // Routes
@@ -62,6 +63,7 @@ app.use(
 
 app.use("*", sessionMiddleware());
 app.use("/api/*", requireJsonBody());
+app.use("/api/*", limitBodySize());
 // gzip API answers: the whole shelf is one JSON list, and compresses ~10x
 app.use("/api/*", compress());
 
@@ -163,7 +165,14 @@ if (process.env.NODE_ENV !== "test") {
     setInterval(sync, 60_000).unref();
   }
 
-  serve({ fetch: app.fetch, port: config.port }, (info) => {
+  // Node refuses request lines over 16 KB by default. The bookmarklet and the
+  // duplicate check put a link's URL in the query string, and URLs may be
+  // up to MAX_LENGTHS.url characters (more once percent-encoded).
+  serve({
+    fetch: app.fetch,
+    port: config.port,
+    serverOptions: { maxHeaderSize: 256 * 1024 },
+  }, (info) => {
     console.log(
       `[server] Hidden Shelf running on http://localhost:${info.port}`,
     );

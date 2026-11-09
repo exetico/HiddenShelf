@@ -204,3 +204,56 @@ describe("LinkFormModal filling in", () => {
     expect(useDialogStore().current?.title).toBe("Discard your changes?");
   });
 });
+
+describe("LinkFormModal length limits", () => {
+  let pinia;
+  beforeEach(() => {
+    pinia = createPinia();
+    setActivePinia(pinia);
+    linksApi.findDuplicates.mockReset();
+    linksApi.findDuplicates.mockResolvedValue([]);
+  });
+
+  const mountForm = () =>
+    mount(LinkFormModal, {
+      props: { open: true, model: null, categories: [] },
+      global: { plugins: [pinia], stubs: { Teleport: true } },
+    });
+
+  it("says which field is too long and doesn't save", async () => {
+    const wrapper = mountForm();
+    await wrapper.find('input[placeholder="Title"]').setValue("t".repeat(260));
+    await wrapper.find('[data-testid="link-url"]').setValue("https://example.com");
+    const problems = wrapper.find('[data-testid="link-form-problems"]');
+    expect(problems.text()).toContain("The title is 5 characters too long (at most 255).");
+    expect(wrapper.find('button[type="submit"]').attributes("disabled")).toBeDefined();
+    await wrapper.find("form").trigger("submit");
+    await flushPromises();
+    expect(wrapper.emitted("save")).toBeUndefined();
+  });
+
+  it("allows a very long URL", async () => {
+    const wrapper = mountForm();
+    await wrapper.find('input[placeholder="Title"]').setValue("Long");
+    await wrapper.find('[data-testid="link-url"]').setValue(`https://example.com/?q=${"a".repeat(30000)}`);
+    expect(wrapper.find('[data-testid="link-form-problems"]').exists()).toBe(false);
+    await wrapper.find("form").trigger("submit");
+    await flushPromises();
+    expect(wrapper.emitted("save")).toHaveLength(1);
+  });
+
+  it("shows a character count once the description gets long", async () => {
+    const wrapper = mountForm();
+    const textarea = wrapper.find('textarea[placeholder="Description"]');
+    await textarea.setValue("x".repeat(100));
+    expect(wrapper.find('[data-testid="description-count"]').exists()).toBe(false);
+    await textarea.setValue("x".repeat(19000));
+    expect(wrapper.find('[data-testid="description-count"]').text()).toBe("19,000 / 20,000");
+  });
+
+  it("flags a tag that is too long", async () => {
+    const wrapper = mountForm();
+    await wrapper.find('input[placeholder="Add tags..."]').setValue("t".repeat(60));
+    expect(wrapper.find('[data-testid="link-form-problems"]').text()).toMatch(/tag .* is too long/);
+  });
+});

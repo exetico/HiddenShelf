@@ -36,6 +36,7 @@ import {
   successResponse,
   errorResponse,
   MAX_LENGTHS,
+  checkTagNames,
 } from "../lib/helpers.js";
 import { requireAuth, optionalAuth } from "../middleware/auth.js";
 import { revalidate } from "../middleware/revalidate.js";
@@ -117,9 +118,8 @@ function syncTags(db, linkId, tagNames, userId) {
   // Remove old tags
   db.prepare("DELETE FROM link_tags WHERE link_id = ?").run(linkId);
 
-  for (const raw of tagNames) {
-    const name = sanitize(raw);
-    if (!name) continue;
+  // Names come checked and cleaned by checkTagNames
+  for (const name of tagNames) {
 
     let tag = db
       .prepare("SELECT id FROM tags WHERE name = ? AND user_id = ?")
@@ -371,7 +371,7 @@ links.post("/", requireAuth(), async (c) => {
     input.display_order != null ? parseInt(input.display_order, 10) : null;
   if (Number.isNaN(displayOrder)) displayOrder = null;
   let directRedirect = input.direct_redirect ? 1 : 0;
-  const tags = input.tags || [];
+  const checkedTags = checkTagNames(input.tags);
 
   if (!url || !isValidUrl(url))
     return errorResponse(c, "Valid URL is required");
@@ -398,6 +398,7 @@ links.post("/", requireAuth(), async (c) => {
       c,
       `Icon must not exceed ${MAX_LENGTHS.icon} characters`,
     );
+  if (checkedTags.error) return errorResponse(c, checkedTags.error);
 
   // Validate category ownership
   if (categoryId) {
@@ -439,7 +440,8 @@ links.post("/", requireAuth(), async (c) => {
       directRedirect,
     );
 
-  if (tags.length) syncTags(db, info.lastInsertRowid, tags, c.userId);
+  if (checkedTags.names.length)
+    syncTags(db, info.lastInsertRowid, checkedTags.names, c.userId);
 
   const link = db
     .prepare("SELECT * FROM links WHERE id = ?")
@@ -521,6 +523,8 @@ links.put("/", requireAuth(), async (c) => {
         ? 1
         : 0
       : existing.direct_redirect || 0;
+  const checkedTags =
+    input.tags !== undefined ? checkTagNames(input.tags) : { names: [] };
   const isFavorite =
     input.is_favorite !== undefined
       ? input.is_favorite
@@ -553,6 +557,7 @@ links.put("/", requireAuth(), async (c) => {
       c,
       `Icon must not exceed ${MAX_LENGTHS.icon} characters`,
     );
+  if (checkedTags.error) return errorResponse(c, checkedTags.error);
 
   // Validate category ownership on update
   if (categoryId && categoryId !== existing.category_id) {
@@ -583,7 +588,7 @@ links.put("/", requireAuth(), async (c) => {
   );
 
   if (input.tags !== undefined) {
-    syncTags(db, id, input.tags, c.userId);
+    syncTags(db, id, checkedTags.names, c.userId);
   }
 
   const link = db.prepare("SELECT * FROM links WHERE id = ?").get(id);

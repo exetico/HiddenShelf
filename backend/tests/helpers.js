@@ -10,6 +10,7 @@ import { initDb, getDb, closeDb } from "../src/lib/database.js";
 import { sessionMiddleware, sessions } from "../src/middleware/session.js";
 import { cors } from "hono/cors";
 import { requireJsonBody } from "../src/middleware/requireJson.js";
+import { limitBodySize } from "../src/middleware/bodyLimit.js";
 import { allowedCorsOrigin } from "../src/lib/helpers.js";
 
 // Routes
@@ -59,6 +60,7 @@ export function createTestApp() {
   );
   app.use("*", sessionMiddleware());
   app.use("/api/*", requireJsonBody());
+  app.use("/api/*", limitBodySize());
 
   app.route("/api/auth", authRoutes);
   app.route("/api/links", linksRoutes);

@@ -6,6 +6,7 @@ import { linksApi } from "@/services/api/linksApi";
 import { useDialogStore } from "@/stores/dialog";
 import { renderMarkdown } from "@/lib/markdown";
 import { withScheme } from "@/lib/url";
+import { linkFormProblems, LIMITS } from "@/lib/limits";
 
 const props = defineProps({
   open: Boolean,
@@ -181,6 +182,19 @@ function handleTagKeydown(event) {
   }
 }
 
+// Fields over what the server accepts, said plainly before saving
+const problems = computed(() =>
+  linkFormProblems({ ...form, tags: [...form.tags, ...pendingTags()] }),
+);
+const descriptionLength = computed(() => form.description.trim().length);
+const showDescriptionCount = computed(
+  () => descriptionLength.value > LIMITS.description * 0.8,
+);
+
+function pendingTags() {
+  return form.newTagInput.split(",").map((t) => t.trim()).filter(Boolean);
+}
+
 // "10.0.0.2:8080" is fine to type; it becomes http://10.0.0.2:8080
 function completeUrl() {
   form.url = withScheme(form.url);
@@ -189,6 +203,7 @@ function completeUrl() {
 async function submit() {
   if (form.newTagInput.trim()) addTag();
   completeUrl();
+  if (problems.value.length) return;
   // Only ask when the URL changed; editing a known duplicate's title
   // shouldn't nag every time
   const urlChanged = form.url.trim() !== (props.model?.url || "");
@@ -287,6 +302,13 @@ async function submit() {
           class="mt-0.5 flex items-center justify-between gap-2 text-xs text-gray-500 dark:text-brand-400"
         >
           <span>Markdown: **bold**, *italic*, `code`, - lists, [text](url)</span>
+          <span
+            v-if="showDescriptionCount"
+            data-testid="description-count"
+            :class="descriptionLength > LIMITS.description ? 'text-red-600 dark:text-red-400' : ''"
+          >
+            {{ descriptionLength.toLocaleString("en") }} / {{ LIMITS.description.toLocaleString("en") }}
+          </span>
           <button
             type="button"
             class="shrink-0 text-brand-600 dark:text-brand-300 hover:underline"
@@ -397,6 +419,18 @@ async function submit() {
         </template>
       </p>
 
+      <ul
+        v-if="problems.length"
+        role="alert"
+        data-testid="link-form-problems"
+        class="space-y-0.5 text-sm text-red-600 dark:text-red-400"
+      >
+        <li v-for="problem in problems" :key="problem" class="flex items-start gap-1.5">
+          <i class="mdi mdi-alert-circle-outline mt-0.5" aria-hidden="true"></i>
+          <span>{{ problem }}</span>
+        </li>
+      </ul>
+
       <div class="flex justify-end gap-2 pt-2">
         <button
           title="Close without saving"
@@ -409,7 +443,8 @@ async function submit() {
         <button
           title="Save the link"
           type="submit"
-          class="px-3 py-2 rounded-md bg-brand-600 text-white hover:bg-brand-700"
+          :disabled="problems.length > 0"
+          class="px-3 py-2 rounded-md bg-brand-600 text-white hover:bg-brand-700 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           Save
         </button>

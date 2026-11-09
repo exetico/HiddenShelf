@@ -16,6 +16,7 @@ import {
   getClientIp,
   successResponse,
   errorResponse,
+  MAX_LENGTHS,
 } from "../lib/helpers.js";
 import { requireAuth, optionalAuth } from "../middleware/auth.js";
 
@@ -30,7 +31,8 @@ export function logVisit(db, linkId, c) {
   const maskedIp = maskIpAddress(ip);
   const ua = c.req.header("user-agent") || "";
   const parsed = parseUserAgent(ua);
-  const referer = c.req.header("referer") || null;
+  const referer =
+    c.req.header("referer")?.substring(0, MAX_LENGTHS.referer) || null;
 
   db.prepare(
     "INSERT INTO link_visits (link_id, ip_masked, user_agent, browser, os, referer) VALUES (?, ?, ?, ?, ?, ?)",
