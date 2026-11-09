@@ -226,10 +226,12 @@ This document provides a comprehensive overview of all features, functionality, 
 #### ToastList (`ToastList.vue`)
 
 - Renders toast notifications from `toastStore.items`
-- **CSS classes per type**: success (green), error (red), info (blue)
+- **Look**: the same surface as cards and dialogs (`bg-white` / `dark:bg-brand-900`, gray/brand border). The type shows only as a small MDI icon (success `mdi-check-circle`, error `mdi-alert-circle`, info `mdi-information`) and the color of the timer line. Each toast carries `data-type`
+- **Placement**: bottom center on phones (above the safe area), bottom right from `sm` up
 - **Progress bar**: Each toast has a `<div class="toast-progress">` with CSS `@keyframes shrink` animation, duration set to `item.duration` ms (default 3500ms)
-- **Click to dismiss**: Clicking a toast removes it immediately via `toastStore.remove(id)`
-- Multiple toasts stack vertically
+- **Dismiss**: click the toast or its close button (`title="Dismiss"`); both call `toastStore.remove(id)`
+- **Accessibility**: errors use `role="alert"`, the rest `role="status"`, inside an `aria-live="polite"` region
+- Multiple toasts stack vertically; the store keeps at most 3 and drops the oldest
 
 ## Link Management
 
