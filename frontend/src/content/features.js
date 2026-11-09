@@ -160,7 +160,7 @@ export const FAQ = [
   },
   {
     q: "Can I save a link while I'm on another site?",
-    a: "Yes. Drag the bookmarklet from your profile to your browser's bookmarks bar. Clicking it on any page opens the add form with that page filled in.",
+    a: "Yes. Drag the bookmarklet from Settings (the menu behind your initials) to your browser's bookmarks bar. Clicking it on any page opens the add form with that page filled in.",
   },
   {
     q: "Are my links stored in the browser?",
@@ -180,10 +180,10 @@ export const FAQ = [
   },
   {
     q: "I run my own Hidden Shelf. Can I update it from the app?",
-    a: "Yes. List the admins in UPDATE_ADMIN_EMAILS (see the README) and they get an Admin page (the shield button at the top) with Server updates, with the new changes listed and Update and Roll back buttons. By default it only offers versions published as a release on GitHub, so a merge never reaches your server by accident (UPDATE_CHANNEL=main offers every change instead). The server looks for new versions every hour, and Check for updates looks right away. The database is backed up before every update, and a version that doesn't start is undone by itself.",
+    a: "Yes. List the admins in UPDATE_ADMIN_EMAILS (see the README) and they get an Admin page (open the menu behind your initials, top right, and pick Admin) with Server updates, with the new changes listed and Update and Roll back buttons. By default it only offers versions published as a release on GitHub, so a merge never reaches your server by accident (UPDATE_CHANNEL=main offers every change instead). The server looks for new versions every hour, and Check for updates looks right away. The database is backed up before every update, and a version that doesn't start is undone by itself.",
   },
   {
     q: "Can I get my data out?",
-    a: "Yes. Profile → Import / export downloads all your links, categories and tags as JSON. You can also delete everything from your profile.",
+    a: "Yes. Settings → Import / export downloads all your links, categories and tags as JSON. You can also delete everything from Settings.",
   },
 ];

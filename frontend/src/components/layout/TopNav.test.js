@@ -117,12 +117,94 @@ describe("TopNav", () => {
     expect(mountNav().find('[data-testid="nav-tools-page"]').attributes("aria-current")).toBe("page");
   });
 
-  it("shows the Admin button to admins only", async () => {
-    expect(mountNav().find('[data-testid="nav-admin"]').exists()).toBe(false);
-    useAuthStore().canUpdate = true;
+  describe("account menu", () => {
+    const openMenu = async (wrapper) => {
+      await wrapper.find('[data-testid="profile-button"]').trigger("click");
+      return wrapper;
+    };
+    const items = (w) => w.findAll('[role="menuitem"]').map((b) => b.text());
+
+    it("has no Admin button in the bar itself", () => {
+      useAuthStore().canUpdate = true;
+      expect(mountNav().find('[data-testid="nav-admin"]').exists()).toBe(false);
+    });
+
+    it("opens from the initials button with Settings and Log out", async () => {
+      const wrapper = mountNav();
+      const button = wrapper.find('[data-testid="profile-button"]');
+      expect(button.attributes("aria-haspopup")).toBe("menu");
+      expect(button.attributes("aria-expanded")).toBe("false");
+      expect(wrapper.find('[role="menu"]').exists()).toBe(false);
+      await openMenu(wrapper);
+      expect(button.attributes("aria-expanded")).toBe("true");
+      expect(items(wrapper)).toEqual(["Settings", "Log out"]);
+      expect(wrapper.find('[role="menu"]').text()).toContain("t@example.com");
+    });
+
+    it("adds Admin for admins only", async () => {
+      useAuthStore().canUpdate = true;
+      const wrapper = await openMenu(mountNav());
+      expect(items(wrapper)).toEqual(["Settings", "Admin", "Log out"]);
+      await wrapper.find('[data-testid="menu-admin"]').trigger("click");
+      expect(mockPush).toHaveBeenCalledWith({ name: "admin" });
+      expect(wrapper.find('[role="menu"]').exists()).toBe(false);
+    });
+
+    it("goes to the settings page from Settings", async () => {
+      const wrapper = await openMenu(mountNav());
+      await wrapper.find('[data-testid="menu-settings"]').trigger("click");
+      expect(mockPush).toHaveBeenCalledWith({ name: "profile" });
+      expect(wrapper.find('[role="menu"]').exists()).toBe(false);
+    });
+
+    it("logs out from Log out", async () => {
+      const auth = useAuthStore();
+      auth.logout = vi.fn();
+      const wrapper = await openMenu(mountNav());
+      await wrapper.find('[data-testid="menu-logout"]').trigger("click");
+      expect(auth.logout).toHaveBeenCalled();
+    });
+
+    it("closes on Escape and on a click outside", async () => {
+      const wrapper = mount(TopNav, { global: { plugins: [pinia] }, attachTo: document.body });
+      await openMenu(wrapper);
+      await wrapper.find('[data-testid="profile-menu"]').trigger("keydown", { key: "Escape" });
+      expect(wrapper.find('[role="menu"]').exists()).toBe(false);
+
+      await openMenu(wrapper);
+      document.body.dispatchEvent(new Event("pointerdown", { bubbles: true }));
+      await wrapper.vm.$nextTick();
+      expect(wrapper.find('[role="menu"]').exists()).toBe(false);
+      wrapper.unmount();
+    });
+
+    it("moves between items with the arrow keys", async () => {
+      useAuthStore().canUpdate = true;
+      const wrapper = mount(TopNav, { global: { plugins: [pinia] }, attachTo: document.body });
+      await openMenu(wrapper);
+      await wrapper.vm.$nextTick();
+      const [settings, admin, logout] = wrapper.findAll('[role="menuitem"]').map((b) => b.element);
+      expect(document.activeElement).toBe(settings);
+      const menu = wrapper.find('[data-testid="profile-menu"]');
+      await menu.trigger("keydown", { key: "ArrowDown" });
+      expect(document.activeElement).toBe(admin);
+      await menu.trigger("keydown", { key: "ArrowUp" });
+      await menu.trigger("keydown", { key: "ArrowUp" });
+      expect(document.activeElement).toBe(logout);
+      wrapper.unmount();
+    });
+  });
+
+  it("gives View/Edit and the icon buttons the same height", () => {
     const wrapper = mountNav();
-    await wrapper.find('[data-testid="nav-admin"]').trigger("click");
-    expect(mockPush).toHaveBeenCalledWith(expect.objectContaining({ name: "admin" }));
+    const sized = [
+      wrapper.find('[role="group"][aria-label="Mode"]'),
+      wrapper.find('[data-testid="nav-tools-page"]'),
+      wrapper.find('[data-testid="profile-button"]'),
+    ];
+    for (const el of sized) {
+      expect(el.classes()).toEqual(expect.arrayContaining(["h-8", "sm:h-10"]));
+    }
   });
 
   it("stays at the top while you scroll", () => {
