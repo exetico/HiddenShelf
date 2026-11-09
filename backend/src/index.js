@@ -22,7 +22,7 @@ import { initDb } from "./lib/database.js";
 import { sessionMiddleware } from "./middleware/session.js";
 import { requireJsonBody } from "./middleware/requireJson.js";
 import { limitBodySize } from "./middleware/bodyLimit.js";
-import { baseUrl, allowedCorsOrigin } from "./lib/helpers.js";
+import { baseUrl, allowedCorsOrigin, notFoundResponse } from "./lib/helpers.js";
 
 // Routes
 import authRoutes from "./routes/auth.js";
@@ -142,6 +142,9 @@ app.get("/public/index.html", (c) =>
 );
 
 // ─── Error handling ──────────────────────────────────────────────
+
+// An API path that doesn't exist answers in JSON, like every API answer
+app.notFound(notFoundResponse);
 
 app.onError((err, c) => {
   console.error("[server]", err);

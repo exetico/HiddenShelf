@@ -1,5 +1,6 @@
 <script setup>
 import { ref, computed, onMounted } from "vue";
+import { useReconnect } from "@/composables/useReconnect";
 import { RouterLink, useRouter, useRoute } from "vue-router";
 import { authApi } from "@/services/api/authApi";
 import { configApi } from "@/services/api/configApi";
@@ -42,6 +43,8 @@ async function loadLoginMethods() {
     methods.value = { email: true, google: true };
   }
 }
+// Ask again once the server is back, if it couldn't be reached
+useReconnect(loadLoginMethods);
 
 onMounted(() => {
   loadLoginMethods();

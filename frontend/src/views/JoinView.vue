@@ -6,6 +6,7 @@
  * that email, never another one.
  */
 import { ref, computed, onMounted } from "vue";
+import { useReconnect } from "@/composables/useReconnect";
 import { RouterLink } from "vue-router";
 import { accessApi } from "@/services/api/accessApi";
 import { useToastStore } from "@/stores/toast";
@@ -53,6 +54,8 @@ async function send() {
 }
 
 onMounted(load);
+// Ask again once the server is back, if it couldn't be reached
+useReconnect(load);
 </script>
 
 <template>
