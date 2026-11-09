@@ -106,7 +106,7 @@ describe("LoginView", () => {
     const { FRONT_FEATURES } = await import("@/content/features");
     const titles = wrapper.findAll('[aria-labelledby="features-heading"] h3').map((t) => t.text());
     expect(titles).toEqual(FRONT_FEATURES.map((f) => f.title));
-    expect(titles).toContain("Link tools");
+    expect(titles).toContain("Shelf tools");
     expect(wrapper.find('[data-testid="login-help-link"]').attributes("href")).toBe("/help");
   });
 

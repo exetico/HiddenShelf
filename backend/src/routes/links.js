@@ -16,6 +16,7 @@
  *   GET    /api/links?trash=1        → own links in the trash (auth)
  *   POST   /api/links                → create
  *   POST   /api/links/restore?id=    → take a link out of the trash
+ *   POST   /api/links/check          → is each of these links still there? {ids: [...]}
  *   PUT    /api/links?id=            → update (incl. is_favorite)
  *   PUT    /api/links/order          → set the order of some links {ids: [...]}
  *   DELETE /api/links?id=            → move to the trash
@@ -40,6 +41,7 @@ import {
 } from "../lib/helpers.js";
 import { requireAuth, optionalAuth } from "../middleware/auth.js";
 import { revalidate } from "../middleware/revalidate.js";
+import { checkUrl, mapLimit } from "../lib/linkCheck.js";
 
 const links = new Hono();
 
@@ -593,6 +595,58 @@ links.put("/", requireAuth(), async (c) => {
 
   const link = db.prepare("SELECT * FROM links WHERE id = ?").get(id);
   return successResponse(c, { link }, "Link updated successfully");
+});
+
+// ─── POST /api/links/check ───────────────────────────────────────
+// The "Check links" tool: asks each link's site if the page is still
+// there (see lib/linkCheck.js). Own links only, by id, so this can't be
+// used to make the server fetch any address. The app sends the shelf in
+// batches of CHECK_BATCH; CHECK_LIMIT per user per window keeps it from
+// being used to hammer other sites.
+
+export const CHECK_BATCH = 20;
+export const CHECK_LIMIT = 1000;
+const CHECK_WINDOW_MS = 60 * 60 * 1000;
+export const checkUsage = new Map(); // userId → { count, resetAt }
+
+links.post("/check", requireAuth(), async (c) => {
+  const db = getDb();
+  const input = await c.req.json().catch(() => ({}));
+  const ids = Array.isArray(input.ids) ? input.ids.map(Number) : null;
+  if (!ids || !ids.length || ids.some((id) => !Number.isInteger(id)))
+    return errorResponse(c, "ids must be a list of link IDs");
+  if (ids.length > CHECK_BATCH)
+    return errorResponse(c, `Check at most ${CHECK_BATCH} links at a time`);
+
+  const now = Date.now();
+  let usage = checkUsage.get(c.userId);
+  if (!usage || usage.resetAt <= now) {
+    usage = { count: 0, resetAt: now + CHECK_WINDOW_MS };
+    checkUsage.set(c.userId, usage);
+  }
+  if (usage.count + ids.length > CHECK_LIMIT) {
+    const minutes = Math.ceil((usage.resetAt - now) / 60000);
+    return errorResponse(
+      c,
+      `That's a lot of checking for one hour. Try again in ${minutes} minute${minutes === 1 ? "" : "s"}.`,
+      429,
+    );
+  }
+
+  const placeholders = ids.map(() => "?").join(",");
+  const rows = db
+    .prepare(
+      `SELECT id, url FROM links WHERE user_id = ? AND deleted_at IS NULL AND id IN (${placeholders})`,
+    )
+    .all(c.userId, ...ids);
+  usage.count += rows.length;
+
+  const results = await mapLimit(rows, 5, async (row) => ({
+    id: row.id,
+    url: row.url,
+    ...(await checkUrl(row.url)),
+  }));
+  return successResponse(c, { results });
 });
 
 // ─── POST /api/links/restore?id= ────────────────────────────────

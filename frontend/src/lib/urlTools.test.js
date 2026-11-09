@@ -5,6 +5,8 @@ import {
   encodeText,
   isTrackingParam,
   parseUrl,
+  TOOLS,
+  toolFor,
   toolHref,
   toolQuery,
   urlParts,
@@ -56,9 +58,25 @@ describe("urlTools", () => {
   });
 
   it("builds tool addresses", () => {
-    expect(toolQuery("qr")).toEqual({});
-    expect(toolQuery("clean")).toEqual({ tool: "clean" });
-    expect(toolHref("encode", "/shelf/")).toBe("/shelf/tools?tool=encode");
-    expect(toolHref("qr", "/")).toBe("/tools");
+    expect(toolQuery("")).toEqual({});
+    expect(toolQuery("qr")).toEqual({ tool: "qr" });
+    expect(toolHref("check", "/shelf/")).toBe("/shelf/tools?tool=check");
+    expect(toolHref("", "/")).toBe("/tools");
+  });
+
+  it("finds a tool by key, and sends merged tools to Inspect", () => {
+    expect(toolFor("qr")?.label).toBe("QR code");
+    expect(toolFor("clean")?.key).toBe("inspect");
+    expect(toolFor("encode")?.key).toBe("inspect");
+    expect(toolFor("nope")).toBeNull();
+    expect(toolFor(undefined)).toBeNull();
+  });
+
+  it("explains every tool", () => {
+    for (const tool of TOOLS) {
+      expect(tool.description.length, tool.key).toBeGreaterThan(60);
+      expect(tool.hint, tool.key).toBeTruthy();
+      expect(["shelf", "links"], tool.key).toContain(tool.group);
+    }
   });
 });

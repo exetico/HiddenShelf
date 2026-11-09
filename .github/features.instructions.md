@@ -134,12 +134,16 @@ This document provides a comprehensive overview of all features, functionality, 
 #### Tools (`ToolsView.vue`, `/tools`)
 
 - Linked from the dashboard and the toolbox button in the top bar (`nav-tools-page`)
-- The open tool is in the address (`?tool=encode|clean|inspect`; none means QR)
-- Everything runs in the browser (`lib/urlTools.js`); nothing is sent to the server
-- **QR code**: For any address or text (`LinkQrCode`, with a `hint` prop). Addresses over `LONG_QR_URL` (80) characters show a hint to save the link and use its public link, with "Add link" (`editor.create({ url })`)
-- **Encode / decode**: `encodeURIComponent` (a query value) or `encodeURI` (a whole address); decoding reads `+` as a space and explains invalid input
-- **Clean link**: `cleanTracking()` removes `utm_*`, `pk_*`, `mtm_*`, `fbclid`, `gclid`, `msclkid` and other tracking parameters, lists them, and offers copy or "Add link"
-- **Inspect link**: `urlParts()` shows protocol, host, port, path, fragment and query parameters (tracking ones marked)
+- No `?tool=` shows the overview: a card per tool (`TOOLS` and `TOOL_GROUPS` in `lib/urlTools.js`, with `label`, `hint`, `description`, `accent`, `where`), grouped as "Look after your shelf" and "Work with a link". Shelf cards show what they found (broken/moved count, duplicate groups, links to tidy)
+- `?tool=KEY` opens one tool (`components/tools/*Tool.vue`, kept alive while switching): a header with what it does and where it runs, a back button and icon tabs to the other tools. Old `?tool=encode` and `?tool=clean` open Inspect (`toolFor()`)
+- Shelf tools work on your own links only (`ownLinks()`; shared categories' links are left out). Their logic is in `lib/shelfTools.js`
+- **Check links** (`CheckLinksTool`, `stores/linkCheck.js`): sends your link ids to `POST /api/links/check` in batches of 20 with a progress bar and Stop. Lists Broken (Edit, Trash), Moved (301/308 to a new address: "Use new address", "Update all") and Couldn't tell (sign-in, blocked, timeout); counts working links and links on your own network that aren't checked. Results stay in the store until the next run
+- **Duplicates** (`DuplicatesTool`, `findDuplicates()`): groups own links by `sameUrlKey()` (the server's `normalizeUrl` rules, plus tracking parameters ignored), oldest first. "Keep this one" trashes the others (confirm, Undo in the toast)
+- **Tidy up** (`TidyTool`, `TIDY_CHECKS`/`tidyReport()`): No category, No tags, Tracking in the address (Clean, Clean all), Title is just the address (`plainTitle()`; "Use it" saves `titleFromUrl()`). Other fixes open the link editor. Lists show 50, then "Show all"
+- **Add many links** (`AddManyTool`): `extractUrls()` picks addresses out of pasted text (with or without `https://`; needs a real TLD so "e.g." isn't one), marks those already on the shelf, optionally strips tracking, and creates up to 200 at once with a category and tags. Titles come from `titleFromUrl()`
+- **QR code** (`QrTool`, `LinkQrCode` with `large`): for any address or text; the box suggests your links (datalist). A public link's QR uses its short `/h/` address. Long addresses (over `LONG_QR_URL`) show a hint to save the link and make it public
+- **Inspect a link** (`InspectTool`): `cleanTracking()` result first (copy, Add to shelf), then `urlParts()` (protocol, host, port, path, fragment, decoded query parameters with tracking marked), and an "Encode or decode text" section (`encodeText`/`decodeText`)
+- **Saving QR codes** (`lib/saveImage.js`, used by `LinkQrCode` everywhere): on touch devices that can share files it opens the share sheet (Safari on iPhone can't save a `data:` download); otherwise it downloads from a `blob:` URL
 
 #### Help (`HelpView.vue`, `/help`)
 
@@ -513,6 +517,7 @@ This document provides a comprehensive overview of all features, functionality, 
 - `PUT ?id=X` — Update link
 - `DELETE ?id=X` — Delete link
 - `GET ?hash=X` — Get public link by hash
+- `POST /check` — Link checker `{ ids }` (own links, at most 20 per request, 1000 per user per hour, else 429). Answers `{ results: [{ id, url, status, code, reason, final_url }] }` with status `ok`, `moved` (301/308 to `final_url`), `broken` (404/410, unknown host, refused), `unsure` or `skipped`. `lib/linkCheck.js`: HEAD, then GET if HEAD is refused; 8 s timeout; up to 5 redirects; bodies never read. Never connects to private, loopback or link-local addresses: checked in the socket's DNS lookup (no rebinding) and for literal IPs, on every hop; such links are `skipped`
 
 ### Categories (`/api/categories`)
 
