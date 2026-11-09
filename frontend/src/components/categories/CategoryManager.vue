@@ -1,4 +1,5 @@
 <script setup>
+import { LIMITS } from "@/lib/limits";
 import { appUrl } from "@/lib/appUrl";
 import { computed, ref, reactive } from "vue";
 import BaseModal from "@/components/common/BaseModal.vue";
@@ -236,11 +237,13 @@ const shareBackdrop = backdropClose(() => (showShareModal.value = false));
         <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
           <input
             v-model="name"
+            :maxlength="LIMITS.categoryName"
             placeholder="Category name"
             class="px-3 py-2 rounded-md border border-gray-300 dark:border-brand-700 dark:bg-brand-800"
           />
           <input
             v-model="icon"
+            :maxlength="LIMITS.icon"
             placeholder="Icon (e.g. mdi-folder)"
             class="px-3 py-2 rounded-md border border-gray-300 dark:border-brand-700 dark:bg-brand-800"
           />
@@ -433,10 +436,12 @@ const shareBackdrop = backdropClose(() => (showShareModal.value = false));
             <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
               <input
                 v-model="editForm.name"
+                :maxlength="LIMITS.categoryName"
                 class="px-3 py-2 rounded-md border border-gray-300 dark:border-brand-700 dark:bg-brand-800"
               />
               <input
                 v-model="editForm.icon"
+                :maxlength="LIMITS.icon"
                 placeholder="Icon"
                 class="px-3 py-2 rounded-md border border-gray-300 dark:border-brand-700 dark:bg-brand-800"
               />

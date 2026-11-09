@@ -5,6 +5,7 @@ import { useToastStore } from "@/stores/toast";
 import { linksApi } from "@/services/api/linksApi";
 import { categoriesApi } from "@/services/api/categoriesApi";
 import { tagsApi } from "@/services/api/tagsApi";
+import { linkFormProblems } from "@/lib/limits";
 import BaseModal from "@/components/common/BaseModal.vue";
 import { backdropClose } from "@/lib/backdropClose";
 
@@ -152,6 +153,17 @@ async function validateImport() {
         }
         if (!link.title || typeof link.title !== "string") {
           throw new Error("Link must have a valid title");
+        }
+        // Stop here rather than halfway through the import
+        const tooLong = linkFormProblems({
+          url: link.url,
+          title: link.title,
+          description: link.description || "",
+          icon: link.icon || "",
+          tags: Array.isArray(link.tags) ? link.tags : [],
+        });
+        if (tooLong.length) {
+          throw new Error(`Link "${link.title.slice(0, 40)}": ${tooLong[0]}`);
         }
         if (existingUrls.includes(link.url.toLowerCase())) {
           importStats.duplicateLinks++;

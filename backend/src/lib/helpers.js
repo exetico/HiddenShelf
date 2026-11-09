@@ -149,16 +149,48 @@ export function safeReturnTo(returnTo) {
   return "#/dashboard";
 }
 
-/** Maximum input field lengths to prevent storage abuse */
+/**
+ * Maximum input field lengths, so one account can't fill the disk or slow
+ * the shelf down. Keep frontend/src/lib/limits.js in step (a test checks).
+ *
+ * URLs may be very long (tracking links, data in the query string): browsers
+ * handle far more than the old 2048, so allow 64K characters.
+ */
 export const MAX_LENGTHS = {
-  url: 2048,
+  url: 65536,
   title: 255,
-  description: 5000,
+  description: 20000,
   icon: 100,
+  color: 32,
   categoryName: 100,
   tagName: 50,
+  tagsPerLink: 50,
   email: 254,
+  returnTo: 2048,
+  referer: 2048,
 };
+
+/** Largest API request body. A link at every limit is well under this. */
+export const MAX_BODY_BYTES = 1024 * 1024;
+
+/**
+ * Check a link's tag list: an array of strings, each within the tag
+ * length, and not too many. Returns the cleaned names, or an error message.
+ */
+export function checkTagNames(tags) {
+  if (tags == null) return { names: [] };
+  if (!Array.isArray(tags) || tags.some((t) => typeof t !== "string"))
+    return { error: "Tags must be a list of names" };
+  const names = [...new Set(tags.map(sanitize).filter(Boolean))];
+  if (names.length > MAX_LENGTHS.tagsPerLink)
+    return { error: `A link can have at most ${MAX_LENGTHS.tagsPerLink} tags` };
+  const long = names.find((n) => n.length > MAX_LENGTHS.tagName);
+  if (long)
+    return {
+      error: `Tag "${long.slice(0, 20)}…" is too long (at most ${MAX_LENGTHS.tagName} characters)`,
+    };
+  return { names };
+}
 
 /**
  * Return a JSON success response (same shape as PHP successResponse).

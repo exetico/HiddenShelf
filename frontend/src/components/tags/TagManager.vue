@@ -1,4 +1,5 @@
 <script setup>
+import { LIMITS } from "@/lib/limits";
 import { computed, nextTick, ref } from "vue";
 import BaseModal from "@/components/common/BaseModal.vue";
 import ManagerFilter from "@/components/common/ManagerFilter.vue";
@@ -97,6 +98,7 @@ async function promptDelete(tag) {
         <input
           ref="createInput"
           v-model="name"
+          :maxlength="LIMITS.tagName"
           placeholder="Tag name"
           aria-label="Tag name"
           class="flex-1 min-w-0 px-3 py-2 rounded-md border border-gray-300 dark:border-brand-700 dark:bg-brand-800"
@@ -182,6 +184,7 @@ async function promptDelete(tag) {
           <form v-else class="flex flex-wrap gap-2" @submit.prevent="saveEdit(tag)">
             <input
               v-model="editName"
+              :maxlength="LIMITS.tagName"
               aria-label="Tag name"
               class="flex-1 min-w-0 px-3 py-2 rounded-md border border-gray-300 dark:border-brand-700 dark:bg-brand-800"
             />

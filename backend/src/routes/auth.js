@@ -24,6 +24,7 @@ import {
   getClientIp,
   safeReturnTo,
   returnToUrl,
+  MAX_LENGTHS,
 } from "../lib/helpers.js";
 import { requireAuth } from "../middleware/auth.js";
 import { isUpdateAdmin } from "../lib/updates.js";
@@ -80,11 +81,16 @@ auth.post("/login", async (c) => {
     );
   }
 
-  if (body.return_to) {
+  // Stored in the session; a page path is never this long
+  if (
+    typeof body.return_to === "string" &&
+    body.return_to &&
+    body.return_to.length <= MAX_LENGTHS.returnTo
+  ) {
     c.session.set("return_to", body.return_to);
   }
 
-  if (!isValidEmail(email)) {
+  if (email.length > MAX_LENGTHS.email || !isValidEmail(email)) {
     return errorResponse(c, "Invalid email address");
   }
 

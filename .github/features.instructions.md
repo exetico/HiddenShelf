@@ -611,8 +611,11 @@ This document provides a comprehensive overview of all features, functionality, 
 - **CSRF Protection**: Token validation on state-changing operations
 - **Session Security**: Secure session configuration
 - **Input Length Validation**: All user inputs enforced against `MAX_LENGTHS` constants (`helpers.js`):
-  - URL: 2048 chars, Title: 255, Description: 5000, Icon: 100, Category name: 100, Tag name: 50, Email: 254
-  - Enforced in `links.js` (POST/PUT), `categories.js` (POST/PUT), `tags.js` (POST)
+  - URL: 65,536 chars (very long tracking/query URLs fit), Title: 255, Description (Markdown): 20,000, Icon: 100, Category color: 32, Category name: 100, Tag name: 50, Tags per link: 50, Email: 254, login `return_to`: 2048, visit referer: 2048 (truncated)
+  - Enforced in `links.js` (POST/PUT, tags via `checkTagNames()` before anything is written), `categories.js` (POST/PUT, name/icon/color), `tags.js` (POST/PUT), `auth.js` (email, return_to), `linkVisits.js` (referer)
+  - Frontend mirrors the link/category/tag limits in `frontend/src/lib/limits.js` (a backend test keeps them equal): `LinkFormModal` lists fields that are too long and disables Save, shows a description counter past 80%; category and tag inputs use `maxlength`
+- **Request Body Limit**: `middleware/bodyLimit.js` caps every `/api/*` body at 1 MB (`MAX_BODY_BYTES`), answering 413 with a JSON error
+- **Long URLs in query strings**: the server raises Node's header limit to 256 KB (`serverOptions.maxHeaderSize` in `index.js`) so the bookmarklet and duplicate check work with long URLs
 - **URL Protocol Whitelist**: `isValidUrl()` only accepts `http:` and `https:` protocols — rejects `javascript:`, `data:`, `vbscript:`, etc.
 
 ### Privacy Features

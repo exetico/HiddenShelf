@@ -187,7 +187,7 @@ describe("Security: Input Validation", () => {
       method: "POST",
       headers: { "Content-Type": "application/json", cookie },
       body: JSON.stringify({
-        url: "https://example.com/" + "a".repeat(10000),
+        url: "https://example.com/" + "a".repeat(70000),
         title: "Mega URL",
       }),
     });
@@ -219,7 +219,7 @@ describe("Security: Input Validation", () => {
       body: JSON.stringify({
         url: "https://example.com",
         title: "Valid",
-        description: "D".repeat(10000),
+        description: "D".repeat(25000),
       }),
     });
 
