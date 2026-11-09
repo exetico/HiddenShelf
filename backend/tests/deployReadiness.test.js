@@ -219,8 +219,9 @@ describe("Deploy readiness", () => {
       });
       statuses.push(res.status);
     }
-    expect(statuses.slice(0, 10).every((s) => s === 200)).toBe(true);
-    expect(statuses.slice(10)).toEqual([429, 429]);
+    // One link a minute per address, whichever IP asks
+    expect(statuses[0]).toBe(200);
+    expect(statuses.slice(1).every((s) => s === 429)).toBe(true);
   });
 
   // ── 7. Client IP ──
@@ -247,6 +248,44 @@ describe("Deploy readiness", () => {
     it("trusts X-Forwarded-For from a proxy on a private network", () => {
       expect(getClientIp(ctx("172.18.0.2", { "x-forwarded-for": "1.1.1.1, 172.18.0.2" }))).toBe(
         "1.1.1.1",
+      );
+    });
+
+    it("can't be faked by adding an address before the proxy's", () => {
+      // nginx's $proxy_add_x_forwarded_for appends the real client
+      expect(
+        getClientIp(ctx("172.18.0.2", { "x-forwarded-for": "9.9.9.9, 198.51.100.7" })),
+      ).toBe("198.51.100.7");
+      // Two proxies of ours (host nginx, then a Docker one)
+      expect(
+        getClientIp(
+          ctx("172.18.0.3", { "x-forwarded-for": "9.9.9.9, 198.51.100.7, 172.18.0.2" }),
+        ),
+      ).toBe("198.51.100.7");
+    });
+
+    it("uses the first hop when every hop is on the local network", () => {
+      expect(
+        getClientIp(ctx("172.18.0.2", { "x-forwarded-for": "192.168.1.20, 172.18.0.1" })),
+      ).toBe("192.168.1.20");
+    });
+
+    it("ignores CF-Connecting-IP unless TRUST_PROXY=true", () => {
+      const headers = {
+        "cf-connecting-ip": "9.9.9.9",
+        "x-forwarded-for": "198.51.100.7",
+      };
+      expect(getClientIp(ctx("172.18.0.2", headers))).toBe("198.51.100.7");
+      config.trustProxy = "true";
+      expect(getClientIp(ctx("172.18.0.2", headers))).toBe("9.9.9.9");
+    });
+
+    it("skips forwarded values that aren't IP addresses", () => {
+      expect(
+        getClientIp(ctx("172.18.0.2", { "x-forwarded-for": "198.51.100.7, not-an-ip" })),
+      ).toBe("198.51.100.7");
+      expect(getClientIp(ctx("172.18.0.2", { "x-forwarded-for": "junk" }))).toBe(
+        "172.18.0.2",
       );
     });
 

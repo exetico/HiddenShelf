@@ -117,7 +117,9 @@ async function sendMagicLink() {
     sent.value = true;
     toastStore.success("Magic link sent! Check your email.");
   } catch (error) {
-    toastStore.error(error.message || "Failed to send magic link");
+    // Asked too often: not a failure, the server says how long to wait
+    if (error.status === 429) toastStore.info(error.message);
+    else toastStore.error(error.message || "Failed to send magic link");
   } finally {
     loading.value = false;
   }

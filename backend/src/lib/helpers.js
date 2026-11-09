@@ -3,6 +3,7 @@
  */
 
 import crypto from "node:crypto";
+import { isIP } from "node:net";
 import { getConnInfo } from "@hono/node-server/conninfo";
 import config from "../config.js";
 
@@ -263,6 +264,8 @@ function isPrivateAddress(ip) {
     /^10\./.test(v4) ||
     /^192\.168\./.test(v4) ||
     /^172\.(1[6-9]|2\d|3[01])\./.test(v4) ||
+    /^169\.254\./.test(v4) ||
+    /^fe[89ab][0-9a-f]:/i.test(v4) ||
     /^f[cd][0-9a-f]{2}:/i.test(v4)
   );
 }
@@ -275,23 +278,57 @@ function getSocketAddress(c) {
   }
 }
 
+/** Accepts "1.2.3.4", "1.2.3.4:5678", "[::1]:80" and plain IPv6; null otherwise. */
+function cleanIp(value) {
+  let ip = String(value || "").trim();
+  const bracketed = ip.match(/^\[([^\]]+)\](?::\d+)?$/);
+  if (bracketed) ip = bracketed[1];
+  else if (/^\d+\.\d+\.\d+\.\d+:\d+$/.test(ip)) ip = ip.replace(/:\d+$/, "");
+  return isIP(ip) ? ip : null;
+}
+
+/**
+ * The client in an X-Forwarded-For list. Each proxy adds the address it
+ * got the request from to the END ("client-sent, …, real client, proxy"),
+ * so the first entries are whatever the visitor chose to send. Reading
+ * from the right and skipping our own proxies (private addresses) finds
+ * the last address a trusted proxy saw. Only when every hop is private
+ * (a visitor on the same network) is the first entry used.
+ */
+function clientFromForwardedFor(header) {
+  const hops = String(header || "")
+    .split(",")
+    .map(cleanIp)
+    .filter(Boolean);
+  if (!hops.length) return null;
+  for (let i = hops.length - 1; i >= 0; i--) {
+    if (!isPrivateAddress(hops[i])) return hops[i];
+  }
+  return hops[0];
+}
+
 /**
  * Get the client IP. Forwarding headers are only believed when they come
  * from a trusted proxy (see TRUST_PROXY), otherwise anyone could set
  * X-Forwarded-For to dodge the login rate limit or fake visit stats.
+ *
+ * CF-Connecting-IP is only read with TRUST_PROXY=true (a CDN in front):
+ * a plain nginx passes that header on untouched, so in auto mode a
+ * visitor could set it to anything.
  */
 export function getClientIp(c) {
   const socketIp = getSocketAddress(c);
+  const always = config.trustProxy === "true";
   const trustHeaders =
-    config.trustProxy === "true" ||
+    always ||
     (config.trustProxy !== "false" &&
       (socketIp === null || isPrivateAddress(socketIp)));
 
   if (trustHeaders) {
     const forwarded =
-      c.req.header("cf-connecting-ip") ||
-      c.req.header("x-forwarded-for")?.split(",")[0]?.trim() ||
-      c.req.header("x-real-ip");
+      (always && cleanIp(c.req.header("cf-connecting-ip"))) ||
+      clientFromForwardedFor(c.req.header("x-forwarded-for")) ||
+      cleanIp(c.req.header("x-real-ip"));
     if (forwarded) return forwarded;
   }
 

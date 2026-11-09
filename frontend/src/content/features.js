@@ -125,6 +125,10 @@ export const FAQ = [
     a: "Enter your email and we send you a sign-in link; there's no password. If the server has it set up, you can also sign in with Google.",
   },
   {
+    q: "I didn't get the sign-in email. Can I ask for another?",
+    a: "Look in your spam folder first. You can ask for a new link after a minute, and up to 5 times an hour for the same address; the sign-in page tells you how long to wait.",
+  },
+  {
     q: "Who can see my links?",
     a: "Only you. A link becomes visible to others only when you make it public, or share the category it's in.",
   },
