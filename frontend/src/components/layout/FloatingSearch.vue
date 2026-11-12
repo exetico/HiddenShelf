@@ -60,22 +60,72 @@ watch(
   { immediate: true },
 );
 
+// The page stays where it is when the box gets focus. iPhone Safari
+// otherwise scrolls the page to bring the box into view (it doesn't know
+// the bar will be lifted above the keyboard), so the links behind it jump.
+// A tap focuses the box ourselves without scrolling, and any scroll the
+// browser still makes while the keyboard opens is undone.
+const panel = ref(null);
+const inputEl = () => panel.value?.querySelector("input");
+const SETTLE_MS = 800;
+let holdY = null;
+let holdTimer = 0;
+
+function onPointerDown(event) {
+  const input = inputEl();
+  if (!input || event.target !== input || document.activeElement === input) return;
+  event.preventDefault();
+  input.focus({ preventScroll: true });
+}
+function holdScroll() {
+  if (holdY !== null && Math.abs(window.scrollY - holdY) > 1) window.scrollTo(0, holdY);
+}
+
 function onFocusIn() {
   focused.value = true;
   revealed.value = true;
   armed.value = true;
+  holdY = window.scrollY;
+  clearTimeout(holdTimer);
+  holdTimer = setTimeout(() => (holdY = null), SETTLE_MS);
+  updateKeyboard();
 }
 function onFocusOut() {
   focused.value = false;
+  holdY = null;
 }
+
+// Done (or the keyboard's search key) closes the keyboard. It keeps the
+// focus until it is tapped, so the button doesn't vanish under the finger.
+function close() {
+  inputEl()?.blur();
+}
+
+// Above the keyboard: how much of the screen's bottom the keyboard covers
+const keyboard = ref(0);
+function updateKeyboard() {
+  const vv = window.visualViewport;
+  if (!vv) return;
+  keyboard.value = Math.max(0, Math.round(window.innerHeight - vv.height - vv.offsetTop));
+}
+const lift = computed(() =>
+  focused.value && keyboard.value > 0 ? { bottom: `${keyboard.value + 8}px` } : null,
+);
 
 onMounted(() => {
   lastY = window.scrollY;
   atTop.value = lastY <= TOP;
   window.addEventListener("scroll", onScroll, { passive: true });
+  window.addEventListener("scroll", holdScroll, { passive: true });
+  window.visualViewport?.addEventListener("resize", updateKeyboard);
+  window.visualViewport?.addEventListener("scroll", updateKeyboard);
 });
 onUnmounted(() => {
   window.removeEventListener("scroll", onScroll);
+  window.removeEventListener("scroll", holdScroll);
+  window.visualViewport?.removeEventListener("resize", updateKeyboard);
+  window.visualViewport?.removeEventListener("scroll", updateKeyboard);
+  clearTimeout(holdTimer);
   if (frame) cancelAnimationFrame(frame);
   clearTimeout(armTimer);
 });
@@ -94,12 +144,14 @@ onUnmounted(() => {
     data-testid="floating-search"
     :data-hidden="visible ? null : 'true'"
     :aria-hidden="visible ? null : 'true'"
+    :style="lift"
     @focusin="onFocusIn"
     @focusout="onFocusOut"
   >
     <!-- One rounded, see-through bar: the search box itself, no box in a box -->
     <div
-      class="rounded-2xl border border-gray-200/70 dark:border-white/10 bg-white/75 dark:bg-brand-900/70 backdrop-blur-2xl backdrop-saturate-150 shadow-lg shadow-black/10 dark:shadow-black/40 focus-within:border-brand-500 dark:focus-within:border-brand-400"
+      ref="panel"
+      class="flex items-center rounded-2xl border border-gray-200/70 dark:border-white/10 bg-white/75 dark:bg-brand-900/70 backdrop-blur-2xl backdrop-saturate-150 shadow-lg shadow-black/10 dark:shadow-black/40 focus-within:border-brand-500 dark:focus-within:border-brand-400"
       data-testid="floating-search-panel"
     >
       <SearchField
@@ -107,8 +159,25 @@ onUnmounted(() => {
         placeholder="Search links..."
         class="h-12 border-0! bg-transparent! dark:bg-transparent! rounded-2xl! focus:outline-none"
         title="Search titles, descriptions, URLs and tags"
+        enterkeyhint="search"
         data-testid="floating-search-input"
+        @pointerdown="onPointerDown"
+        @keydown.enter.prevent="close"
       />
+      <!-- Only while typing: closes the keyboard. Holding on to the focus
+           until the tap ends keeps it from moving away under the finger -->
+      <button
+        v-if="focused"
+        type="button"
+        class="shrink-0 h-12 px-4 text-base font-medium text-brand-700 dark:text-brand-200"
+        title="Done: close the keyboard"
+        data-testid="floating-search-done"
+        @pointerdown.prevent
+        @mousedown.prevent
+        @click="close"
+      >
+        Done
+      </button>
     </div>
   </div>
 </template>
