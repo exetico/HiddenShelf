@@ -91,7 +91,14 @@ function onClick(event) {
   if (longPressed) {
     event.preventDefault();
     longPressed = false;
+    return;
   }
+  appStore.noteOpened(props.link);
+}
+
+// A middle click opens the link in a new tab too
+function onAuxClick(event) {
+  if (event.button === 1) appStore.noteOpened(props.link);
 }
 </script>
 
@@ -120,6 +127,7 @@ function onClick(event) {
     @touchend="cancelPress"
     @touchcancel="cancelPress"
     @click="onClick"
+    @auxclick="onAuxClick"
   >
     <!-- Grip: the only place a reorder drag can start (desktop) -->
     <span
@@ -150,6 +158,12 @@ function onClick(event) {
           class="mdi mdi-star text-amber-500 text-xs align-middle"
           title="Favorite"
           data-testid="favorite-mark"
+        ></i>
+        <i
+          v-if="link.read_later && !link.is_from_shared_category"
+          class="mdi mdi-book-clock-outline text-sky-600 dark:text-sky-400 text-xs align-middle"
+          title="To read"
+          data-testid="to-read-mark"
         ></i>
         {{ link.title }}
         <button

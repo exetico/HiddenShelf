@@ -13,6 +13,7 @@ vi.mock("@/services/api/linksApi", () => ({
     remove: vi.fn(),
     restore: vi.fn(),
     favorites: vi.fn(),
+    opened: vi.fn(),
   },
 }));
 vi.mock("@/services/api/categoriesApi", () => ({
@@ -234,6 +235,27 @@ describe("app store favorites and trash", () => {
     expect(store.allLinks[0].is_favorite).toBe(1);
     expect(store.favoriteLinks.map((l) => l.title)).toEqual(["alpha", "Beta"]);
     expect(linksApi.update).toHaveBeenCalledWith(1, { is_favorite: true });
+  });
+
+  it("saves a link to read later at once, and puts it back when saving fails", async () => {
+    linksApi.update.mockResolvedValue({});
+    await store.toggleReadLater(store.allLinks[0]);
+    expect(store.allLinks[0].read_later).toBe(1);
+    expect(store.toReadCount).toBe(1);
+    expect(linksApi.update).toHaveBeenCalledWith(1, { read_later: true });
+
+    linksApi.update.mockRejectedValue(new Error("offline"));
+    await store.toggleReadLater(store.allLinks[0]);
+    expect(store.allLinks[0].read_later).toBe(1);
+  });
+
+  it("counts opens of your own links, not shared ones", () => {
+    linksApi.opened.mockResolvedValue({});
+    store.noteOpened(store.allLinks[0]);
+    expect(store.allLinks[0].open_count).toBe(1);
+    expect(linksApi.opened).toHaveBeenCalledWith(1);
+    store.noteOpened({ id: 9, is_from_shared_category: 1 });
+    expect(linksApi.opened).toHaveBeenCalledTimes(1);
   });
 
   it("puts the star back when saving fails", async () => {

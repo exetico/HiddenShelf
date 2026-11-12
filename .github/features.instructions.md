@@ -153,6 +153,7 @@ This document provides a comprehensive overview of all features, functionality, 
 - **Browser bookmarks** (`BookmarksTool`, `lib/bookmarks.js`): import reads a Netscape bookmarks HTML file with `DOMParser` (`parseBookmarks()`: http(s) links only, folder path without browser roots like "Bookmarks bar", Firefox `TAGS`). Skips links already on the shelf (`sameUrlKey`). Folders become categories (innermost folder, `folderCategory()`; matched to existing categories by name, case-insensitive) or everything goes to one category; optional extra tag; progress and Stop. Export (`exportBookmarks()`) writes own links into a "Hidden Shelf" folder with one folder per category, `ADD_DATE` and `TAGS`, saved with `lib/download.js`
 - **Copy as a list** (`ShareListTool`, `lib/shareList.js`): favorites, a category (own or shared), Uncategorized or a tag, in your sort order, as Markdown, plain text, HTML or CSV (`formatList()`, escaped), with optional heading and descriptions. Copy (HTML also as rich text via `ClipboardItem`) or save as a file
 - **QR code** (`QrTool`, `LinkQrCode` with `large`): for any address or text; the box suggests your links (datalist). A public link's QR uses its short `/h/` address. A "Wi-Fi network" mode makes a join-Wi-Fi code (`wifiPayload()` in `lib/wifiQr.js`: `WIFI:T:…;S:…;P:…;H:true;;` with `\ ; , : "` escaped); the alt text leaves out the password. Long addresses (over `LONG_QR_URL`) show a hint to save the link and make it public
+- **Shelf stats** (`StatsTool`, `lib/shelfStats.js`, own links only via `ownLinks()`): tiles (links, added in 30 days, to read → `/view?toread=1`, public), a single-series bar chart of links added per month for 12 months (`addedPerMonth()`, UTC months, `title` per bar and an `aria-label` with every value), top 8 sites (`topSites()`, host without `www.`, each links to `/view?q=site`), links you open most (`mostOpened()`), and links you never open (`neverOpened()`: `open_count` 0 and saved 30+ days ago, oldest first, 20 then "Show all")
 - **Inspect a link** (`InspectTool`): `cleanTracking()` result first (copy, Add to shelf), then `urlParts()` (protocol, host, port, path, fragment, decoded query parameters with tracking marked), and an "Encode or decode text" section (`encodeText`/`decodeText`)
 - **Saving QR codes** (`lib/saveImage.js`, used by `LinkQrCode` everywhere): on touch devices that can share files it opens the share sheet (Safari on iPhone can't save a `data:` download); otherwise it downloads from a `blob:` URL
 
@@ -190,6 +191,14 @@ This document provides a comprehensive overview of all features, functionality, 
 - **Modal management**: `CategoryManager`, `TagManager` opened via boolean refs; links open in the shared editor
 - **Sorting and filters in the address**: Same as View mode
 - **Manager filter box** (`ManagerFilter.vue`): The tag and category managers show a filter box from 6 entries; Esc clears it first. Manager rows link to `/edit?tag=ID` / `/edit?category=ID`
+
+#### Read later, saved searches and archived copies
+
+- **Read later** (`links.read_later`, migration 017): set from the link menu (`Read later` / `Mark as read`) and the details sheet (`details-read-later`), via `appStore.toggleReadLater()` (optimistic, `PUT /api/links?id=` with `read_later: true|false`; anything else is 400). `POST /api/links` takes `read_later: true` too. View cards show `to-read-mark`. The filter is `appStore.filterToRead`, `?toread=1` in the address (`filterQuery`, `useFilterQuery`), and `selectLinks({ toRead })` keeps only own marked links (`isToRead()`); `toReadCount()` counts them outside hidden categories. `appStore.filtering` is true for search, category, tag or To read
+- **Opens** (`links.open_count`, `links.last_opened_at`): clicking (or middle-clicking) a link on View, or Open in the details sheet, calls `appStore.noteOpened(link)` → `POST /api/links/opened?id=` (`linksApi.opened`, `keepalive`). Only own links count; the server ignores others. For people a category is shared with, the list answer sets `read_later`, `open_count` and `last_opened_at` to 0/null on the owner's links
+- **Shelf chips** (`components/shelf/ShelfChips.vue`, on View and Edit above `ActiveTagFilter`): the `to-read-chip` toggle (shown when there are links to read or the filter is on), one chip per saved search (`saved-search-N`, a real link to `filterHref(page, query)` so Ctrl/⌘-click opens a tab; a plain click applies it with `applySaved()`, and on the active one turns the filters off; the active one gets `remove-saved-search`, which asks first), and `save-search` while a filter is on that no saved search shows (prompt with `suggestName()`, e.g. "Recipes + #dinner + weeknight")
+- **Saved searches** (`lib/savedSearches.js`): user setting `saved_searches`, a list of `{ name, query }` where query has only `category` (id or `uncategorized`), `tag` (id), `q` (≤ 200), `sort` (a known sort) and `toread` (`"1"`). `checkSavedSearches()` in `routes/settings.js` refuses anything else, more than 30 entries, a name over 60 characters or an entry with no filter. `isActive()` compares category, tag, q and toread, and sort only when saved
+- **Archived copies** (`lib/wayback.js`): `archivedCopyUrl()` → `https://web.archive.org/web/<url>` (newest copy) and `saveCopyUrl()` → `https://web.archive.org/save/<url>`, without the `#fragment`, http(s) only. In the link menu (`Open archived copy`, `Save a copy to the Archive`, also for shared links) and the details sheet footer (`details-archived`). Opened in a new tab; the server never fetches anything
 
 #### Shared link editor (`stores/linkEditor.js`, `LinkEditorHost.vue`)
 
@@ -557,7 +566,8 @@ This document provides a comprehensive overview of all features, functionality, 
 - **ETag** (`middleware/revalidate.js`, also on `GET /api/categories`, `/api/tags`, `/api/category_shares`): answers carry an ETag and `Cache-Control: private, no-store`. The app sends it back as `If-None-Match` (`revalidated()` in `lib/httpClient.js`, memory only) and gets `304` with no body when nothing changed. All `/api/*` answers are gzipped (`hono/compress` in `index.js`)
 - `POST` — Create link
 - `GET ?id=X` — Get specific link
-- `PUT ?id=X` — Update link
+- `PUT ?id=X` — Update link (`is_favorite`, `read_later` as true/false)
+- `POST /opened?id=X` — Count an open of an own link (`open_count`, `last_opened_at`); other links are left alone
 - `DELETE ?id=X` — Delete link
 - `GET ?hash=X` — Get public link by hash
 
@@ -595,7 +605,7 @@ This document provides a comprehensive overview of all features, functionality, 
 ### User Settings (`/api/user_settings`)
 
 - `GET` — Get user settings
-- `PUT` — Update user settings (`brand_color`; `floating_search`, which must be a real boolean or the request is refused). The retired `links_per_page` is dropped when read or sent
+- `PUT` — Update user settings (`brand_color`; `floating_search`, which must be a real boolean or the request is refused; `saved_searches`, checked by `checkSavedSearches()`). The retired `links_per_page` is dropped when read or sent
 
 ### Configuration (`/api/config`)
 

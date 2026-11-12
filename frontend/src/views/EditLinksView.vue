@@ -16,6 +16,7 @@ import SearchField from "@/components/common/SearchField.vue";
 import ActiveTagFilter from "@/components/tags/ActiveTagFilter.vue";
 import SortSelect from "@/components/common/SortSelect.vue";
 import HiddenMatchesNote from "@/components/categories/HiddenMatchesNote.vue";
+import ShelfChips from "@/components/shelf/ShelfChips.vue";
 import CategoryFilterBar from "@/components/categories/CategoryFilterBar.vue";
 import CategoryPicker from "@/components/categories/CategoryPicker.vue";
 
@@ -25,9 +26,7 @@ const appStore = useAppStore();
 // Filters from the address bar (?category=, ?tag=, ?q=, ?sort=). The
 // whole shelf is already loaded, so they apply at once.
 useFilterQuery();
-const filtering = computed(
-  () => Boolean(appStore.search.trim() || appStore.filterCategory || appStore.filterTag),
-);
+const filtering = computed(() => appStore.filtering);
 const toastStore = useToastStore();
 
 // The bar's secondary buttons: no fill, a visible border
@@ -228,6 +227,7 @@ async function handleDelete(id) {
       </div>
     </div>
 
+    <ShelfChips />
     <ActiveTagFilter />
     <HiddenMatchesNote />
 

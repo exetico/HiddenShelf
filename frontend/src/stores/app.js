@@ -12,6 +12,7 @@ import {
   favoriteLinks,
   hiddenCategoryIds,
   selectLinks,
+  toReadCount,
 } from "@/lib/shelf";
 
 // Counts link requests, so an answer that a newer request has replaced
@@ -69,6 +70,8 @@ export const useAppStore = defineStore("app", {
     search: "",
     filterCategory: "",
     filterTag: "",
+    // Only links marked Read later (?toread=1)
+    filterToRead: false,
     // "Show them" on the hidden matches note: the search and filters it
     // was pressed for. A new search or filter leaves hidden ones out again.
     revealedFor: null,
@@ -78,7 +81,7 @@ export const useAppStore = defineStore("app", {
   getters: {
     hiddenIds: (state) => hiddenCategoryIds(state.categories),
     filterKey: (state) =>
-      JSON.stringify([state.search.trim(), String(state.filterCategory), String(state.filterTag)]),
+      JSON.stringify([state.search.trim(), String(state.filterCategory), String(state.filterTag), state.filterToRead]),
     showHidden() {
       return this.revealedFor !== null && this.revealedFor === this.filterKey;
     },
@@ -89,6 +92,7 @@ export const useAppStore = defineStore("app", {
         category: String(this.filterCategory || ""),
         tag: this.filterTag,
         sort: this.sort,
+        toRead: this.filterToRead,
         showHidden: this.showHidden,
         hiddenIds: this.hiddenIds,
       });
@@ -110,6 +114,14 @@ export const useAppStore = defineStore("app", {
     favoriteLinks() {
       return favoriteLinks(this.allLinks, this.hiddenIds);
     },
+    toReadCount() {
+      return toReadCount(this.allLinks, this.hiddenIds);
+    },
+    // Any search or filter on (sort doesn't count)
+    filtering: (state) =>
+      Boolean(state.search.trim() || state.filterCategory || state.filterTag || state.filterToRead),
+    savedSearches: (state) =>
+      Array.isArray(state.settings?.saved_searches) ? state.settings.saved_searches : [],
     linksByCategory() {
       const grouped = new Map();
 
@@ -245,6 +257,37 @@ export const useAppStore = defineStore("app", {
         setEverywhere(value ? 0 : 1);
         useToastStore().error(error.message || "Couldn't save the favorite");
       }
+    },
+    /** Read later on or off, at once; undone if the server says no */
+    async toggleReadLater(link) {
+      const value = link.read_later ? 0 : 1;
+      const setEverywhere = (v) => {
+        for (const l of this.allLinks) if (l.id === link.id) l.read_later = v;
+        link.read_later = v;
+      };
+      setEverywhere(value);
+      try {
+        await linksApi.update(link.id, { read_later: !!value });
+        useToastStore().success(value ? "Saved to read later" : "Marked as read");
+      } catch (error) {
+        setEverywhere(value ? 0 : 1);
+        useToastStore().error(error.message || "Couldn't save that");
+      }
+    },
+    /** You opened one of your links: counted for Shelf stats, quietly */
+    noteOpened(link) {
+      if (!link || link.is_from_shared_category) return;
+      for (const l of this.allLinks) {
+        if (l.id === link.id) {
+          l.open_count = (l.open_count || 0) + 1;
+          l.last_opened_at = new Date().toISOString();
+        }
+      }
+      linksApi.opened(link.id).catch(() => {});
+    },
+    /** Saves the list of saved searches (see backend settings.js) */
+    async saveSavedSearches(list) {
+      await this.updateSettings({ saved_searches: list });
     },
     /** Moves the link to the trash; the toast can undo it */
     async deleteLink(id) {

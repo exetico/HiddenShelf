@@ -308,6 +308,7 @@ describe("DashboardView", () => {
     expect(links.map((a) => [a.text(), a.attributes("href")])).toEqual([
       ["Duplicates", "/tools?tool=duplicates"],
       ["Tidy up", "/tools?tool=tidy"],
+      ["Shelf stats", "/tools?tool=stats"],
       ["Add many links", "/tools?tool=add-many"],
       ["Browser bookmarks", "/tools?tool=bookmarks"],
       ["Copy as a list", "/tools?tool=share-list"],

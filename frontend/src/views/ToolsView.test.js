@@ -72,6 +72,7 @@ describe("ToolsView", () => {
       expect(cards.map((c) => c.attributes("data-testid").replace("tool-card-", ""))).toEqual([
         "duplicates",
         "tidy",
+        "stats",
         "add-many",
         "bookmarks",
         "share-list",
@@ -111,6 +112,28 @@ describe("ToolsView", () => {
     expect(wrapper.find('[data-testid="tool-description"]').text()).toMatch(/same page/);
     await wrapper.find('[data-testid="tools-back"]').trigger("click");
     expect(mockPush).toHaveBeenCalledWith({ name: "tools", query: {} });
+  });
+
+  describe("Shelf stats", () => {
+    it("shows totals, sites and the links you never open", async () => {
+      appStore.allLinks = [
+        { id: 1, title: "Soup", url: "https://www.food.example/soup", created_at: "2020-01-01 00:00:00", open_count: 0, read_later: 1 },
+        { id: 2, title: "Bread", url: "https://food.example/bread", created_at: "2020-01-02 00:00:00", open_count: 4 },
+        { id: 3, title: "Theirs", url: "https://other.example", created_at: "2020-01-01 00:00:00", is_from_shared_category: 1 },
+      ];
+      appStore.linksLoaded = true;
+      mockRoute.query = { tool: "stats" };
+      const wrapper = mountTools();
+      await flushPromises();
+      const tool = wrapper.find('[data-testid="stats-tool"]');
+      expect(tool.find('[data-testid="stat-Links"]').text()).toContain("2");
+      expect(tool.find('[data-testid="stat-To read"]').attributes("href")).toBe("/view?toread=1");
+      expect(tool.find('[data-testid="stats-sites"]').text()).toContain("food.example");
+      expect(tool.find('[data-testid="stats-opened"]').text()).toContain("Opened 4 times");
+      expect(tool.find('[data-testid="stats-unopened"]').text()).toContain("Soup");
+      expect(tool.find('[data-testid="stats-unopened"]').text()).not.toContain("Bread");
+      expect(tool.text()).not.toContain("Theirs");
+    });
   });
 
   describe("Duplicates", () => {
@@ -368,7 +391,7 @@ describe("ToolsView", () => {
       link(2, "https://a.dk/"),
     ];
     appStore.tags = [{ id: 1, name: "t", usage_count: 2 }];
-    for (const tool of ["", "duplicates", "tidy", "add-many", "bookmarks", "share-list", "qr", "inspect"]) {
+    for (const tool of ["", "duplicates", "tidy", "stats", "add-many", "bookmarks", "share-list", "qr", "inspect"]) {
       mockRoute.query = tool ? { tool } : {};
       const missing = mountTools()
         .findAll("button")

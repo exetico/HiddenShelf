@@ -38,11 +38,14 @@ describe("useLinkMenu", () => {
     expect(labels(link())).toEqual([
       "Open in new tab",
       "Copy URL",
+      "Open archived copy",
+      "Save a copy to the Archive",
       "Copy public link",
       "QR code and embed",
       "—",
       "Edit",
       "Add to favorites",
+      "Read later",
       "Set position…",
       "Reset position",
       "—",
@@ -54,7 +57,24 @@ describe("useLinkMenu", () => {
     expect(labels(link({ is_from_shared_category: 1, is_public: 0 }))).toEqual([
       "Open in new tab",
       "Copy URL",
+      "Open archived copy",
+      "Save a copy to the Archive",
     ]);
+  });
+
+  it("offers Mark as read on a link saved to read later", () => {
+    expect(labels(link({ read_later: 1 }))).toContain("Mark as read");
+  });
+
+  it("opens the Internet Archive in a new tab", () => {
+    const open = vi.spyOn(window, "open").mockImplementation(() => null);
+    const { items } = useLinkMenu();
+    const l = link();
+    items(l).find((i) => i.label === "Open archived copy").action();
+    items(l).find((i) => i.label === "Save a copy to the Archive").action();
+    expect(open).toHaveBeenNthCalledWith(1, "https://web.archive.org/web/https://docs.example.com/", "_blank", "noopener");
+    expect(open).toHaveBeenNthCalledWith(2, "https://web.archive.org/save/https://docs.example.com/", "_blank", "noopener");
+    open.mockRestore();
   });
 
   it("copies the public short link", async () => {

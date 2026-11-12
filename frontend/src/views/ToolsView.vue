@@ -8,6 +8,7 @@ import BookmarksTool from "@/components/tools/BookmarksTool.vue";
 import ShareListTool from "@/components/tools/ShareListTool.vue";
 import QrTool from "@/components/tools/QrTool.vue";
 import InspectTool from "@/components/tools/InspectTool.vue";
+import StatsTool from "@/components/tools/StatsTool.vue";
 import { ACCENTS, TONES } from "@/components/tools/styles";
 import { useAppStore } from "@/stores/app";
 import { TOOLS, TOOL_GROUPS, toolFor, toolQuery } from "@/lib/urlTools";
@@ -22,6 +23,7 @@ const appStore = useAppStore();
 const COMPONENTS = {
   duplicates: DuplicatesTool,
   tidy: TidyTool,
+  stats: StatsTool,
   "add-many": AddManyTool,
   bookmarks: BookmarksTool,
   "share-list": ShareListTool,

@@ -5,7 +5,7 @@ import { filterQuery } from "@/lib/filterLinks";
 
 /**
  * Keeps the list filters and the address bar in step on View and Edit:
- * ?category=3, ?tag=7, ?q=text and ?sort=title. Opening such an address applies them;
+ * ?category=3, ?tag=7, ?q=text, ?sort=title and ?toread=1. Opening such an address applies them;
  * changing a filter updates the address (replace, so Back still leaves the
  * page).
  */
@@ -20,6 +20,7 @@ export function useFilterQuery() {
       tag: appStore.filterTag,
       q: appStore.search,
       sort: appStore.sort,
+      toread: appStore.filterToRead,
     });
   const fromRoute = () =>
     filterQuery({
@@ -27,6 +28,7 @@ export function useFilterQuery() {
       tag: route.query.tag,
       q: route.query.q,
       sort: route.query.sort,
+      toread: route.query.toread,
     });
   const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 
@@ -38,6 +40,7 @@ export function useFilterQuery() {
     appStore.filterCategory = wanted.category || "";
     if ((wanted.q || "") !== appStore.search.trim()) appStore.search = wanted.q || "";
     if ((wanted.sort || "") !== appStore.sort) appStore.setSort(wanted.sort || "");
+    appStore.filterToRead = wanted.toread === "1";
     if (tagChanged) appStore.filterByTag(wanted.tag || "");
   }
 
@@ -55,12 +58,13 @@ export function useFilterQuery() {
     delete rest.tag;
     delete rest.q;
     delete rest.sort;
+    delete rest.toread;
     router.replace({ query: { ...rest, ...wanted } });
   }
   writeRoute();
 
   watch(
-    () => [appStore.filterCategory, appStore.filterTag, appStore.search, appStore.sort],
+    () => [appStore.filterCategory, appStore.filterTag, appStore.search, appStore.sort, appStore.filterToRead],
     writeRoute,
   );
   watch(() => route.query, applyRoute);
