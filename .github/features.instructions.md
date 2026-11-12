@@ -87,7 +87,6 @@ This document provides a comprehensive overview of all features, functionality, 
 - Remember email addresses on device
 - Welcome back flow for returning users
 - **Share code handling during login**: If a `?share=CODE` param is present, it's saved to `sessionStorage` before login so it survives the auth redirect. After login, `checkPendingShare()` in the app store picks it up and triggers the join flow.
-- Beta service disclaimer and data retention warnings
 - **Who can join** (`SIGNUP_MODE`, see Ask to join below): when sign-up isn't open, a box above the sign-in buttons (`join-hint`) says what signing in does for someone new: in `approval` they can then ask to join and an admin decides; in `invite` an invited email gets its account and anyone else sees a note, with nothing created. The Check your email screen repeats it (`sent-join-hint`). Same words for every address, so nothing tells whether an account exists
 - Automatic session validation on app load via `authApi.me()`
 
@@ -209,7 +208,6 @@ This document provides a comprehensive overview of all features, functionality, 
 #### Profile (`ProfileView.vue`)
 
 - Email display with user info
-- **Beta notice / Data retention disclaimer**: Amber notice box informing users the service is in beta and data may be reset; includes "export your data" button link to open ImportExportModal
 - **App version display**: "Hidden Shelf v1.2.0" (or "main · abc1234") from `appConfig.app_version` (fetched via `configApi.get()`); hidden when empty
 - **Join Shared Category section**:
   - Input field with placeholder "Paste share URL or code..."
@@ -220,7 +218,8 @@ This document provides a comprehensive overview of all features, functionality, 
 - **Shared categories list**: Lists categories shared with the user, each with owner info and "Leave" button
 - **Danger Zone** (collapsible with smooth `<transition>` animation):
   - Toggle button expands/collapses section
-  - **Delete Everything modal** (Teleport): Requires typing exact phrase "delete N now" (where N = link count) to enable the delete button. Calls `linksApi.deleteAll()` etc.
+  - Two separate boxes, each saying what goes and what stays, with an export link above them:
+  - **Empty my shelf** (`empty-shelf-section`, button `empty-shelf`, outlined): deletes links, categories and tags (`DELETE /api/account/data`); the account, settings and sign-ins stay. Its dialog (Teleport) lists the counts, says the account stays, and needs the phrase "delete N now" (N = links + categories + tags)
   - **Delete my account** (`delete-account`, dialog `delete-account-dialog`, Teleport): the button stays disabled until the account's own email is typed (case and spaces ignored). Calls `accountApi.deleteAccount(email)` → `POST /api/account/delete`, then a full reload to `/login?deleted=1`, where `LoginView` shows "Your account is deleted."
 - **Sign out everywhere else** (`sign-out-others`, next to Logout): says how many other devices are signed in (`other-sessions`, `accountApi.otherSessions()`), asks first, then `accountApi.signOutOtherDevices()`. Disabled when there are none. This device stays signed in
 - **Import/Export**: Opens `ImportExportModal` component
@@ -808,7 +807,7 @@ This document provides a comprehensive overview of all features, functionality, 
 | `views/ViewLinksView.test.js`                   | 24    | Counter, category headers, collapse/expand, empty state, every link at once, shared owner badge                             |
 | `views/EditLinksView.test.js`                   | 23    | Search as you type (no request), category filter, counter, empty states, `?editId=` after load, link cards                  |
 | `lib/shelf.test.js`                             | 9     | Search, filters, hidden categories and hidden-match count, sorting, favorites                                               |
-| `views/ProfileView.test.js`                     | 13    | Beta notice, email, app version, share code verify/preview, URL extraction, danger zone, delete modal, shared categories    |
+| `views/ProfileView.test.js`                     | 13    | No beta notice, email, app version, share code verify/preview, URL extraction, danger zone, delete modal, shared categories    |
 | `views/LoginView.test.js`                       | 8     | Share code sessionStorage persistence, auth redirect, email input, remembered email display, welcome back UX with user icon |
 
 **Frontend Total: 92 tests across 11 files**

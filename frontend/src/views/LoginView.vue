@@ -437,16 +437,6 @@ function clearRememberedEmail() {
           </svg>
           <span>Sign in with Google</span>
         </button>
-
-        <!-- Beta Warning -->
-        <div
-          class="mt-6 p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg border border-yellow-200 dark:border-yellow-800"
-        >
-          <p class="text-xs text-yellow-700 dark:text-yellow-300">
-            <strong>Beta Service:</strong> Data may be deleted without notice.
-            Don't store critical information.
-          </p>
-        </div>
       </div>
 
       <!-- Success State -->

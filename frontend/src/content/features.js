@@ -222,7 +222,7 @@ export const FAQ = [
   },
   {
     q: "Can I get my data out?",
-    a: "Yes. Settings → Import / export downloads all your links, categories and tags as JSON. You can also delete everything from Settings, or delete your account itself under Danger Zone: that removes your links, categories, tags, settings and shares, and signs you out on every device.",
+    a: "Yes. Settings → Import / export downloads all your links, categories and tags as JSON. Under Danger Zone in Settings you can Empty my shelf (your links, categories and tags go, your account stays) or Delete my account (everything goes, including your settings and shares, and you're signed out on every device).",
   },
   {
     q: "Does Hidden Shelf keep track of what I open?",

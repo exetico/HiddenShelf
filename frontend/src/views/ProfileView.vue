@@ -180,7 +180,7 @@ const showDeleteProgress = ref(false);
 const deleteProgress = ref("");
 const deleteProgressPercent = ref(0);
 
-// Delete Everything confirmation modal
+// Empty my shelf confirmation
 const showDeleteModal = ref(false);
 const deleteConfirmInput = ref("");
 
@@ -230,7 +230,7 @@ async function confirmDeleteEverything() {
   showDeleteModal.value = false;
 
   showDeleteProgress.value = true;
-  deleteProgress.value = "Deleting all data...";
+  deleteProgress.value = "Emptying your shelf...";
   deleteProgressPercent.value = 30;
 
   try {
@@ -255,7 +255,7 @@ async function confirmDeleteEverything() {
     }, 500);
   } catch (error) {
     showDeleteProgress.value = false;
-    toastStore.error("Failed to delete all data: " + error.message);
+    toastStore.error("Couldn't empty your shelf: " + error.message);
   }
 }
 
@@ -333,25 +333,6 @@ const deleteBackdrop = backdropClose(() => (showDeleteModal.value = false));
       <h1 class="text-2xl font-bold">Profile</h1>
       <p class="text-gray-600 dark:text-brand-300 mt-1">
         {{ authStore.user?.email }}
-      </p>
-    </article>
-
-    <!-- Beta / Data Retention Notice -->
-    <article
-      class="bg-amber-50 dark:bg-amber-950/40 rounded-lg border border-amber-200 dark:border-amber-800 p-4"
-    >
-      <p class="text-sm text-amber-800 dark:text-amber-300">
-        <i class="mdi mdi-information-outline mr-1"></i>
-        <strong>Beta notice:</strong> Hidden Shelf is currently in beta. Data
-        may be reset or deleted without prior notice. Please
-        <button
-          title="Open import and export"
-          class="underline hover:no-underline font-medium"
-          @click="showImportExport = true"
-        >
-          export your data
-        </button>
-        regularly as a backup.
       </p>
     </article>
 
@@ -666,29 +647,56 @@ const deleteBackdrop = backdropClose(() => (showDeleteModal.value = false));
         enter-active-class="transition-all duration-200 ease-out overflow-hidden"
         leave-active-class="transition-all duration-200 ease-in overflow-hidden"
         enter-from-class="max-h-0 opacity-0"
-        enter-to-class="max-h-60 opacity-100"
-        leave-from-class="max-h-60 opacity-100"
+        enter-to-class="max-h-[40rem] opacity-100"
+        leave-from-class="max-h-[40rem] opacity-100"
         leave-to-class="max-h-0 opacity-0"
       >
-        <div v-if="showDangerZone" class="mt-4">
-          <p class="text-sm text-gray-600 dark:text-brand-400 mb-4">
-            These actions are irreversible. Please be certain before proceeding.
+        <div v-if="showDangerZone" class="mt-4 space-y-3">
+          <p class="text-sm text-gray-600 dark:text-brand-400">
+            Neither can be undone, so
+            <button
+              title="Open import and export"
+              class="underline hover:no-underline font-medium"
+              @click="showImportExport = true"
+            >export your links</button>
+            first if you want a copy.
           </p>
-          <button
-            title="Delete all your links, categories and tags"
-            class="w-full px-4 py-2 bg-red-600 dark:bg-red-700 text-white rounded-md hover:bg-red-700 dark:hover:bg-red-600 transition-colors"
-            @click="openDeleteEverythingModal"
+          <section
+            class="rounded-md border border-red-200 dark:border-red-900 bg-white/60 dark:bg-red-950/40 p-3"
+            data-testid="empty-shelf-section"
           >
-            Delete Everything
-          </button>
-          <button
-            title="Delete your account, everything in it and every sign-in, for good"
-            class="mt-2 w-full px-4 py-2 border-2 border-red-600 text-red-700 dark:text-red-300 rounded-md hover:bg-red-100 dark:hover:bg-red-900 transition-colors"
-            data-testid="delete-account"
-            @click="openDeleteAccount"
+            <h3 class="font-medium text-gray-900 dark:text-white">Empty my shelf</h3>
+            <p class="text-sm text-gray-600 dark:text-brand-300 mb-2">
+              Deletes your links, categories and tags. Your account,
+              settings and sign-ins stay, so you can start over.
+            </p>
+            <button
+              title="Delete all your links, categories and tags, but keep your account"
+              class="w-full px-4 py-2 border-2 border-red-600 text-red-700 dark:text-red-300 rounded-md hover:bg-red-100 dark:hover:bg-red-900 transition-colors"
+              data-testid="empty-shelf"
+              @click="openDeleteEverythingModal"
+            >
+              Empty my shelf
+            </button>
+          </section>
+          <section
+            class="rounded-md border border-red-200 dark:border-red-900 bg-white/60 dark:bg-red-950/40 p-3"
+            data-testid="delete-account-section"
           >
-            Delete my account
-          </button>
+            <h3 class="font-medium text-gray-900 dark:text-white">Delete my account</h3>
+            <p class="text-sm text-gray-600 dark:text-brand-300 mb-2">
+              Closes your account for good: your shelf, settings and shares
+              go, and you're signed out on every device.
+            </p>
+            <button
+              title="Close your account for good, with everything in it and every sign-in"
+              class="w-full px-4 py-2 bg-red-600 dark:bg-red-700 text-white rounded-md hover:bg-red-700 dark:hover:bg-red-600 transition-colors"
+              data-testid="delete-account"
+              @click="openDeleteAccount"
+            >
+              Delete my account
+            </button>
+          </section>
         </div>
       </transition>
     </article>
@@ -711,7 +719,7 @@ const deleteBackdrop = backdropClose(() => (showDeleteModal.value = false));
           class="bg-white dark:bg-brand-900 rounded-lg shadow-xl max-w-sm w-full p-6"
         >
           <h3 class="text-lg font-semibold dark:text-white mb-4">
-            Deleting...
+            Emptying your shelf...
           </h3>
           <p class="text-sm text-gray-600 dark:text-brand-300 mb-3">
             {{ deleteProgress }}
@@ -782,7 +790,7 @@ const deleteBackdrop = backdropClose(() => (showDeleteModal.value = false));
       </div>
     </Teleport>
 
-    <!-- Delete Everything Confirmation Modal -->
+    <!-- Empty my shelf confirmation -->
     <Teleport to="body">
       <div
         v-if="showDeleteModal"
@@ -793,16 +801,19 @@ const deleteBackdrop = backdropClose(() => (showDeleteModal.value = false));
           class="bg-white dark:bg-brand-900 rounded-lg shadow-xl max-w-md w-full p-6"
         >
           <h3 class="text-lg font-semibold text-red-600 dark:text-red-400 mb-2">
-            Delete Everything
+            Empty my shelf
           </h3>
           <p class="text-sm text-gray-600 dark:text-brand-300 mb-3">
-            This will permanently delete ALL your data:
+            This deletes, for good:
           </p>
           <ul class="text-sm text-gray-600 dark:text-brand-300 mb-4 space-y-1">
             <li>• All links ({{ appStore.ownLinkCount }})</li>
             <li>• All categories ({{ appStore.categories.length }})</li>
             <li>• All tags ({{ appStore.tags.length }})</li>
           </ul>
+          <p class="text-sm text-gray-600 dark:text-brand-300 mb-3">
+            Your account, settings and sign-ins stay.
+          </p>
           <p class="text-sm text-gray-600 dark:text-brand-300 mb-2">
             Type
             <strong class="text-gray-900 dark:text-white"
@@ -823,18 +834,18 @@ const deleteBackdrop = backdropClose(() => (showDeleteModal.value = false));
           />
           <div class="flex justify-end gap-2">
             <button
-              title="Keep my data"
+              title="Keep my links"
               class="px-4 py-2 rounded-md border border-gray-300 dark:border-brand-700"
               @click="showDeleteModal = false"
             >
               Cancel
             </button>
             <button
-              title="Delete everything for good"
+              title="Empty my shelf for good"
               class="px-4 py-2 rounded-md bg-red-600 text-white hover:bg-red-700"
               @click="confirmDeleteEverything"
             >
-              Delete Everything
+              Empty my shelf
             </button>
           </div>
         </div>
