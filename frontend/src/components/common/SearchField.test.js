@@ -16,6 +16,14 @@ describe("SearchField", () => {
     return wrapper;
   };
 
+  it("uses 16px text on phones so iPhones don't zoom in when it's focused", () => {
+    const wrapper = mountField();
+    const classes = wrapper.find("input").classes();
+    expect(classes).toEqual(expect.arrayContaining(["text-base", "md:text-sm"]));
+    expect(classes).not.toContain("text-sm");
+    wrapper.unmount();
+  });
+
   it("shows a clear button only when there is text, and clears", async () => {
     const wrapper = mountField();
     expect(wrapper.find('[data-testid="search-clear"]').exists()).toBe(false);

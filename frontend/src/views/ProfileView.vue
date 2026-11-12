@@ -185,6 +185,23 @@ async function saveSettings() {
   });
 }
 
+// Saved as soon as you flip it, like any switch
+const floatingSearch = ref(appStore.settings.floating_search === true);
+const savingFloating = ref(false);
+async function toggleFloatingSearch() {
+  const next = !floatingSearch.value;
+  savingFloating.value = true;
+  try {
+    await appStore.updateSettings({ floating_search: next });
+    floatingSearch.value = appStore.settings.floating_search === true;
+  } catch (e) {
+    // The switch stays where it was
+    toastStore.error(e?.message || "Couldn't save the setting");
+  } finally {
+    savingFloating.value = false;
+  }
+}
+
 function resetBrandColor() {
   form.brand_color = "#687061";
   saveSettings();
@@ -289,6 +306,37 @@ const deleteBackdrop = backdropClose(() => (showDeleteModal.value = false));
           @click="resetBrandColor"
         >
           Reset to default
+        </button>
+      </div>
+
+      <div
+        class="flex items-start justify-between gap-4 pt-3 border-t border-gray-100 dark:border-brand-800"
+        data-testid="floating-search-setting"
+      >
+        <div>
+          <p id="floating-search-label" class="text-sm font-medium">Floating search bar on phones</p>
+          <p id="floating-search-hint" class="text-xs text-gray-500 dark:text-brand-400">
+            Keeps a search box at the bottom of the screen on every page.
+          </p>
+        </div>
+        <button
+          type="button"
+          role="switch"
+          :aria-checked="floatingSearch ? 'true' : 'false'"
+          aria-labelledby="floating-search-label"
+          aria-describedby="floating-search-hint"
+          :title="floatingSearch ? 'Turn off the floating search bar' : 'Turn on the floating search bar'"
+          :disabled="savingFloating"
+          class="relative shrink-0 w-11 h-6 rounded-full transition-colors disabled:opacity-60"
+          :class="floatingSearch ? 'bg-brand-600' : 'bg-gray-300 dark:bg-brand-700'"
+          data-testid="floating-search-switch"
+          @click="toggleFloatingSearch"
+        >
+          <span
+            class="absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform"
+            :class="floatingSearch && 'translate-x-5'"
+            aria-hidden="true"
+          ></span>
         </button>
       </div>
 

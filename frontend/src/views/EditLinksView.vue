@@ -177,7 +177,9 @@ async function handleDelete(id) {
       <!-- The picker hides itself from sm up, where the chips show -->
       <div class="md:hidden flex flex-1 basis-full min-w-0 gap-2">
         <CategoryPicker />
+        <!-- The floating search bar (Settings) replaces this one -->
         <SearchField
+          v-if="appStore.settings.floating_search !== true"
           v-model="appStore.search"
           placeholder="Search links..."
           class="h-9"

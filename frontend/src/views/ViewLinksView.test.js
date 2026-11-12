@@ -178,6 +178,18 @@ describe("ViewLinksView", () => {
       expect(wrapper.html()).toContain("hidden sm:block");
     });
 
+    it("lays out the picker and search like Edit does: a plain row, no card", () => {
+      const row = mountView().find('[data-testid="page-search"]');
+      expect(row.classes()).toEqual(["md:hidden", "flex", "gap-2"]);
+    });
+
+    it("leaves its own search box out when the floating search bar is on", () => {
+      useAppStore().settings = { floating_search: true };
+      const row = mountView().find('[data-testid="page-search"]');
+      expect(row.find('input[type="search"]').exists()).toBe(false);
+      expect(row.find('[data-testid="category-picker"]').exists()).toBe(true);
+    });
+
     it("gives the category picker and the search box the same height", () => {
       const wrapper = mountView();
       const row = wrapper.find('[data-testid="page-search"]');

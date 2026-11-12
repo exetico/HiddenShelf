@@ -15,13 +15,17 @@ const settings = new Hono();
 
 const DEFAULT_SETTINGS = {
   brand_color: "#687061",
+  // Phones: a search box floating at the bottom of every page. Off unless
+  // the user turns it on.
+  floating_search: false,
 };
 
 // Settings that no longer exist, dropped when settings are read or saved.
 // links_per_page went when the app started loading the whole shelf at once.
 const RETIRED = ["links_per_page"];
+// Stored settings miss anything added since they were saved: defaults fill in.
 function withoutRetired(settings) {
-  const clean = { ...settings };
+  const clean = { ...DEFAULT_SETTINGS, ...settings };
   for (const key of RETIRED) delete clean[key];
   return clean;
 }
@@ -67,6 +71,14 @@ settings.put("/", requireAuth(), async (c) => {
       );
     }
     current.brand_color = color;
+  }
+
+  // Only a real true/false; anything else is refused rather than guessed
+  if (input.floating_search !== undefined) {
+    if (typeof input.floating_search !== "boolean") {
+      return errorResponse(c, "Invalid floating_search value. Must be true or false");
+    }
+    current.floating_search = input.floating_search;
   }
 
   const json = JSON.stringify(current);

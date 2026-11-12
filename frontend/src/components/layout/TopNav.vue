@@ -119,6 +119,14 @@ function focusPageSearch(input) {
   input.select?.();
 }
 async function jumpToSearch() {
+  // The floating search bar is on every page: focusing it brings it up,
+  // right inside the tap, so the keyboard opens too
+  const floating = document.querySelector('[data-testid="floating-search-input"]');
+  if (floating) {
+    floating.focus({ preventScroll: true });
+    floating.select?.();
+    return;
+  }
   const here = findPageSearch();
   if (here) {
     focusPageSearch(here);
@@ -325,7 +333,8 @@ watch(
           </button>
         </div>
 
-        <!-- Phones and tablets: from md up the search box is in this bar -->
+        <!-- Phones and tablets: from md up the search box is in this bar.
+             With the floating search bar (Settings) on, it brings that up -->
         <button
           type="button"
           class="md:hidden w-8 h-8 sm:w-10 sm:h-10 shrink-0 flex items-center justify-center rounded-md text-gray-700 dark:text-brand-200 hover:bg-gray-100 dark:hover:bg-brand-800"

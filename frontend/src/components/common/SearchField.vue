@@ -34,13 +34,14 @@ function onEscape(event) {
       class="mdi mdi-magnify absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 dark:text-brand-400 pointer-events-none"
       aria-hidden="true"
     ></i>
+    <!-- 16px text below md: iPhones zoom into any smaller text field you focus -->
     <input
       ref="input"
       v-model="model"
       type="search"
       :placeholder="placeholder"
       v-bind="$attrs"
-      class="search-field w-full pl-8 pr-14 md:pr-16 py-1.5 rounded-md border border-gray-300 dark:border-brand-700 bg-white dark:bg-brand-800 text-sm"
+      class="search-field w-full pl-8 pr-14 md:pr-16 py-1.5 rounded-md border border-gray-300 dark:border-brand-700 bg-white dark:bg-brand-800 text-base md:text-sm"
       @keydown.escape="onEscape"
     />
     <!-- Drawn like the "/" hint so the two read as one family; the button
