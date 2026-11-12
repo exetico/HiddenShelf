@@ -212,7 +212,8 @@ This document provides a comprehensive overview of all features, functionality, 
 - **Danger Zone** (collapsible with smooth `<transition>` animation):
   - Toggle button expands/collapses section
   - **Delete Everything modal** (Teleport): Requires typing exact phrase "delete N now" (where N = link count) to enable the delete button. Calls `linksApi.deleteAll()` etc.
-  - Other destructive actions (delete account, etc.)
+  - **Delete my account** (`delete-account`, dialog `delete-account-dialog`, Teleport): the button stays disabled until the account's own email is typed (case and spaces ignored). Calls `accountApi.deleteAccount(email)` → `POST /api/account/delete`, then a full reload to `/login?deleted=1`, where `LoginView` shows "Your account is deleted."
+- **Sign out everywhere else** (`sign-out-others`, next to Logout): says how many other devices are signed in (`other-sessions`, `accountApi.otherSessions()`), asks first, then `accountApi.signOutOtherDevices()`. Disabled when there are none. This device stays signed in
 - **Import/Export**: Opens `ImportExportModal` component
 - **Brand color picker**: Custom brand color with live preview
 
@@ -417,6 +418,8 @@ This document provides a comprehensive overview of all features, functionality, 
 
 ### Share Code Features
 
+- **Links end** (migration 016, `category_shares.single_use`): every code has `expires_at` = made + `SHARE_LINK_DAYS` (7). Verify and accept only take a code whose `expires_at` is in the future; a code with no end date is refused. The owner picks **One person** (`once`, `single_use = 1`) or **Anyone for 7 days** (`week`, `single_use = 0`) in the share dialog (`share-mode-once` / `share-mode-week`, `role="radio"`); switching on an existing link makes a new link of that kind. `lib/shareLink.js` (`shareStatus`, `shareEnded`, `daysLeft`) words it: "Works for one person · ends in 5 days", or "This link has ended" (`share-status` in `CategoryManager`, `owned-share-status` in Settings, where Copy refuses an ended link)
+
 - **URL Detection**: `extractShareCode()` regex auto-extracts codes from full URLs
 - **Verification**: Preview category metadata before joining
 - **Error Handling**: Invalid/expired code shows error message
@@ -574,7 +577,10 @@ This document provides a comprehensive overview of all features, functionality, 
 ### Category Shares (`/api/category_shares`)
 
 - `GET ?category_id=X` — Get share info
-- `POST` — Create share or accept invitation
+- `POST {category_id, mode}` — Create a share link. `mode`: `once` (default, also for a missing or unknown value) or `week`
+- `POST {category_id, reset: true, mode?}` — New code and a new 7 days; the old code stops working. No `mode` keeps the current one
+- `POST {share_code}` — Accept. A `once` code is replaced (with a new 7 days) when someone joins; a `week` code stays until it ends
+- Owner answers (`GET ?category_id=`, `POST`) give `share` as `{ id, category_id, share_code, created_at, expires_at (ISO), mode, expired }`; `GET ?owned=1` adds `expires_at`, `mode`, `expired` to each category
 - `DELETE ?category_id=X` — Remove sharing
 - `DELETE ?category_id=X&member_id=Y` — Remove member
 - `GET ?code=X` — Verify share code (returns preview)
@@ -597,7 +603,10 @@ This document provides a comprehensive overview of all features, functionality, 
 
 ### Account (`/api/account`)
 
-- `DELETE /data` — Delete all user data (links, tags, categories, shares) in a single SQLite transaction
+- `DELETE /data` — Delete all user data (links, tags, categories, shares) in a single SQLite transaction. The account itself stays
+- `POST /delete {email}` — Delete the account for good. `email` must be the account's own email (case-insensitive) or the answer is 400. Deletes the `users` row (the cascade takes links, link_tags, link_visits, categories, tags, user_settings, category_shares, category_share_members), the email's `magic_tokens` and `access_list` row, and every session of the user (this one too; the cookie is cleared). `update_requests` keeps its rows as the admins' audit log
+- `GET /sessions` — `{ other_sessions }`: the user's other unexpired sessions (`sessions.countForUser()` reads `user_id` from the session JSON)
+- `DELETE /sessions` — Sign out every other session of the user (`sessions.deleteForUser(userId, keepId)`); `{ signed_out }`. `c.session.id()` gives the current session's id
 
 ### Health (`/api/health`)
 
@@ -744,6 +753,7 @@ This document provides a comprehensive overview of all features, functionality, 
 - Email/SMTP settings for magic links (`SMTP_HOST`, `SMTP_PORT`, etc.)
 - Session lifetime (`SESSION_LIFETIME`); sessions are stored in the SQLite `sessions` table
 - Debug mode, who can join (`DEBUG_MODE`, `SIGNUP_MODE`)
+- Daily backups (`BACKUP_KEEP_DAYS`, default 30, `0` off, anything else 30 with a warning; `backupKeepDaysFromEnv()` in `config.js`). `lib/dailyBackup.js`, started in `index.js`: 10 s after start and then hourly, writes `db/backups/daily-YYYY-MM-DD.sqlite` (UTC day) with `db.backup()` via a `.tmp` name if today's copy is missing, then removes `daily-*.sqlite` older than the kept days. Other backups (`make backup`, `pre-update-*`) are never touched
 - Google OAuth credentials (`GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`)
 - In-app updates (`UPDATE_ADMIN_EMAILS`, `UPDATE_REAUTH_MINUTES`, `UPDATE_REPO_URL`, `UPDATE_CHANNEL`; `UPDATE_VAR_DIR` defaults to `./var`)
 

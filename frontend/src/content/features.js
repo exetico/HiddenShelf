@@ -66,7 +66,7 @@ export const FEATURE_GROUPS = [
       {
         icon: "mdi-account-group-outline",
         title: "Share collections",
-        text: "Share a category with a code or link. Others see it read-only and you can revoke access any time.",
+        text: "Share a category with a code or link, for one person or for anyone during 7 days. Others see it read-only and you can revoke access any time.",
         front: true,
       },
       {
@@ -171,7 +171,7 @@ export const FAQ = [
   },
   {
     q: "How do I share a whole category?",
-    a: "Open Manage categories on the Edit page and share the category. You get a code and a link; people who open it can see the category read-only until you revoke it.",
+    a: "Open Manage categories on the Edit page and share the category. You get a code and a link; people who open it can see the category read-only until you revoke it. Pick One person (the link stops working as soon as someone joins, and a new one shows up for the next person) or Anyone for 7 days. Every share link ends after 7 days; make a new one when you need it.",
   },
   {
     q: "What is a public link?",
@@ -207,6 +207,14 @@ export const FAQ = [
   },
   {
     q: "Can I get my data out?",
-    a: "Yes. Settings → Import / export downloads all your links, categories and tags as JSON. You can also delete everything from Settings.",
+    a: "Yes. Settings → Import / export downloads all your links, categories and tags as JSON. You can also delete everything from Settings, or delete your account itself under Danger Zone: that removes your links, categories, tags, settings and shares, and signs you out on every device.",
+  },
+  {
+    q: "I lost my phone. Can I sign it out?",
+    a: "Yes. Open Settings from another device and press Sign out everywhere else. Every other phone, tablet and browser signed in to your account is signed out; the one you're using stays signed in.",
+  },
+  {
+    q: "I run my own Hidden Shelf. Is my data backed up?",
+    a: "Yes. The server copies its database to db/backups/ once a day and keeps the last 30 days (BACKUP_KEEP_DAYS in .env changes that; 0 turns it off). Copy that folder to another machine too, so a broken disk doesn't take the backups with it.",
   },
 ];

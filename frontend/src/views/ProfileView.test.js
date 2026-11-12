@@ -48,7 +48,12 @@ vi.mock("@/services/api/configApi", () => ({
 }));
 
 vi.mock("@/services/api/accountApi", () => ({
-  accountApi: { deleteAllData: vi.fn() },
+  accountApi: {
+    deleteAllData: vi.fn(),
+    otherSessions: vi.fn().mockResolvedValue(2),
+    signOutOtherDevices: vi.fn().mockResolvedValue(2),
+    deleteAccount: vi.fn().mockResolvedValue({ success: true }),
+  },
 }));
 vi.mock("@/services/api/updatesApi", () => ({
   updatesApi: { status: vi.fn().mockResolvedValue({ success: true, available: { count: 0, commits: [] } }) },
@@ -58,6 +63,7 @@ vi.mock("@/services/api/linkVisitsApi", () => ({
 }));
 
 import { sharesApi } from "@/services/api/sharesApi";
+import { accountApi } from "@/services/api/accountApi";
 import { settingsApi } from "@/services/api/settingsApi";
 
 describe("ProfileView", () => {
@@ -299,11 +305,55 @@ describe("ProfileView", () => {
     expect(appStore.leaveSharedCategory).toHaveBeenCalledWith(5);
   });
 
+  describe("Sign out everywhere else", () => {
+    it("says how many other devices are signed in and signs them out after asking", async () => {
+      const wrapper = mountProfile();
+      await flushPromises();
+      expect(wrapper.find('[data-testid="other-sessions"]').text()).toContain("2 other devices");
+
+      await wrapper.find('[data-testid="sign-out-others"]').trigger("click");
+      const dialog = useDialogStore();
+      expect(dialog.current.title).toBe("Sign out everywhere else?");
+      dialog.close(true);
+      await flushPromises();
+      expect(accountApi.signOutOtherDevices).toHaveBeenCalled();
+      expect(wrapper.find('[data-testid="other-sessions"]').text()).toContain("only signed in here");
+      expect(wrapper.find('[data-testid="sign-out-others"]').attributes("disabled")).toBeDefined();
+    });
+  });
+
+  describe("Delete my account", () => {
+    it("only deletes once the account's email is typed", async () => {
+      useAuthStore().user = { id: 1, email: "Me@Example.com" };
+      const assign = vi.fn();
+      vi.stubGlobal("location", { ...window.location, assign });
+      const wrapper = mountProfile();
+      await flushPromises();
+      await wrapper.find('button[title="Show or hide dangerous actions"]').trigger("click");
+      await wrapper.find('[data-testid="delete-account"]').trigger("click");
+
+      const confirm = () => wrapper.find('[data-testid="delete-account-confirm"]');
+      expect(confirm().attributes("disabled")).toBeDefined();
+      await wrapper.find('[data-testid="delete-account-email"]').setValue("someone@example.com");
+      expect(confirm().attributes("disabled")).toBeDefined();
+      await wrapper.find('[data-testid="delete-account-email"]').setValue(" me@example.com ");
+      expect(confirm().attributes("disabled")).toBeUndefined();
+
+      await wrapper.find('[data-testid="delete-account-dialog"]').trigger("submit");
+      await flushPromises();
+      expect(accountApi.deleteAccount).toHaveBeenCalledWith("me@example.com");
+      expect(assign).toHaveBeenCalledWith(expect.stringMatching(/login\?deleted=1$/));
+      vi.unstubAllGlobals();
+    });
+  });
+
   describe("Shared by you", () => {
     const share = () => ({
       id: 5,
       name: "Team links",
       share_code: "abc",
+      mode: "once",
+      expires_at: new Date(Date.now() + 3 * 86_400_000 - 1000).toISOString(),
       members: [
         { id: 11, email: "a@example.com" },
         { id: 12, email: "b@example.com" },
@@ -374,7 +424,7 @@ describe("ProfileView", () => {
       const writeText = vi.fn().mockResolvedValue();
       Object.assign(navigator, { clipboard: { writeText } });
       sharesApi.listOwnedShares.mockResolvedValueOnce([
-        { id: 5, name: "Team", share_code: "xyz", members: [] },
+        { id: 5, name: "Team", share_code: "xyz", mode: "once", expires_at: new Date(Date.now() + 86_400_000).toISOString(), members: [] },
       ]);
       const wrapper = mountProfile();
       await flushPromises();
@@ -389,7 +439,7 @@ describe("ProfileView", () => {
       const writeText = vi.fn().mockResolvedValue();
       Object.assign(navigator, { clipboard: { writeText } });
       sharesApi.listOwnedShares.mockResolvedValueOnce([
-        { id: 5, name: "Team", share_code: "used", members: [] },
+        { id: 5, name: "Team", share_code: "used", mode: "once", expires_at: new Date(Date.now() + 86_400_000).toISOString(), members: [] },
       ]);
       sharesApi.getCategoryShare.mockResolvedValueOnce({
         share: { share_code: "fresh" },
@@ -403,6 +453,20 @@ describe("ProfileView", () => {
         expect.stringMatching(/\/login\?share=fresh$/),
       );
     });
+  });
+
+  it("won't copy a share link that has ended", async () => {
+    const writeText = vi.fn().mockResolvedValue();
+    Object.assign(navigator, { clipboard: { writeText } });
+    sharesApi.listOwnedShares.mockResolvedValueOnce([
+      { id: 5, name: "Team", share_code: "old", mode: "week", expires_at: new Date(Date.now() - 1000).toISOString(), expired: true, members: [] },
+    ]);
+    const wrapper = mountProfile();
+    await flushPromises();
+    expect(wrapper.find('[data-testid="owned-share-status"]').text()).toContain("ended");
+    await wrapper.find('[aria-label="Copy share link for Team"]').trigger("click");
+    await flushPromises();
+    expect(writeText).not.toHaveBeenCalled();
   });
 
   it("scrolls to the sharing card when opened from the dashboard", async () => {

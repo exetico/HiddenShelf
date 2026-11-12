@@ -259,33 +259,64 @@ describe("CategoryManager", () => {
   });
 
   describe("Share link", () => {
-    async function openShareFor(wrapper) {
-      sharesApi.getCategoryShare.mockResolvedValue({
-        share: { share_code: "first" },
-        members: [],
-      });
+    const soon = () => new Date(Date.now() + 5 * 86_400_000 - 1000).toISOString();
+
+    async function openShareFor(wrapper, share = { share_code: "first", mode: "once", expires_at: soon() }) {
+      sharesApi.getCategoryShare.mockResolvedValue({ share, members: [] });
       await wrapper.find('button[title="Share"]').trigger("click");
       await flushPromises();
     }
 
-    it("says the link works for one person", async () => {
+    it("says who the link works for and when it ends", async () => {
       const wrapper = mountManager();
       await openShareFor(wrapper);
-      expect(wrapper.find('[data-testid="share-single-use"]').text()).toContain(
-        "It works once",
+      expect(wrapper.find('[data-testid="share-status"]').text()).toContain(
+        "Works for one person · ends in 5 days",
       );
+      expect(wrapper.find('[data-testid="share-mode-once"]').attributes("aria-checked")).toBe("true");
       expect(wrapper.find("input[readonly]").element.value).toMatch(/share=first$/);
     });
 
+    it("hides an ended link and offers a new one", async () => {
+      const wrapper = mountManager();
+      await openShareFor(wrapper, { share_code: "old", mode: "week", expires_at: new Date(Date.now() - 1000).toISOString(), expired: true });
+      expect(wrapper.find('[data-testid="share-status"]').text()).toContain("ended");
+      expect(wrapper.find("input[readonly]").exists()).toBe(false);
+      expect(wrapper.find('[data-testid="reset-share"]').exists()).toBe(true);
+    });
+
     it("makes a new link that replaces the old one", async () => {
-      sharesApi.resetShareCode.mockResolvedValue({ share_code: "second" });
+      sharesApi.resetShareCode.mockResolvedValue({ share_code: "second", mode: "once", expires_at: soon() });
       const wrapper = mountManager();
       await openShareFor(wrapper);
       await wrapper.find('[data-testid="reset-share"]').trigger("click");
       await flushPromises();
-      expect(sharesApi.resetShareCode).toHaveBeenCalledWith(1);
+      expect(sharesApi.resetShareCode).toHaveBeenCalledWith(1, "once");
       expect(wrapper.find("input[readonly]").element.value).toMatch(/share=second$/);
       expect(wrapper.text()).toContain("second");
+    });
+
+    it("switching to anyone for 7 days makes a new link of that kind", async () => {
+      sharesApi.resetShareCode.mockResolvedValue({ share_code: "many", mode: "week", expires_at: soon() });
+      const wrapper = mountManager();
+      await openShareFor(wrapper);
+      await wrapper.find('[data-testid="share-mode-week"]').trigger("click");
+      await flushPromises();
+      expect(sharesApi.resetShareCode).toHaveBeenCalledWith(1, "week");
+      expect(wrapper.find('[data-testid="share-status"]').text()).toContain("Anyone with it can join");
+    });
+
+    it("creates the kind of link picked first", async () => {
+      sharesApi.createCategoryShare.mockResolvedValue({ share_code: "new", mode: "week", expires_at: soon() });
+      const wrapper = mountManager();
+      sharesApi.getCategoryShare.mockResolvedValue({ share: null, members: [] });
+      await wrapper.find('button[title="Share"]').trigger("click");
+      await flushPromises();
+      await wrapper.find('[data-testid="share-mode-week"]').trigger("click");
+      await wrapper.find('button[title="Create a link others can use to join"]').trigger("click");
+      await flushPromises();
+      expect(sharesApi.createCategoryShare).toHaveBeenCalledWith(1, "week");
+      expect(sharesApi.resetShareCode).not.toHaveBeenCalled();
     });
   });
 });

@@ -64,6 +64,12 @@ onMounted(() => {
     return;
   }
 
+  // Back here after deleting the account (ProfileView)
+  if (route.query.deleted === "1") {
+    toastStore.success("Your account is deleted.");
+    router.replace({ query: {} });
+  }
+
   // Check for OAuth errors in URL
   const errorParam = route.query.error;
   if (errorParam) {

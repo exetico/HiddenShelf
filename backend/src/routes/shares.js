@@ -6,12 +6,16 @@
  *   GET    /api/category_shares?category_id=           → share info for own category
  *   GET    /api/category_shares?owned=1                → own shared categories + members
  *   GET    /api/category_shares?code=                  → verify share code (public)
- *   POST   /api/category_shares  {category_id}         → create share code
- *   POST   /api/category_shares  {category_id, reset}  → new code; the old one stops working
- *   POST   /api/category_shares  {share_code}          → accept share (uses the code up)
+ *   POST   /api/category_shares  {category_id, mode}         → create share code
+ *   POST   /api/category_shares  {category_id, reset, mode}  → new code; the old one stops working
+ *   POST   /api/category_shares  {share_code}                → accept share
  *
- * A share code works once: when someone joins, the category gets a new
- * code, so a code passed on to a third person no longer works.
+ * Every share code stops working SHARE_LINK_DAYS days after it was made.
+ * The owner picks a mode:
+ *   "once" (default; also any missing or unknown value): the code works for
+ *          one person. When someone joins, the category gets a new code, so
+ *          a code passed on to a third person no longer works.
+ *   "week": anyone with the code can join until it ends.
  *   DELETE /api/category_shares?category_id=&leave=1    → leave shared category
  *   DELETE /api/category_shares?category_id=&member_id= → remove member
  *   DELETE /api/category_shares?category_id=            → remove sharing
@@ -29,6 +33,29 @@ import { requireAuth, optionalAuth } from "../middleware/auth.js";
 
 const shares = new Hono();
 
+export const SHARE_LINK_DAYS = 7;
+const EXPIRES = `datetime('now', '+${SHARE_LINK_DAYS} days')`;
+
+/** "week" means many people for 7 days; anything else is one use. */
+function singleUseFor(mode) {
+  return mode === "week" ? 0 : 1;
+}
+
+/** A share row as the owner sees it: ISO end time, mode and whether it ended. */
+function ownerShare(row) {
+  if (!row) return null;
+  const expiresAt = row.expires_at ? new Date(`${row.expires_at.replace(" ", "T")}Z`) : null;
+  return {
+    id: row.id,
+    category_id: row.category_id,
+    share_code: row.share_code,
+    created_at: row.created_at,
+    expires_at: expiresAt ? expiresAt.toISOString() : null,
+    mode: row.single_use ? "once" : "week",
+    expired: expiresAt ? expiresAt.getTime() <= Date.now() : true,
+  };
+}
+
 // ─── GET /api/category_shares ────────────────────────────────────
 
 shares.get("/", optionalAuth(), revalidate(), (c) => {
@@ -44,11 +71,11 @@ shares.get("/", optionalAuth(), revalidate(), (c) => {
        FROM category_shares cs
        JOIN categories c ON cs.category_id = c.id
        JOIN users u ON cs.created_by = u.id
-       WHERE cs.share_code = ? AND (cs.expires_at IS NULL OR cs.expires_at > datetime('now'))`,
+       WHERE cs.share_code = ? AND cs.expires_at > datetime('now')`,
       )
       .get(shareCode);
 
-    if (!share) return errorResponse(c, "This share link has been used or replaced. Ask the owner for a new one.", 404);
+    if (!share) return errorResponse(c, "This share link has ended, been used or been replaced. Ask the owner for a new one.", 404);
 
     const linkCount = db
       .prepare("SELECT COUNT(*) as count FROM links WHERE category_id = ? AND deleted_at IS NULL")
@@ -89,14 +116,15 @@ shares.get("/", optionalAuth(), revalidate(), (c) => {
       )
       .all(categoryId);
 
-    return successResponse(c, { share: share || null, members });
+    return successResponse(c, { share: ownerShare(share), members });
   }
 
   // ── List my own shared categories with their members ──
   if (c.req.query("owned") !== undefined) {
     const owned = db
       .prepare(
-        `SELECT c.id, c.name, c.icon, c.color, cs.share_code, cs.created_at as shared_at
+        `SELECT c.id, c.name, c.icon, c.color, cs.share_code, cs.created_at as shared_at,
+              cs.expires_at, cs.single_use
        FROM category_shares cs
        JOIN categories c ON cs.category_id = c.id
        WHERE c.user_id = ?
@@ -111,7 +139,14 @@ shares.get("/", optionalAuth(), revalidate(), (c) => {
        WHERE csm.category_id = ?
        ORDER BY csm.accepted_at ASC`,
     );
-    for (const cat of owned) cat.members = memberStmt.all(cat.id);
+    for (const cat of owned) {
+      cat.members = memberStmt.all(cat.id);
+      const share = ownerShare({ ...cat, created_at: cat.shared_at });
+      cat.expires_at = share.expires_at;
+      cat.mode = share.mode;
+      cat.expired = share.expired;
+      delete cat.single_use;
+    }
 
     return successResponse(c, { owned_shares: owned });
   }
@@ -161,11 +196,11 @@ shares.post("/", requireAuth(), async (c) => {
         `SELECT cs.*, c.user_id as owner_id
        FROM category_shares cs
        JOIN categories c ON cs.category_id = c.id
-       WHERE cs.share_code = ? AND (cs.expires_at IS NULL OR cs.expires_at > datetime('now'))`,
+       WHERE cs.share_code = ? AND cs.expires_at > datetime('now')`,
       )
       .get(shareCode);
 
-    if (!share) return errorResponse(c, "This share link has been used or replaced. Ask the owner for a new one.", 404);
+    if (!share) return errorResponse(c, "This share link has ended, been used or been replaced. Ask the owner for a new one.", 404);
     if (share.owner_id === c.userId)
       return errorResponse(c, "You cannot accept your own share");
 
@@ -181,10 +216,12 @@ shares.post("/", requireAuth(), async (c) => {
       db.prepare(
         "INSERT INTO category_share_members (category_id, user_id) VALUES (?, ?)",
       ).run(share.category_id, c.userId);
-      db.prepare("UPDATE category_shares SET share_code = ? WHERE id = ?").run(
-        generateShareCode(),
-        share.id,
-      );
+      // A one-use code is spent: the next person gets a new one
+      if (share.single_use) {
+        db.prepare(
+          `UPDATE category_shares SET share_code = ?, expires_at = ${EXPIRES} WHERE id = ?`,
+        ).run(generateShareCode(), share.id);
+      }
     })();
 
     return successResponse(c, {}, "Successfully joined shared category");
@@ -201,36 +238,37 @@ shares.post("/", requireAuth(), async (c) => {
       .prepare("SELECT * FROM category_shares WHERE category_id = ?")
       .get(categoryId);
     if (existing && input.reset) {
-      db.prepare("UPDATE category_shares SET share_code = ? WHERE id = ?").run(
-        generateShareCode(),
-        existing.id,
-      );
+      const singleUse = input.mode === undefined ? existing.single_use : singleUseFor(input.mode);
+      db.prepare(
+        `UPDATE category_shares SET share_code = ?, single_use = ?, expires_at = ${EXPIRES} WHERE id = ?`,
+      ).run(generateShareCode(), singleUse, existing.id);
       const share = db
         .prepare("SELECT * FROM category_shares WHERE id = ?")
         .get(existing.id);
       return successResponse(
         c,
-        { share },
+        { share: ownerShare(share) },
         "New share link made; the old one no longer works",
       );
     }
     if (existing)
       return successResponse(
         c,
-        { share: existing },
+        { share: ownerShare(existing) },
         "Share code already exists",
       );
 
     const code = generateShareCode();
     db.prepare(
-      "INSERT INTO category_shares (category_id, share_code, created_by) VALUES (?, ?, ?)",
-    ).run(categoryId, code, c.userId);
+      `INSERT INTO category_shares (category_id, share_code, created_by, single_use, expires_at)
+       VALUES (?, ?, ?, ?, ${EXPIRES})`,
+    ).run(categoryId, code, c.userId, singleUseFor(input.mode));
 
     const share = db
       .prepare("SELECT * FROM category_shares WHERE category_id = ?")
       .get(categoryId);
 
-    return successResponse(c, { share }, "Share code created");
+    return successResponse(c, { share: ownerShare(share) }, "Share code created");
   }
 
   return errorResponse(c, "Category ID or share code required");

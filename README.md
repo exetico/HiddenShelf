@@ -176,7 +176,8 @@ volumes:
 
   and move the existing files there before starting.
 - **Permissions:** the container runs as user `node` (uid 1000), so the folder must be writable by uid 1000. If the app fails with `unable to open database file`, run `sudo chown -R 1000:1000 db`.
-- **Back up / get the data out:** `make backup` writes a consistent copy to `db/backups/hiddenshelf-<date>.sqlite`. It works while the app runs, and also when it's stopped. Add `OUT=` to also copy it somewhere else, e.g. `make backup OUT=~/hiddenshelf.sqlite`, then fetch it with `scp server:~/hiddenshelf.sqlite .`. For daily backups, run `cd /path/to/hiddenshelf && make backup` from cron and copy `db/backups/` off the server. Copying `database.sqlite` by hand while the app runs can miss recent writes.
+- **Daily backups:** the app copies the database to `db/backups/daily-YYYY-MM-DD.sqlite` once a day (soon after it starts, then checked every hour) and removes daily copies older than `BACKUP_KEEP_DAYS` days (30 by default; `0` turns them off). It never touches other files in `db/backups/`. These live on the same disk as the database, so also copy `db/backups/` to another machine now and then, e.g. with `rsync` from cron.
+- **Back up / get the data out:** `make backup` writes a consistent copy to `db/backups/hiddenshelf-<date>.sqlite`. It works while the app runs, and also when it's stopped. Add `OUT=` to also copy it somewhere else, e.g. `make backup OUT=~/hiddenshelf.sqlite`, then fetch it with `scp server:~/hiddenshelf.sqlite .`. For an extra copy at a time you choose, run `cd /path/to/hiddenshelf && make backup` from cron. Copying `database.sqlite` by hand while the app runs can miss recent writes.
 - **Restore:** `make restore FILE=db/backups/hiddenshelf-<date>.sqlite`. It backs up the current database first, stops the app, swaps the file in and starts the app again. The file must be inside `db/`. Older backups are migrated automatically.
 - **Per user:** everyone can also export their own links and categories as JSON from the app (Dashboard → Import Data).
 - **Look inside:** `docker compose exec web sqlite3 /app/db/database.sqlite`, or open the file in any SQLite browser.
@@ -207,6 +208,7 @@ Set these in `.env`. Docker Compose passes them to the container. When running N
 | `GOOGLE_CLIENT_ID`     | ``                                    | Google OAuth client ID                  |
 | `GOOGLE_CLIENT_SECRET` | ``                                    | Google OAuth client secret              |
 | `GOOGLE_REDIRECT_URI`  | `{SITE_URL}/api/auth/google/callback` | OAuth redirect. Leave empty; the server warns if it doesn't end in `/api/auth/google/callback` |
+| `BACKUP_KEEP_DAYS`     | `30`                                  | Days of daily database backups to keep in `db/backups/`. `0` turns them off; anything that isn't a number of days means 30 |
 | `UPDATE_ADMIN_EMAILS`  | ``                                    | Comma-separated emails that may update the app from the Admin page. Empty: nobody (see [Updating from the app](#updating-from-the-app)) |
 | `UPDATE_REAUTH_MINUTES`| `10`                                  | How recent an admin's sign-in must be to update or roll back |
 | `UPDATE_REPO_URL`      | `https://github.com/exetico/HiddenShelf.git` | Where in-app updates come from (https only). Change it if you run a fork |

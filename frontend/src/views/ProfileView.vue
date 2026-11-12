@@ -1,7 +1,7 @@
 <script setup>
 import { appUrl } from "@/lib/appUrl";
 import { bookmarkletHref } from "@/lib/quickAdd";
-import { ref, reactive, onMounted, nextTick } from "vue";
+import { ref, reactive, computed, onMounted, nextTick } from "vue";
 import { useReconnect } from "@/composables/useReconnect";
 import { useRoute } from "vue-router";
 import { useAuthStore } from "@/stores/auth";
@@ -10,6 +10,7 @@ import { useToastStore } from "@/stores/toast";
 import { useDialogStore } from "@/stores/dialog";
 import { sharesApi } from "@/services/api/sharesApi";
 import { accountApi } from "@/services/api/accountApi";
+import { shareEnded, shareStatus } from "@/lib/shareLink";
 import ImportExportModal from "@/components/common/ImportExportModal.vue";
 import { backdropClose } from "@/lib/backdropClose";
 
@@ -116,14 +117,18 @@ async function leaveShared(category) {
 async function copyOwnedShareUrl(share) {
   try {
     const { share: current } = await sharesApi.getCategoryShare(share.id);
-    if (current?.share_code) share.share_code = current.share_code;
+    if (current) Object.assign(share, current, { id: share.id });
   } catch {
     // Copy the one we have
+  }
+  if (shareEnded(share)) {
+    toastStore.error("This share link has ended. Make a new one in Edit, under Categories.");
+    return;
   }
   await navigator.clipboard.writeText(
     appUrl(`/login?share=${share.share_code}`),
   );
-  toastStore.success("Share URL copied. It works for one person.");
+  toastStore.success(`Share URL copied. ${shareStatus(share)}.`);
 }
 
 async function removeOwnedMember(share, member) {
@@ -253,6 +258,67 @@ async function confirmDeleteEverything() {
     toastStore.error("Failed to delete all data: " + error.message);
   }
 }
+
+// ─── Sign out everywhere else ────────────────────────────────────
+const otherSessions = ref(null);
+const signingOutOthers = ref(false);
+accountApi
+  .otherSessions()
+  .then((n) => (otherSessions.value = n))
+  .catch(() => {});
+
+async function signOutOtherDevices() {
+  const ok = await useDialogStore().confirm({
+    title: "Sign out everywhere else?",
+    message: "Every other phone, tablet and browser signed in to your account is signed out. This one stays signed in.",
+    confirmText: "Sign out",
+    danger: true,
+    icon: "mdi-devices",
+  });
+  if (!ok) return;
+  signingOutOthers.value = true;
+  try {
+    const n = await accountApi.signOutOtherDevices();
+    otherSessions.value = 0;
+    toastStore.success(n === 1 ? "Signed out 1 other device" : `Signed out ${n} other devices`);
+  } catch (e) {
+    toastStore.error(e?.message || "Couldn't sign out the other devices");
+  } finally {
+    signingOutOthers.value = false;
+  }
+}
+
+// ─── Delete my account ───────────────────────────────────────────
+const showDeleteAccount = ref(false);
+const deleteAccountEmail = ref("");
+const deletingAccount = ref(false);
+const accountEmail = computed(() => authStore.user?.email || "");
+const deleteAccountReady = computed(
+  () =>
+    deleteAccountEmail.value.trim().toLowerCase() ===
+      accountEmail.value.toLowerCase() && accountEmail.value !== "",
+);
+
+function openDeleteAccount() {
+  deleteAccountEmail.value = "";
+  showDeleteAccount.value = true;
+}
+
+async function confirmDeleteAccount() {
+  if (!deleteAccountReady.value || deletingAccount.value) return;
+  deletingAccount.value = true;
+  try {
+    await accountApi.deleteAccount(deleteAccountEmail.value.trim());
+    // Full reload into the login page, so nothing of the account lingers
+    window.location.assign(`${import.meta.env.BASE_URL}login?deleted=1`);
+  } catch (e) {
+    deletingAccount.value = false;
+    toastStore.error(e?.message || "Couldn't delete your account");
+  }
+}
+const deleteAccountBackdrop = backdropClose(() => {
+  if (!deletingAccount.value) showDeleteAccount.value = false;
+});
 
 // Closes on a backdrop click, but not when a text selection ends there
 const joinBackdrop = backdropClose(() => cancelJoinShare());
@@ -440,6 +506,13 @@ const deleteBackdrop = backdropClose(() => (showDeleteModal.value = false));
                   {{ share.members.length }}
                   {{ share.members.length === 1 ? "person" : "people" }} joined
                 </p>
+                <p
+                  class="text-xs"
+                  :class="shareEnded(share) ? 'text-red-600 dark:text-red-400' : 'text-gray-500 dark:text-brand-400'"
+                  data-testid="owned-share-status"
+                >
+                  {{ shareStatus(share) }}
+                </p>
               </div>
               <button
                 class="p-1.5 text-brand-600 dark:text-brand-300 shrink-0"
@@ -537,13 +610,38 @@ const deleteBackdrop = backdropClose(() => (showDeleteModal.value = false));
     <article
       class="bg-white dark:bg-brand-900 rounded-lg border border-gray-200 dark:border-brand-800 p-5"
     >
-      <button
-        title="Sign out on this device"
-        class="px-4 py-2 rounded-md border border-red-400 text-red-700 dark:text-red-300"
-        @click="authStore.logout"
+      <div class="flex flex-wrap gap-2">
+        <button
+          title="Sign out on this device"
+          class="px-4 py-2 rounded-md border border-red-400 text-red-700 dark:text-red-300"
+          @click="authStore.logout"
+        >
+          Logout
+        </button>
+        <button
+          title="Sign out every other device signed in to your account, for example a lost phone"
+          class="px-4 py-2 rounded-md border border-gray-300 dark:border-brand-700 text-gray-700 dark:text-brand-200 disabled:opacity-50"
+          data-testid="sign-out-others"
+          :disabled="signingOutOthers || otherSessions === 0"
+          @click="signOutOtherDevices"
+        >
+          <i v-if="signingOutOthers" class="mdi mdi-loading mdi-spin"></i>
+          Sign out everywhere else
+        </button>
+      </div>
+      <p
+        v-if="otherSessions !== null"
+        class="mt-2 text-xs text-gray-500 dark:text-brand-400"
+        data-testid="other-sessions"
       >
-        Logout
-      </button>
+        {{
+          otherSessions === 0
+            ? "You're only signed in here."
+            : otherSessions === 1
+              ? "You're also signed in on 1 other device."
+              : `You're also signed in on ${otherSessions} other devices.`
+        }}
+      </p>
     </article>
 
     <!-- Danger Zone -->
@@ -568,8 +666,8 @@ const deleteBackdrop = backdropClose(() => (showDeleteModal.value = false));
         enter-active-class="transition-all duration-200 ease-out overflow-hidden"
         leave-active-class="transition-all duration-200 ease-in overflow-hidden"
         enter-from-class="max-h-0 opacity-0"
-        enter-to-class="max-h-40 opacity-100"
-        leave-from-class="max-h-40 opacity-100"
+        enter-to-class="max-h-60 opacity-100"
+        leave-from-class="max-h-60 opacity-100"
         leave-to-class="max-h-0 opacity-0"
       >
         <div v-if="showDangerZone" class="mt-4">
@@ -582,6 +680,14 @@ const deleteBackdrop = backdropClose(() => (showDeleteModal.value = false));
             @click="openDeleteEverythingModal"
           >
             Delete Everything
+          </button>
+          <button
+            title="Delete your account, everything in it and every sign-in, for good"
+            class="mt-2 w-full px-4 py-2 border-2 border-red-600 text-red-700 dark:text-red-300 rounded-md hover:bg-red-100 dark:hover:bg-red-900 transition-colors"
+            data-testid="delete-account"
+            @click="openDeleteAccount"
+          >
+            Delete my account
           </button>
         </div>
       </transition>
@@ -732,6 +838,74 @@ const deleteBackdrop = backdropClose(() => (showDeleteModal.value = false));
             </button>
           </div>
         </div>
+      </div>
+    </Teleport>
+
+    <!-- Delete my account -->
+    <Teleport to="body">
+      <div
+        v-if="showDeleteAccount"
+        class="fixed inset-0 bg-black/50 flex items-center justify-center z-60 p-4"
+        v-on="deleteAccountBackdrop"
+      >
+        <form
+          class="bg-white dark:bg-brand-900 rounded-lg shadow-xl max-w-md w-full p-6"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="delete-account-title"
+          data-testid="delete-account-dialog"
+          @submit.prevent="confirmDeleteAccount"
+        >
+          <h3
+            id="delete-account-title"
+            class="text-lg font-semibold text-red-600 dark:text-red-400 mb-2"
+          >
+            Delete my account
+          </h3>
+          <p class="text-sm text-gray-600 dark:text-brand-300 mb-2">
+            This deletes your account for good: every link, category and tag,
+            your settings, the categories you share (people who joined lose
+            them), the ones shared with you, and every sign-in on every device.
+            It can't be undone.
+          </p>
+          <p class="text-sm text-gray-600 dark:text-brand-300 mb-3">
+            Want a copy first? Export your links under Import and export.
+          </p>
+          <label class="block text-sm text-gray-600 dark:text-brand-300 mb-2" for="delete-account-email">
+            Type <strong class="text-gray-900 dark:text-white">{{ accountEmail }}</strong> to confirm:
+          </label>
+          <input
+            id="delete-account-email"
+            v-model="deleteAccountEmail"
+            type="email"
+            autocomplete="off"
+            autocapitalize="off"
+            spellcheck="false"
+            class="w-full px-3 py-2 rounded-md border border-gray-300 dark:border-brand-700 dark:bg-brand-800 mb-4"
+            data-testid="delete-account-email"
+          />
+          <div class="flex justify-end gap-2">
+            <button
+              type="button"
+              title="Keep my account"
+              class="px-4 py-2 rounded-md border border-gray-300 dark:border-brand-700"
+              :disabled="deletingAccount"
+              @click="showDeleteAccount = false"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              title="Delete my account for good"
+              class="px-4 py-2 rounded-md bg-red-600 text-white hover:bg-red-700 disabled:opacity-50 flex items-center gap-1"
+              data-testid="delete-account-confirm"
+              :disabled="!deleteAccountReady || deletingAccount"
+            >
+              <i v-if="deletingAccount" class="mdi mdi-loading mdi-spin"></i>
+              Delete my account
+            </button>
+          </div>
+        </form>
       </div>
     </Teleport>
   </section>

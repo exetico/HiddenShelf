@@ -34,11 +34,26 @@ export function signupModeFromEnv(mode) {
   return "invite";
 }
 
+/**
+ * BACKUP_KEEP_DAYS: how many days of daily database backups to keep.
+ * Missing means 30. "0" turns daily backups off. Anything that isn't a
+ * whole number from 0 to 3650 is ignored, with a warning, and means 30.
+ */
+export function backupKeepDaysFromEnv(value) {
+  const trimmed = (value ?? "").trim();
+  if (!trimmed) return 30;
+  if (/^\d{1,4}$/.test(trimmed) && Number(trimmed) <= 3650) return Number(trimmed);
+  console.warn(
+    `[config] Ignoring BACKUP_KEEP_DAYS=${JSON.stringify(value)}: use a number of days (0 turns backups off). Using 30.`,
+  );
+  return 30;
+}
+
 // A value with " #" in it is most likely a comment the .env parser kept.
 // Secrets are left out of the check; they may contain anything.
 for (const [name, value] of Object.entries(process.env)) {
   if (
-    /^(SITE_|BASE_PATH|SMTP_(HOST|PORT|USER|ENCRYPTION)|FROM_|DEBUG_MODE|SIGNUP_MODE|EMAIL_LOGIN_ENABLED|TRUST_PROXY|GOOGLE_(CLIENT_ID|REDIRECT_URI)|MAGIC_LINK_EXPIRY|SESSION_)/.test(name) &&
+    /^(SITE_|BASE_PATH|SMTP_(HOST|PORT|USER|ENCRYPTION)|FROM_|DEBUG_MODE|SIGNUP_MODE|EMAIL_LOGIN_ENABLED|TRUST_PROXY|GOOGLE_(CLIENT_ID|REDIRECT_URI)|MAGIC_LINK_EXPIRY|SESSION_|BACKUP_)/.test(name) &&
     /(^|\s)#/.test(value)
   ) {
     console.warn(
@@ -53,6 +68,9 @@ const config = {
 
   // Database
   dbPath: process.env.DB_PATH || "./db/database.sqlite",
+
+  // Daily backups to db/backups/daily-*.sqlite (see lib/dailyBackup.js)
+  backupKeepDays: backupKeepDaysFromEnv(process.env.BACKUP_KEEP_DAYS),
 
   // Site
   siteUrl: process.env.SITE_URL || "http://localhost:3000",
