@@ -45,7 +45,7 @@ export const FEATURE_GROUPS = [
       {
         icon: "mdi-magnify",
         title: "Find anything fast",
-        text: "Search titles, URLs, descriptions and tags, with results as you type. On a computer, the search box is ready for typing as soon as you open the app, and / jumps back to it.",
+        text: "Search titles, URLs, descriptions and tags, with results as you type. On a computer, the search box is ready for typing as soon as you open the app, and / jumps back to it. On a phone, the magnifier in the top bar takes you straight to search.",
         front: true,
       },
       {

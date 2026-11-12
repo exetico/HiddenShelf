@@ -104,6 +104,51 @@ onMounted(() => {
 });
 onUnmounted(() => window.removeEventListener("keydown", onKeydown));
 
+// Phones: the magnifier jumps to View with its search box focused, in one
+// tap. iOS only opens the keyboard for a focus made inside the tap itself,
+// so when we still have to change page, a stand-in input takes the focus
+// (and the keyboard) right away and hands it over once View is shown.
+const PAGE_SEARCH = '[data-testid="view-page"] [data-testid="page-search"] input';
+function findPageSearch() {
+  const input = document.querySelector(PAGE_SEARCH);
+  return input && input.offsetParent !== null ? input : null;
+}
+function focusPageSearch(input) {
+  window.scrollTo({ top: 0 });
+  input.focus({ preventScroll: true });
+  input.select?.();
+}
+async function jumpToSearch() {
+  const here = findPageSearch();
+  if (here) {
+    focusPageSearch(here);
+    return;
+  }
+  const standIn = document.createElement("input");
+  standIn.type = "search";
+  standIn.setAttribute("aria-hidden", "true");
+  standIn.tabIndex = -1;
+  // 16px so iOS doesn't zoom in; invisible and out of the way
+  standIn.style.cssText =
+    "position:fixed;top:0;left:0;width:1px;height:1px;opacity:0;font-size:16px;border:0;padding:0;";
+  document.body.appendChild(standIn);
+  standIn.focus({ preventScroll: true });
+  try {
+    await router.push({ name: "view" });
+    // The page may take a frame or two to draw its search box
+    for (let i = 0; i < 20; i++) {
+      const input = findPageSearch();
+      if (input) {
+        focusPageSearch(input);
+        break;
+      }
+      await new Promise((resolve) => requestAnimationFrame(resolve));
+    }
+  } finally {
+    standIn.remove();
+  }
+}
+
 // It is a toggle: tapping the side you are already on flips to the other
 function pickMode(name) {
   if (route.name === name) {
@@ -279,6 +324,18 @@ watch(
             <span class="max-[359px]:sr-only">{{ item.label }}</span>
           </button>
         </div>
+
+        <!-- Phones and tablets: from md up the search box is in this bar -->
+        <button
+          type="button"
+          class="md:hidden w-8 h-8 sm:w-10 sm:h-10 shrink-0 flex items-center justify-center rounded-md text-gray-700 dark:text-brand-200 hover:bg-gray-100 dark:hover:bg-brand-800"
+          title="Search your links"
+          aria-label="Search"
+          data-testid="nav-search-button"
+          @click="jumpToSearch"
+        >
+          <i class="mdi mdi-magnify text-lg leading-none" aria-hidden="true"></i>
+        </button>
 
         <button
           class="w-8 h-8 sm:w-10 sm:h-10 shrink-0 flex items-center justify-center rounded-md text-gray-700 dark:text-brand-200 hover:bg-gray-100 dark:hover:bg-brand-800"

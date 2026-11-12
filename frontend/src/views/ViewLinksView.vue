@@ -156,7 +156,8 @@ function toggleCategory(key) {
       data-testid="page-search"
     >
       <CategoryPicker />
-      <SearchField v-model="appStore.search" placeholder="Search links..." />
+      <!-- Same height as the picker beside it -->
+      <SearchField v-model="appStore.search" placeholder="Search links..." class="h-9" />
     </div>
 
     <!-- Favorite categories as quick chips (mobile) -->

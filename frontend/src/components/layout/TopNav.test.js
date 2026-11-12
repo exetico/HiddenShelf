@@ -200,11 +200,60 @@ describe("TopNav", () => {
     const sized = [
       wrapper.find('[role="group"][aria-label="Mode"]'),
       wrapper.find('[data-testid="nav-tools-page"]'),
+      wrapper.find('[data-testid="nav-search-button"]'),
       wrapper.find('[data-testid="profile-button"]'),
     ];
     for (const el of sized) {
       expect(el.classes()).toEqual(expect.arrayContaining(["h-8", "sm:h-10"]));
     }
+  });
+
+  describe("phone search button", () => {
+    // A stand-in for View's own search box, visible like the real one
+    function addPageSearch() {
+      const page = document.createElement("section");
+      page.dataset.testid = "view-page";
+      page.innerHTML = '<div data-testid="page-search"><input type="search" /></div>';
+      document.body.appendChild(page);
+      const input = page.querySelector("input");
+      Object.defineProperty(input, "offsetParent", { get: () => document.body });
+      return { page, input };
+    }
+    let page;
+    afterEach(() => page?.remove());
+
+    it("only shows below md, where the bar has no search box", () => {
+      const button = mountNav().find('[data-testid="nav-search-button"]');
+      expect(button.classes()).toContain("md:hidden");
+      expect(button.find(".mdi-magnify").exists()).toBe(true);
+      expect(button.attributes("title")).toBeTruthy();
+    });
+
+    it("focuses View's search box in place when you're on View", async () => {
+      const added = addPageSearch();
+      page = added.page;
+      const wrapper = mountNav();
+      await wrapper.find('[data-testid="nav-search-button"]').trigger("click");
+      expect(document.activeElement).toBe(added.input);
+      expect(mockPush).not.toHaveBeenCalled();
+    });
+
+    it("goes to View and focuses its search box from another page", async () => {
+      mockRoute.name = "dashboard";
+      let added;
+      mockPush.mockImplementationOnce(async () => {
+        // The stand-in holds the focus (and the phone keyboard) meanwhile
+        expect(document.activeElement.tagName).toBe("INPUT");
+        added = addPageSearch();
+        page = added.page;
+      });
+      const wrapper = mountNav();
+      await wrapper.find('[data-testid="nav-search-button"]').trigger("click");
+      await vi.waitFor(() => expect(document.activeElement).toBe(added.input));
+      expect(mockPush).toHaveBeenCalledWith({ name: "view" });
+      // The stand-in is gone again
+      expect(document.querySelectorAll("input").length).toBe(1);
+    });
   });
 
   it("stays at the top while you scroll", () => {

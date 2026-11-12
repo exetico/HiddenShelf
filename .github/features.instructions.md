@@ -104,9 +104,11 @@ This document provides a comprehensive overview of all features, functionality, 
 
 - Mode switching tabs: Dashboard, View, Edit, Profile
 - User avatar with initials (`profile-button`) opens the account menu (`profile-menu-panel`, `role="menu"`): your email, then Settings (`/profile`), Admin (`/admin`, only when `authStore.canUpdate`) and Log out (`authStore.logout`). Closes on Escape, a click outside, Tab or a route change; arrow keys, Home and End move between items
-- Every control in the bar is the same height: 32px on phones (`h-8`), 40px from `sm` (`sm:h-10`), so the View/Edit pill, Tools, theme and avatar line up
+- Every control in the bar is the same height: 32px on phones (`h-8`), 40px from `sm` (`sm:h-10`), so the View/Edit pill, Search (phones), Tools, theme and avatar line up
 - Responsive design
 - Search box (`nav-search`, md+): focused when the app opens, but only when `(min-width: 768px) and (pointer: fine)` matches, nothing else has focus and no dialog is open. `/` jumps to it
+- Search button (`nav-search-button`, below md, magnifier): one tap goes to `/view` and focuses its search box (`[data-testid="view-page"] [data-testid="page-search"] input`), scrolled to the top. Already on View, it just focuses. Otherwise a hidden stand-in input takes focus inside the tap (iOS only opens the keyboard for a focus made in the tap) and hands it over once View has drawn its box
+- On phones, the View and Edit search rows give the category picker and the search box the same fixed height (`h-9`)
 
 ### Layout (`AppShell.vue`)
 
