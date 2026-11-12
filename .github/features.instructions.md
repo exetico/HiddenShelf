@@ -108,7 +108,7 @@ This document provides a comprehensive overview of all features, functionality, 
 - Responsive design
 - Search box (`nav-search`, md+): focused when the app opens, but only when `(min-width: 768px) and (pointer: fine)` matches, nothing else has focus and no dialog is open. `/` jumps to it
 - Search button (`nav-search-button`, below md, magnifier): one tap goes to `/view` and focuses its search box (`[data-testid="view-page"] [data-testid="page-search"] input`), scrolled to the top. Already on View, it just focuses. Otherwise a hidden stand-in input takes focus inside the tap (iOS only opens the keyboard for a focus made in the tap) and hands it over once View has drawn its box
-- On phones, the View and Edit search rows give the category picker and the search box the same fixed height (`h-9`)
+- On phones, View and Edit share one search row layout: category picker and search box side by side on the page background (no card), both a fixed `h-9`. `SearchField` uses 16px text below md (`text-base md:text-sm`), since iOS Safari zooms into any focused field under 16px
 
 ### Layout (`AppShell.vue`)
 

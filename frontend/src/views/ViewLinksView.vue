@@ -151,10 +151,8 @@ function toggleCategory(key) {
     <CategoryFilterBar class="hidden sm:block" />
 
     <!-- Search bar (from md up, the search in the top bar does this) -->
-    <div
-      class="md:hidden bg-white dark:bg-brand-900 rounded-lg border border-gray-200 dark:border-brand-800 p-2 sm:p-3 flex gap-2"
-      data-testid="page-search"
-    >
+    <!-- Same row as on Edit: on the page background, not in a card -->
+    <div class="md:hidden flex gap-2" data-testid="page-search">
       <CategoryPicker />
       <!-- Same height as the picker beside it -->
       <SearchField v-model="appStore.search" placeholder="Search links..." class="h-9" />
