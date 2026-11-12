@@ -136,5 +136,73 @@ describe("Floating search bar", () => {
       const input = wrapper.find("input").classes();
       expect(input).toEqual(expect.arrayContaining(["border-0!", "bg-transparent!"]));
     });
+
+    it("shows Done only while typing, and Done closes the keyboard", async () => {
+      const input = wrapper.find("input").element;
+      expect(wrapper.find('[data-testid="floating-search-done"]').exists()).toBe(false);
+      input.focus();
+      await nextTick();
+      const done = wrapper.find('[data-testid="floating-search-done"]');
+      expect(done.attributes("title")).toBeTruthy();
+      // Pressing it doesn't take the focus away first (it would vanish)
+      const down = new Event("mousedown", { cancelable: true, bubbles: true });
+      done.element.dispatchEvent(down);
+      expect(down.defaultPrevented).toBe(true);
+      await done.trigger("click");
+      expect(document.activeElement).not.toBe(input);
+      await nextTick();
+      expect(wrapper.find('[data-testid="floating-search-done"]').exists()).toBe(false);
+    });
+
+    it("closes the keyboard on its search key too", async () => {
+      const input = wrapper.find("input");
+      expect(input.attributes("enterkeyhint")).toBe("search");
+      input.element.focus();
+      await input.trigger("keydown", { key: "Enter" });
+      expect(document.activeElement).not.toBe(input.element);
+    });
+
+    it("focuses on a tap without scrolling the page", async () => {
+      const input = wrapper.find("input").element;
+      const focus = vi.spyOn(input, "focus");
+      const down = new Event("pointerdown", { cancelable: true, bubbles: true });
+      input.dispatchEvent(down);
+      expect(down.defaultPrevented).toBe(true);
+      expect(focus).toHaveBeenCalledWith({ preventScroll: true });
+    });
+
+    it("undoes a scroll the browser makes while the keyboard opens", async () => {
+      window.scrollY = 0;
+      const scrollTo = vi.spyOn(window, "scrollTo").mockImplementation(() => {});
+      wrapper.find("input").element.focus();
+      await nextTick();
+      window.scrollY = 300;
+      window.dispatchEvent(new Event("scroll"));
+      expect(scrollTo).toHaveBeenCalledWith(0, 0);
+      scrollTo.mockClear();
+      // Later scrolling is yours: left alone
+      await vi.advanceTimersByTimeAsync(900);
+      window.scrollY = 500;
+      window.dispatchEvent(new Event("scroll"));
+      expect(scrollTo).not.toHaveBeenCalled();
+      scrollTo.mockRestore();
+    });
+
+    it("sits on top of the keyboard while typing", async () => {
+      const vv = new EventTarget();
+      Object.assign(vv, { height: 400, offsetTop: 0 });
+      const original = window.visualViewport;
+      Object.defineProperty(window, "visualViewport", { value: vv, configurable: true });
+      window.innerHeight = 740;
+      wrapper.unmount();
+      wrapper = mount(FloatingSearch, { global: { plugins: [pinia] }, attachTo: document.body });
+      wrapper.find("input").element.focus();
+      await nextTick();
+      expect(bar().attributes("style")).toContain("bottom: 348px");
+      wrapper.find("input").element.blur();
+      await nextTick();
+      expect(bar().attributes("style") || "").not.toContain("bottom");
+      Object.defineProperty(window, "visualViewport", { value: original, configurable: true });
+    });
   });
 });
