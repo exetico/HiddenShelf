@@ -145,10 +145,8 @@ describe("ProfileView", () => {
     expect(mountProfile().find('[data-testid="server-updates"]').exists()).toBe(false);
   });
 
-  it("shows beta notice", () => {
-    const wrapper = mountProfile();
-    expect(wrapper.text()).toContain("Beta notice");
-    expect(wrapper.text()).toContain("export your data");
+  it("shows no beta notice", () => {
+    expect(mountProfile().text()).not.toMatch(/beta/i);
   });
 
   it("displays user email", () => {
@@ -239,18 +237,23 @@ describe("ProfileView", () => {
     expect(wrapper.text()).toContain("Danger Zone");
   });
 
-  it("shows Delete Everything button after expanding Danger Zone", async () => {
+  it("tells the two dangerous actions apart after expanding Danger Zone", async () => {
     const wrapper = mountProfile();
-    // Click Danger Zone  toggle
     const dangerButton = wrapper
       .findAll("button")
       .find((b) => b.text().includes("Danger Zone"));
     await dangerButton.trigger("click");
 
-    expect(wrapper.text()).toContain("Delete Everything");
+    const empty = wrapper.find('[data-testid="empty-shelf-section"]').text();
+    expect(empty).toContain("Empty my shelf");
+    expect(empty).toContain("Your account, settings and sign-ins stay");
+    const account = wrapper.find('[data-testid="delete-account-section"]').text();
+    expect(account).toContain("Delete my account");
+    expect(account).toContain("signed out on every device");
+    expect(wrapper.text()).not.toContain("Delete Everything");
   });
 
-  it("opens Delete Everything modal instead of window.prompt", async () => {
+  it("asks for the phrase before emptying the shelf", async () => {
     const wrapper = mountProfile();
 
     // Expand danger zone
@@ -259,14 +262,11 @@ describe("ProfileView", () => {
       .find((b) => b.text().includes("Danger Zone"));
     await dangerBtn.trigger("click");
 
-    // Click Delete Everything
-    const deleteBtn = wrapper
-      .findAll("button")
-      .find((b) => b.text() === "Delete Everything");
-    await deleteBtn.trigger("click");
+    await wrapper.find('[data-testid="empty-shelf"]').trigger("click");
 
     // Should show the modal with confirmation input
     expect(wrapper.text()).toContain("delete 12 now");
+    expect(wrapper.text()).toContain("Your account, settings and sign-ins stay.");
     expect(
       wrapper
         .find('input[placeholder="Type the confirmation phrase..."]')
