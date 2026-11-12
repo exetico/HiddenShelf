@@ -229,6 +229,11 @@ describe("TopNav", () => {
       expect(button.attributes("title")).toBeTruthy();
     });
 
+    it("is left out when the floating search bar is on", () => {
+      useAppStore().settings = { floating_search: true };
+      expect(mountNav().find('[data-testid="nav-search-button"]').exists()).toBe(false);
+    });
+
     it("focuses View's search box in place when you're on View", async () => {
       const added = addPageSearch();
       page = added.page;

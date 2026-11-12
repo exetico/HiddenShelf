@@ -55,6 +55,7 @@ export const useAppStore = defineStore("app", {
     sharedCategories: [],
     settings: {
       brand_color: "#687061",
+      floating_search: false,
     },
     appConfig: {
       app_version: "",

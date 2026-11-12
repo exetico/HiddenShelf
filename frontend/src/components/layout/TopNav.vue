@@ -325,8 +325,10 @@ watch(
           </button>
         </div>
 
-        <!-- Phones and tablets: from md up the search box is in this bar -->
+        <!-- Phones and tablets: from md up the search box is in this bar.
+             Not needed when the floating search bar (Settings) is on -->
         <button
+          v-if="appStore.settings?.floating_search !== true"
           type="button"
           class="md:hidden w-8 h-8 sm:w-10 sm:h-10 shrink-0 flex items-center justify-center rounded-md text-gray-700 dark:text-brand-200 hover:bg-gray-100 dark:hover:bg-brand-800"
           title="Search your links"

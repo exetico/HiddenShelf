@@ -58,6 +58,7 @@ vi.mock("@/services/api/linkVisitsApi", () => ({
 }));
 
 import { sharesApi } from "@/services/api/sharesApi";
+import { settingsApi } from "@/services/api/settingsApi";
 
 describe("ProfileView", () => {
   let pinia;
@@ -91,6 +92,35 @@ describe("ProfileView", () => {
       },
     });
   }
+
+  describe("floating search bar setting", () => {
+    const toggle = (w) => w.find('[data-testid="floating-search-switch"]');
+
+    it("is off by default, also when the setting is missing", () => {
+      const wrapper = mountProfile();
+      expect(toggle(wrapper).attributes("aria-checked")).toBe("false");
+      expect(toggle(wrapper).attributes("role")).toBe("switch");
+      expect(toggle(wrapper).attributes("title")).toBeTruthy();
+    });
+
+    it("saves at once when flipped on, and shows what the server saved", async () => {
+      settingsApi.update.mockResolvedValueOnce({ brand_color: "#687061", floating_search: true });
+      const wrapper = mountProfile();
+      await toggle(wrapper).trigger("click");
+      await flushPromises();
+      expect(settingsApi.update).toHaveBeenLastCalledWith({ floating_search: true });
+      expect(toggle(wrapper).attributes("aria-checked")).toBe("true");
+      expect(useAppStore().settings.floating_search).toBe(true);
+    });
+
+    it("stays off when saving fails", async () => {
+      settingsApi.update.mockRejectedValueOnce(new Error("Server is restarting"));
+      const wrapper = mountProfile();
+      await toggle(wrapper).trigger("click");
+      await flushPromises();
+      expect(toggle(wrapper).attributes("aria-checked")).toBe("false");
+    });
+  });
 
   it("offers a bookmarklet that opens this app's add form", async () => {
     const wrapper = mountProfile();

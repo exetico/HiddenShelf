@@ -107,6 +107,7 @@ This document provides a comprehensive overview of all features, functionality, 
 - Every control in the bar is the same height: 32px on phones (`h-8`), 40px from `sm` (`sm:h-10`), so the View/Edit pill, Search (phones), Tools, theme and avatar line up
 - Responsive design
 - Search box (`nav-search`, md+): focused when the app opens, but only when `(min-width: 768px) and (pointer: fine)` matches, nothing else has focus and no dialog is open. `/` jumps to it
+- Floating search bar (`FloatingSearch.vue`, `floating-search`, below md): only when the user setting `floating_search === true` (off by default, a switch in Settings, saved on flip). Fixed at the bottom of every `AppShell` page, rounded and blurred; `<main>` gets `max-md:pb-24` so it never covers content. Typing off View/Edit jumps to `/view`. While it's on, View and Edit leave out their own search box and the top bar leaves out `nav-search-button`
 - Search button (`nav-search-button`, below md, magnifier): one tap goes to `/view` and focuses its search box (`[data-testid="view-page"] [data-testid="page-search"] input`), scrolled to the top. Already on View, it just focuses. Otherwise a hidden stand-in input takes focus inside the tap (iOS only opens the keyboard for a focus made in the tap) and hands it over once View has drawn its box
 - On phones, View and Edit share one search row layout: category picker and search box side by side on the page background (no card), both a fixed `h-9`. `SearchField` uses 16px text below md (`text-base md:text-sm`), since iOS Safari zooms into any focused field under 16px
 
@@ -588,7 +589,7 @@ This document provides a comprehensive overview of all features, functionality, 
 ### User Settings (`/api/user_settings`)
 
 - `GET` — Get user settings
-- `PUT` — Update user settings (brand_color). The retired `links_per_page` is dropped when read or sent
+- `PUT` — Update user settings (`brand_color`; `floating_search`, which must be a real boolean or the request is refused). The retired `links_per_page` is dropped when read or sent
 
 ### Configuration (`/api/config`)
 
