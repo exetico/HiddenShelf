@@ -666,7 +666,7 @@ describe("Links API", () => {
       );
       // Share category with our user
       db.prepare(
-        "INSERT INTO category_shares (category_id, share_code, created_by) VALUES (?, ?, ?)",
+        "INSERT INTO category_shares (category_id, share_code, created_by, expires_at) VALUES (?, ?, ?, datetime('now', '+7 days'))",
       ).run(catInfo.lastInsertRowid, "testcode123", otherInfo.lastInsertRowid);
       db.prepare(
         "INSERT INTO category_share_members (category_id, user_id) VALUES (?, ?)",

@@ -97,7 +97,7 @@ describe("Shares API", () => {
       const catId = createCategory("VerifyCat");
       const db = getDb();
       db.prepare(
-        "INSERT INTO category_shares (category_id, share_code, created_by) VALUES (?, ?, ?)",
+        "INSERT INTO category_shares (category_id, share_code, created_by, expires_at) VALUES (?, ?, ?, datetime('now', '+7 days'))",
       ).run(catId, "verifycode123", userId);
 
       const res = await app.request("/api/category_shares?code=verifycode123");
@@ -120,7 +120,7 @@ describe("Shares API", () => {
       const catId = createCategory();
       const db = getDb();
       db.prepare(
-        "INSERT INTO category_shares (category_id, share_code, created_by) VALUES (?, ?, ?)",
+        "INSERT INTO category_shares (category_id, share_code, created_by, expires_at) VALUES (?, ?, ?, datetime('now', '+7 days'))",
       ).run(catId, "acceptcode", userId);
 
       // Create another user to accept
@@ -139,7 +139,7 @@ describe("Shares API", () => {
       const catId = createCategory();
       const db = getDb();
       db.prepare(
-        "INSERT INTO category_shares (category_id, share_code, created_by) VALUES (?, ?, ?)",
+        "INSERT INTO category_shares (category_id, share_code, created_by, expires_at) VALUES (?, ?, ?, datetime('now', '+7 days'))",
       ).run(catId, "owncode", userId);
 
       const res = await app.request("/api/category_shares", {
@@ -154,7 +154,7 @@ describe("Shares API", () => {
       const catId = createCategory();
       const db = getDb();
       db.prepare(
-        "INSERT INTO category_shares (category_id, share_code, created_by) VALUES (?, ?, ?)",
+        "INSERT INTO category_shares (category_id, share_code, created_by, expires_at) VALUES (?, ?, ?, datetime('now', '+7 days'))",
       ).run(catId, "doublecode", userId);
 
       const other = createAuthenticatedUser("double@example.com");
@@ -178,7 +178,7 @@ describe("Shares API", () => {
       const catId = createCategory();
       getDb()
         .prepare(
-          "INSERT INTO category_shares (category_id, share_code, created_by) VALUES (?, ?, ?)",
+          "INSERT INTO category_shares (category_id, share_code, created_by, expires_at) VALUES (?, ?, ?, datetime('now', '+7 days'))",
         )
         .run(catId, "oncecode", userId);
 
@@ -209,7 +209,7 @@ describe("Shares API", () => {
       const catId = createCategory();
       const db = getDb();
       db.prepare(
-        "INSERT INTO category_shares (category_id, share_code, created_by) VALUES (?, ?, ?)",
+        "INSERT INTO category_shares (category_id, share_code, created_by, expires_at) VALUES (?, ?, ?, datetime('now', '+7 days'))",
       ).run(catId, "oldcode", userId);
       const member = createAuthenticatedUser("member@example.com");
       db.prepare(
@@ -237,7 +237,7 @@ describe("Shares API", () => {
       const catId = createCategory();
       getDb()
         .prepare(
-          "INSERT INTO category_shares (category_id, share_code, created_by) VALUES (?, ?, ?)",
+          "INSERT INTO category_shares (category_id, share_code, created_by, expires_at) VALUES (?, ?, ?, datetime('now', '+7 days'))",
         )
         .run(catId, "theircode", userId);
       const other = createAuthenticatedUser("intruder@example.com");
@@ -263,7 +263,7 @@ describe("Shares API", () => {
         .prepare("INSERT INTO categories (user_id, name) VALUES (?, ?)")
         .run(otherUser.lastInsertRowid, "SharedWithMe").lastInsertRowid;
       db.prepare(
-        "INSERT INTO category_shares (category_id, share_code, created_by) VALUES (?, ?, ?)",
+        "INSERT INTO category_shares (category_id, share_code, created_by, expires_at) VALUES (?, ?, ?, datetime('now', '+7 days'))",
       ).run(catId, "listcode", otherUser.lastInsertRowid);
       db.prepare(
         "INSERT INTO category_share_members (category_id, user_id) VALUES (?, ?)",
@@ -286,7 +286,7 @@ describe("Shares API", () => {
       const catId = createCategory();
       const db = getDb();
       db.prepare(
-        "INSERT INTO category_shares (category_id, share_code, created_by) VALUES (?, ?, ?)",
+        "INSERT INTO category_shares (category_id, share_code, created_by, expires_at) VALUES (?, ?, ?, datetime('now', '+7 days'))",
       ).run(catId, "infocode", userId);
 
       const res = await app.request(
@@ -314,7 +314,7 @@ describe("Shares API", () => {
         .prepare("INSERT INTO categories (user_id, name) VALUES (?, ?)")
         .run(otherUser.lastInsertRowid, "LeaveCat").lastInsertRowid;
       db.prepare(
-        "INSERT INTO category_shares (category_id, share_code, created_by) VALUES (?, ?, ?)",
+        "INSERT INTO category_shares (category_id, share_code, created_by, expires_at) VALUES (?, ?, ?, datetime('now', '+7 days'))",
       ).run(catId, "leavecode", otherUser.lastInsertRowid);
       db.prepare(
         "INSERT INTO category_share_members (category_id, user_id) VALUES (?, ?)",
@@ -342,7 +342,7 @@ describe("Shares API", () => {
       const catId = createCategory();
       const db = getDb();
       db.prepare(
-        "INSERT INTO category_shares (category_id, share_code, created_by) VALUES (?, ?, ?)",
+        "INSERT INTO category_shares (category_id, share_code, created_by, expires_at) VALUES (?, ?, ?, datetime('now', '+7 days'))",
       ).run(catId, "removecode", userId);
 
       const res = await app.request(
@@ -368,7 +368,7 @@ describe("Shares API", () => {
       createCategory("NotShared");
       const db = getDb();
       db.prepare(
-        "INSERT INTO category_shares (category_id, share_code, created_by) VALUES (?, ?, ?)",
+        "INSERT INTO category_shares (category_id, share_code, created_by, expires_at) VALUES (?, ?, ?, datetime('now', '+7 days'))",
       ).run(shared, "ownedcode", userId);
       const other = createAuthenticatedUser("member@example.com");
       db.prepare(

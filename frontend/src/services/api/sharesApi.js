@@ -15,18 +15,19 @@ export const sharesApi = {
     );
     return response;
   },
-  createCategoryShare: async (categoryId) => {
+  // mode: "once" (one person) or "week" (anyone for 7 days)
+  createCategoryShare: async (categoryId, mode = "once") => {
     const response = await request("/api/category_shares", {
       method: "POST",
-      body: JSON.stringify({ category_id: categoryId }),
+      body: JSON.stringify({ category_id: categoryId, mode }),
     });
     return response.share;
   },
   // New code for a shared category; the old one stops working
-  resetShareCode: async (categoryId) => {
+  resetShareCode: async (categoryId, mode) => {
     const response = await request("/api/category_shares", {
       method: "POST",
-      body: JSON.stringify({ category_id: categoryId, reset: true }),
+      body: JSON.stringify({ category_id: categoryId, reset: true, ...(mode ? { mode } : {}) }),
     });
     return response.share;
   },

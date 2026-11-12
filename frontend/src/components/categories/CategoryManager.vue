@@ -5,6 +5,7 @@ import { computed, ref, reactive } from "vue";
 import BaseModal from "@/components/common/BaseModal.vue";
 import ManagerFilter from "@/components/common/ManagerFilter.vue";
 import { sharesApi } from "@/services/api/sharesApi";
+import { SHARE_MODES, shareEnded, shareStatus } from "@/lib/shareLink";
 import { useToastStore } from "@/stores/toast";
 import { useAppStore } from "@/stores/app";
 import { useDialogStore } from "@/stores/dialog";
@@ -58,6 +59,8 @@ const shareCategory = ref(null);
 const shareData = ref(null);
 const shareMembers = ref([]);
 const shareLoading = ref(false);
+// "once" (one person) or "week" (anyone for 7 days)
+const shareMode = ref("once");
 
 
 function createCategory() {
@@ -129,6 +132,7 @@ async function openShare(category) {
     const data = await sharesApi.getCategoryShare(category.id);
     shareData.value = data.share;
     shareMembers.value = data.members || [];
+    shareMode.value = data.share?.mode === "week" ? "week" : "once";
   } catch {
     // No share exists yet — that's OK, user can create one
     shareData.value = null;
@@ -140,7 +144,7 @@ async function createShare() {
   if (!shareCategory.value) return;
   shareLoading.value = true;
   try {
-    const share = await sharesApi.createCategoryShare(shareCategory.value.id);
+    const share = await sharesApi.createCategoryShare(shareCategory.value.id, shareMode.value);
     shareData.value = share;
     toastStore.success("Share link created");
   } catch (e) {
@@ -167,7 +171,7 @@ async function copyShareCode() {
 async function resetShare() {
   if (!shareCategory.value) return;
   try {
-    shareData.value = await sharesApi.resetShareCode(shareCategory.value.id);
+    shareData.value = await sharesApi.resetShareCode(shareCategory.value.id, shareMode.value);
     toastStore.success("New share link made; the old one no longer works");
   } catch (e) {
     toastStore.error(e.message || "Failed to make a new link");
@@ -203,6 +207,14 @@ async function removeSharing() {
   } catch (e) {
     toastStore.error(e.message || "Failed to remove sharing");
   }
+}
+
+// Picking the other kind of link makes a new one (the current link stops
+// working); before a link exists it only picks what Create makes
+async function pickShareMode(mode) {
+  if (shareMode.value === mode) return;
+  shareMode.value = mode;
+  if (shareData.value) await resetShare();
 }
 
 // Closes on a backdrop click, but not when a text selection ends there
@@ -539,21 +551,46 @@ const shareBackdrop = backdropClose(() => (showShareModal.value = false));
           Share "{{ shareCategory?.name }}"
         </h3>
 
+        <div
+          v-if="!shareLoading"
+          class="grid grid-cols-2 gap-1 p-1 mb-3 rounded-lg bg-gray-100 dark:bg-brand-800"
+          role="radiogroup"
+          aria-label="Who can use the link"
+        >
+          <button
+            v-for="m in SHARE_MODES"
+            :key="m.key"
+            type="button"
+            role="radio"
+            :aria-checked="shareMode === m.key"
+            :title="m.hint"
+            :data-testid="`share-mode-${m.key}`"
+            class="px-2 py-1.5 rounded-md text-sm transition-colors"
+            :class="shareMode === m.key
+              ? 'bg-white dark:bg-brand-950 text-gray-900 dark:text-white shadow-sm font-medium'
+              : 'text-gray-600 dark:text-brand-300 hover:text-gray-900 dark:hover:text-white'"
+            @click="pickShareMode(m.key)"
+          >
+            {{ m.label }}
+          </button>
+        </div>
+
         <div v-if="shareLoading" class="text-center py-4">
           <i class="mdi mdi-loading mdi-spin text-2xl text-brand-600"></i>
         </div>
 
         <div v-else-if="shareData">
-          <p class="text-sm text-gray-600 dark:text-brand-300 mb-3">
-            Send this link to one person to give them read-only access:
-          </p>
           <p
-            class="text-xs text-gray-500 dark:text-brand-400 mb-3"
-            data-testid="share-single-use"
+            class="text-xs mb-3"
+            :class="shareEnded(shareData) ? 'text-red-600 dark:text-red-400' : 'text-gray-500 dark:text-brand-400'"
+            data-testid="share-status"
           >
-            <i class="mdi mdi-shield-check-outline"></i>
-            It works once. When someone joins, it stops working and a new link
-            shows up here for the next person.
+            <i class="mdi" :class="shareEnded(shareData) ? 'mdi-timer-off-outline' : 'mdi-shield-check-outline'"></i>
+            {{ shareStatus(shareData) }}
+          </p>
+          <template v-if="!shareEnded(shareData)">
+          <p class="text-sm text-gray-600 dark:text-brand-300 mb-3">
+            Send this link to give read-only access:
           </p>
           <div
             class="flex items-center gap-2 bg-gray-50 dark:bg-brand-800 rounded-md p-3 mb-4"
@@ -590,6 +627,7 @@ const shareBackdrop = backdropClose(() => (showShareModal.value = false));
               Copy
             </button>
           </div>
+          </template>
 
           <div v-if="shareMembers.length" class="mb-4">
             <p
@@ -642,7 +680,7 @@ const shareBackdrop = backdropClose(() => (showShareModal.value = false));
         <div v-else>
           <p class="text-sm text-gray-600 dark:text-brand-300 mb-4">
             This category is not shared yet. Create a share link to let others
-            view its links.
+            view its links. Share links end after 7 days.
           </p>
           <button
             title="Create a link others can use to join"

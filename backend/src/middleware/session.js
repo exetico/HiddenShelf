@@ -36,6 +36,21 @@ const sessions = {
   clear() {
     if (hasDb()) getDb().prepare("DELETE FROM sessions").run();
   },
+  /** Every session signed in as this user, except `keepId`. */
+  deleteForUser(userId, keepId = null) {
+    return getDb()
+      .prepare(
+        "DELETE FROM sessions WHERE CAST(json_extract(data, '$.user_id') AS INTEGER) = ? AND id IS NOT ?",
+      )
+      .run(Number(userId), keepId).changes;
+  },
+  countForUser(userId, now = Date.now()) {
+    return getDb()
+      .prepare(
+        "SELECT COUNT(*) AS n FROM sessions WHERE CAST(json_extract(data, '$.user_id') AS INTEGER) = ? AND expires_at >= ?",
+      )
+      .get(Number(userId), now).n;
+  },
   deleteExpired(now = Date.now()) {
     if (hasDb()) {
       getDb().prepare("DELETE FROM sessions WHERE expires_at < ?").run(now);
@@ -70,6 +85,10 @@ export function sessionMiddleware() {
 
     // Expose session helpers on context
     c.session = {
+      /** This session's id, or null when there is none yet. */
+      id() {
+        return session ? sessionId : null;
+      },
       get(key) {
         return session?.data[key] ?? null;
       },

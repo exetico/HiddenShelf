@@ -18,7 +18,8 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import config from "./config.js";
-import { initDb } from "./lib/database.js";
+import { initDb, getDb } from "./lib/database.js";
+import { startDailyBackups } from "./lib/dailyBackup.js";
 import { sessionMiddleware } from "./middleware/session.js";
 import { requireJsonBody } from "./middleware/requireJson.js";
 import { limitBodySize } from "./middleware/bodyLimit.js";
@@ -157,6 +158,9 @@ app.onError((err, c) => {
 // ─── Start server ────────────────────────────────────────────────
 
 if (process.env.NODE_ENV !== "test") {
+  // A copy of the database every day, the last BACKUP_KEEP_DAYS kept
+  startDailyBackups(getDb(), { dbPath: config.dbPath, keepDays: config.backupKeepDays });
+
   // Pick up the result of an update that restarted this app, and email admins
   if (updatesEnabled()) {
     const sync = () => {

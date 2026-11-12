@@ -23,6 +23,8 @@ services:
     environment:
       - PORT=3000
       - DB_PATH=./db/database.sqlite
+      # Days of daily backups in db/backups/ to keep. 0: off
+      - BACKUP_KEEP_DAYS=${BACKUP_KEEP_DAYS:-30}
       - SITE_URL=${SITE_URL:-http://localhost:3000}
       - BASE_PATH=${BASE_PATH:-}
       - SITE_NAME=${SITE_NAME:-Hidden Shelf}
