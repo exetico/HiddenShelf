@@ -180,6 +180,7 @@ async function handleDelete(id) {
         <SearchField
           v-model="appStore.search"
           placeholder="Search links..."
+          class="h-9"
           data-testid="page-search"
         />
       </div>

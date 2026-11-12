@@ -178,6 +178,13 @@ describe("ViewLinksView", () => {
       expect(wrapper.html()).toContain("hidden sm:block");
     });
 
+    it("gives the category picker and the search box the same height", () => {
+      const wrapper = mountView();
+      const row = wrapper.find('[data-testid="page-search"]');
+      expect(row.find('[data-testid="category-picker"]').classes()).toContain("h-9");
+      expect(row.find('input[type="search"]').classes()).toContain("h-9");
+    });
+
     it("shows favorite categories as chips that toggle the filter", async () => {
       const appStore = useAppStore();
       appStore.categories = [
