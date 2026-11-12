@@ -82,10 +82,13 @@ onUnmounted(() => {
 </script>
 
 <template>
+  <!-- Kept off the screen edges rather than padded away from them: Safari
+       on iPhone tints its toolbar from a fixed layer that touches the
+       bottom edge, which showed as a black strip under the bar -->
   <div
-    class="md:hidden fixed inset-x-0 bottom-0 z-20 px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] transition-[transform,opacity] duration-200 ease-out motion-reduce:transition-none"
+    class="md:hidden fixed inset-x-2 bottom-[max(0.5rem,env(safe-area-inset-bottom))] z-20 transition-[transform,opacity] duration-200 ease-out motion-reduce:transition-none"
     :class="[
-      visible ? 'translate-y-0 opacity-100' : 'translate-y-[calc(100%+1rem)] opacity-0',
+      visible ? 'translate-y-0 opacity-100' : 'translate-y-[calc(100%+2rem)] opacity-0',
       visible && armed ? 'pointer-events-auto' : 'pointer-events-none',
     ]"
     data-testid="floating-search"
