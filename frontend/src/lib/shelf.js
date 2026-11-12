@@ -57,16 +57,18 @@ export function hiddenCategoryIds(categories) {
  * What to show for a set of filters.
  * - category: a category id, "uncategorized", or "" for all. Picking a
  *   category shows it, hidden or not.
+ * - toRead: only your own links marked Read later.
  * - Links in hidden categories stay out otherwise, unless `showHidden`.
  *   `hiddenMatches` says how many a search or tag filter left out, so the
  *   page can offer them.
  */
 export function selectLinks(
   allLinks,
-  { search = "", category = "", tag = "", sort = "", showHidden = false, hiddenIds = new Set() } = {},
+  { search = "", category = "", tag = "", sort = "", toRead = false, showHidden = false, hiddenIds = new Set() } = {},
 ) {
   const tagId = tag ? String(tag) : "";
   const matches = allLinks.filter((link) => {
+    if (toRead && !isToRead(link)) return false;
     if (category === "uncategorized" && link.category_id != null) return false;
     if (category && category !== "uncategorized" && String(link.category_id) !== String(category))
       return false;
@@ -78,7 +80,7 @@ export function selectLinks(
   let hiddenMatches = 0;
   if (!category && !showHidden) {
     shown = matches.filter((link) => !hiddenIds.has(link.category_id));
-    if (search.trim() || tagId) hiddenMatches = matches.length - shown.length;
+    if (search.trim() || tagId || toRead) hiddenMatches = matches.length - shown.length;
   }
   return { links: sortLinks(shown, sort), hiddenMatches };
 }
@@ -91,4 +93,14 @@ export function favoriteLinks(allLinks, hiddenIds = new Set()) {
         link.is_favorite && !link.is_from_shared_category && !hiddenIds.has(link.category_id),
     )
     .sort(byTitle);
+}
+
+/** Your own link, marked Read later (shared links never are) */
+export function isToRead(link) {
+  return Boolean(link.read_later) && !link.is_from_shared_category;
+}
+
+/** How many links are waiting to be read, outside hidden categories */
+export function toReadCount(allLinks, hiddenIds = new Set()) {
+  return allLinks.filter((link) => isToRead(link) && !hiddenIds.has(link.category_id)).length;
 }

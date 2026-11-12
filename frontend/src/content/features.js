@@ -37,6 +37,16 @@ export const FEATURE_GROUPS = [
         title: "Trash with undo",
         text: "Deleted links go to the trash first, so you can restore them.",
       },
+      {
+        icon: "mdi-book-clock-outline",
+        title: "Read later",
+        text: "Mark a link Read later from its menu or details, and find it under the To read chip on View and Edit. Mark it as read when you're done.",
+      },
+      {
+        icon: "mdi-history",
+        title: "Archived copies",
+        text: "Open the Internet Archive's copy of a page that's gone or changed, or ask it to save a copy now. It opens in a new tab; Hidden Shelf itself never fetches the page.",
+      },
     ],
   },
   {
@@ -57,6 +67,11 @@ export const FEATURE_GROUPS = [
         icon: "mdi-link-box-variant-outline",
         title: "Links to your filters",
         text: "Filters and sorting live in the address, so you can bookmark a tag or category view, or open it in a new tab.",
+      },
+      {
+        icon: "mdi-bookmark-outline",
+        title: "Saved searches",
+        text: "Save a search with its filters, like a tag plus a word, and it stays as a chip above your links. Tap it to see those links again.",
       },
     ],
   },
@@ -88,7 +103,7 @@ export const FEATURE_GROUPS = [
       {
         icon: "mdi-toolbox-outline",
         title: "Shelf tools",
-        text: "Find duplicates and links without a category or tags, and fix them in one place. All tools run in your browser.",
+        text: "Find duplicates and links without a category or tags, and fix them in one place. See how your shelf grows, the sites you save most from and the links you never open. All tools run in your browser.",
         front: true,
       },
       {
@@ -208,6 +223,14 @@ export const FAQ = [
   {
     q: "Can I get my data out?",
     a: "Yes. Settings → Import / export downloads all your links, categories and tags as JSON. You can also delete everything from Settings, or delete your account itself under Danger Zone: that removes your links, categories, tags, settings and shares, and signs you out on every device.",
+  },
+  {
+    q: "Does Hidden Shelf keep track of what I open?",
+    a: "Only for you. When you open one of your own links from the app, it counts that, so Shelf stats can show the links you open most and the ones you never open. Nobody else sees it, not even people you share a category with, and links shared with you aren't counted.",
+  },
+  {
+    q: "What happens when I save a copy to the Internet Archive?",
+    a: "Your browser opens the Archive's save page for that address, and the Archive keeps a public copy of the page. Only use it for pages that are fine to be public. Hidden Shelf doesn't send anything itself.",
   },
   {
     q: "I lost my phone. Can I sign it out?",

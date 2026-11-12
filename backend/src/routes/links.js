@@ -16,7 +16,8 @@
  *   GET    /api/links?trash=1        → own links in the trash (auth)
  *   POST   /api/links                → create
  *   POST   /api/links/restore?id=    → take a link out of the trash
- *   PUT    /api/links?id=            → update (incl. is_favorite)
+ *   PUT    /api/links?id=            → update (incl. is_favorite, read_later)
+ *   POST   /api/links/opened?id=     → count an open of an own link (Shelf stats)
  *   PUT    /api/links/order          → set the order of some links {ids: [...]}
  *   DELETE /api/links?id=            → move to the trash
  *   DELETE /api/links?id=&permanent=1 → delete a link in the trash for good
@@ -348,6 +349,16 @@ links.get("/", optionalAuth(), revalidate(), (c) => {
   // Batch-fetch tags and visit counts for all links (avoids N+1)
   attachTagsAndVisits(db, linksRows);
 
+  // Read later and opens are the owner's own; people a category is shared
+  // with don't see them
+  for (const link of linksRows) {
+    if (link.is_from_shared_category) {
+      link.read_later = 0;
+      link.open_count = 0;
+      link.last_opened_at = null;
+    }
+  }
+
   return successResponse(c, {
     links: linksRows,
     hidden_matches: hiddenMatches,
@@ -424,8 +435,8 @@ links.post("/", requireAuth(), async (c) => {
 
   const info = db
     .prepare(
-      `INSERT INTO links (user_id, hash, url, title, description, icon, is_public, category_id, display_order, direct_redirect)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO links (user_id, hash, url, title, description, icon, is_public, category_id, display_order, direct_redirect, read_later)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     )
     .run(
       c.userId,
@@ -438,6 +449,7 @@ links.post("/", requireAuth(), async (c) => {
       categoryId,
       displayOrder,
       directRedirect,
+      input.read_later === true ? 1 : 0,
     );
 
   if (checkedTags.names.length)
@@ -531,6 +543,10 @@ links.put("/", requireAuth(), async (c) => {
         ? 1
         : 0
       : existing.is_favorite || 0;
+  if (input.read_later !== undefined && typeof input.read_later !== "boolean")
+    return errorResponse(c, "read_later must be true or false");
+  const readLater =
+    input.read_later !== undefined ? (input.read_later ? 1 : 0) : existing.read_later || 0;
 
   if (!url || !isValidUrl(url))
     return errorResponse(c, "Valid URL is required");
@@ -572,7 +588,7 @@ links.put("/", requireAuth(), async (c) => {
     `UPDATE links
      SET url = ?, title = ?, description = ?, icon = ?, is_public = ?,
          category_id = ?, display_order = ?, direct_redirect = ?, is_favorite = ?,
-         updated_at = CURRENT_TIMESTAMP
+         read_later = ?, updated_at = CURRENT_TIMESTAMP
      WHERE id = ?`,
   ).run(
     url,
@@ -584,6 +600,7 @@ links.put("/", requireAuth(), async (c) => {
     displayOrder,
     directRedirect,
     isFavorite,
+    readLater,
     id,
   );
 
@@ -593,6 +610,23 @@ links.put("/", requireAuth(), async (c) => {
 
   const link = db.prepare("SELECT * FROM links WHERE id = ?").get(id);
   return successResponse(c, { link }, "Link updated successfully");
+});
+
+// ─── POST /api/links/opened?id= ─────────────────────────────────
+// The app calls this when you open one of your own links, so Shelf stats
+// can tell which links you never open. Links in categories shared with you
+// aren't counted (they're someone else's).
+
+links.post("/opened", requireAuth(), (c) => {
+  const id = parseInt(c.req.query("id"), 10);
+  if (!Number.isInteger(id) || id < 1) return errorResponse(c, "Link ID required");
+  getDb()
+    .prepare(
+      `UPDATE links SET open_count = open_count + 1, last_opened_at = CURRENT_TIMESTAMP
+       WHERE id = ? AND user_id = ? AND deleted_at IS NULL`,
+    )
+    .run(id, c.userId);
+  return successResponse(c, {});
 });
 
 // ─── POST /api/links/restore?id= ────────────────────────────────

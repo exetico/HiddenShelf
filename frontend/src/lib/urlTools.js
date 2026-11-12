@@ -135,6 +135,16 @@ export const TOOLS = [
       "Lists links that would be easier to find with a little care: no category, no tags, a title that's just the address, or tracking in the address. Fix them one by one, or clean all tracking at once.",
   },
   {
+    key: "stats",
+    group: "shelf",
+    label: "Shelf stats",
+    icon: "mdi-chart-box-outline",
+    accent: "sky",
+    hint: "Links per month, top sites, links you never open",
+    description:
+      "How your shelf grows month by month, the sites you save the most from, the links you open most and the ones you never open. Worked out in your browser from your own links.",
+  },
+  {
     key: "add-many",
     group: "move",
     label: "Add many links",

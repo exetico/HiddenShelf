@@ -36,6 +36,8 @@ export const linksApi = {
     const response = await request("/api/links?random=1");
     return response.link;
   },
+  // You opened this link (counted for Shelf stats; own links only)
+  opened: async (id) => request(`/api/links/opened?id=${id}`, { method: "POST", keepalive: true }),
   // Moves the link to the trash
   remove: async (id) => request(`/api/links?id=${id}`, { method: "DELETE" }),
   trash: async () => request("/api/links?trash=1"),

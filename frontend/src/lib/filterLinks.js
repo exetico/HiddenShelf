@@ -1,14 +1,16 @@
-// Filters live in the address bar (/view?category=3&tag=7&q=grafana&sort=title), so a
+// Filters live in the address bar (/view?category=3&tag=7&q=grafana&sort=title&toread=1), so a
 // filtered list can be bookmarked, shared with yourself or opened in a new
 // tab. These build those addresses.
 
 /** The query for a set of filters, leaving out the empty ones */
-export function filterQuery({ category = "", tag = "", q = "", sort = "" } = {}) {
+export function filterQuery({ category = "", tag = "", q = "", sort = "", toread = "" } = {}) {
   const query = {};
   if (category) query.category = String(category);
   if (tag) query.tag = String(tag);
   if (q && String(q).trim()) query.q = String(q).trim();
   if (sort) query.sort = String(sort);
+  // Only "1" (or true) turns it on
+  if (toread === true || toread === "1") query.toread = "1";
   return query;
 }
 

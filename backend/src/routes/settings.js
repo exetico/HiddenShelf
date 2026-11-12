@@ -18,7 +18,49 @@ const DEFAULT_SETTINGS = {
   // Phones: a search box floating at the bottom of every page. Off unless
   // the user turns it on.
   floating_search: false,
+  // Saved searches, shown as chips on View and Edit: [{ name, query }]
+  saved_searches: [],
 };
+
+export const SAVED_SEARCH_LIMITS = { count: 30, name: 60, q: 200 };
+const SORT_KEYS = new Set(["newest", "oldest", "title", "title_desc", "visits"]);
+
+/**
+ * Checks a saved_searches list. Each entry is { name, query } where query
+ * holds only the View/Edit filters (category, tag, q, sort, toread) as
+ * strings. Returns { value } or { error }; nothing unknown is kept.
+ */
+export function checkSavedSearches(list) {
+  if (!Array.isArray(list)) return { error: "saved_searches must be a list" };
+  if (list.length > SAVED_SEARCH_LIMITS.count)
+    return { error: `You can keep up to ${SAVED_SEARCH_LIMITS.count} saved searches` };
+  const value = [];
+  for (const entry of list) {
+    if (!entry || typeof entry !== "object" || Array.isArray(entry))
+      return { error: "Each saved search needs a name and filters" };
+    const name = typeof entry.name === "string" ? sanitize(entry.name).trim() : "";
+    if (!name || name.length > SAVED_SEARCH_LIMITS.name)
+      return { error: `A saved search needs a name of up to ${SAVED_SEARCH_LIMITS.name} characters` };
+    const query = entry.query;
+    if (!query || typeof query !== "object" || Array.isArray(query))
+      return { error: "Each saved search needs filters" };
+    const clean = {};
+    for (const [key, raw] of Object.entries(query)) {
+      if (typeof raw !== "string") return { error: `Invalid saved search filter: ${key}` };
+      const v = raw.trim();
+      if (!v) continue;
+      if (key === "category" && /^(\d{1,12}|uncategorized)$/.test(v)) clean.category = v;
+      else if (key === "tag" && /^\d{1,12}$/.test(v)) clean.tag = v;
+      else if (key === "q" && v.length <= SAVED_SEARCH_LIMITS.q) clean.q = sanitize(v);
+      else if (key === "sort" && SORT_KEYS.has(v)) clean.sort = v;
+      else if (key === "toread" && v === "1") clean.toread = "1";
+      else return { error: `Invalid saved search filter: ${key}` };
+    }
+    if (!Object.keys(clean).length) return { error: "A saved search needs at least one filter" };
+    value.push({ name, query: clean });
+  }
+  return { value };
+}
 
 // Settings that no longer exist, dropped when settings are read or saved.
 // links_per_page went when the app started loading the whole shelf at once.
@@ -79,6 +121,12 @@ settings.put("/", requireAuth(), async (c) => {
       return errorResponse(c, "Invalid floating_search value. Must be true or false");
     }
     current.floating_search = input.floating_search;
+  }
+
+  if (input.saved_searches !== undefined) {
+    const checked = checkSavedSearches(input.saved_searches);
+    if (checked.error) return errorResponse(c, checked.error);
+    current.saved_searches = checked.value;
   }
 
   const json = JSON.stringify(current);

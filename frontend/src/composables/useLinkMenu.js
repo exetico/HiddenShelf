@@ -5,6 +5,7 @@ import { useContextMenuStore } from "@/stores/contextMenu";
 import { usePublicShareStore } from "@/stores/publicShare";
 import { useLinkEditorStore } from "@/stores/linkEditor";
 import { appUrl } from "@/lib/appUrl";
+import { archivedCopyUrl, saveCopyUrl } from "@/lib/wayback";
 
 /**
  * Right-click / long-press menu for a link card, shared by View and Edit.
@@ -91,6 +92,18 @@ export function useLinkMenu({ onEdit, onDetails } = {}) {
         action: () => copy(link.url, "URL copied"),
       },
       {
+        label: "Open archived copy",
+        icon: "mdi-history",
+        hidden: !archivedCopyUrl(link.url),
+        action: () => window.open(archivedCopyUrl(link.url), "_blank", "noopener"),
+      },
+      {
+        label: "Save a copy to the Archive",
+        icon: "mdi-archive-arrow-up-outline",
+        hidden: !saveCopyUrl(link.url),
+        action: () => window.open(saveCopyUrl(link.url), "_blank", "noopener"),
+      },
+      {
         label: "Copy public link",
         icon: "mdi-link-variant",
         hidden: !link.is_public || !link.hash,
@@ -114,6 +127,12 @@ export function useLinkMenu({ onEdit, onDetails } = {}) {
         icon: link.is_favorite ? "mdi-star-off-outline" : "mdi-star-outline",
         hidden: !own,
         action: () => appStore.toggleLinkFavorite(link),
+      },
+      {
+        label: link.read_later ? "Mark as read" : "Read later",
+        icon: link.read_later ? "mdi-book-check-outline" : "mdi-book-clock-outline",
+        hidden: !own,
+        action: () => appStore.toggleReadLater(link),
       },
       {
         label: "Move up",

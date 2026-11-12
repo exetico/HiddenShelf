@@ -11,6 +11,7 @@ import SearchField from "@/components/common/SearchField.vue";
 import ActiveTagFilter from "@/components/tags/ActiveTagFilter.vue";
 import SortSelect from "@/components/common/SortSelect.vue";
 import HiddenMatchesNote from "@/components/categories/HiddenMatchesNote.vue";
+import ShelfChips from "@/components/shelf/ShelfChips.vue";
 import LinkDetailsSheet from "@/components/links/LinkDetailsSheet.vue";
 import LinkPreviewPopover from "@/components/links/LinkPreviewPopover.vue";
 import { useLinkMenu } from "@/composables/useLinkMenu";
@@ -48,9 +49,7 @@ async function onReorder({ groupKey, ...move }) {
 // Collapse state
 const collapsedCategories = ref({});
 
-const filtering = computed(
-  () => Boolean(appStore.search || appStore.filterCategory || appStore.filterTag),
-);
+const filtering = computed(() => appStore.filtering);
 
 const groupedCategories = computed(() => {
   const result = [];
@@ -196,6 +195,7 @@ function toggleCategory(key) {
       </button>
     </div>
 
+    <ShelfChips />
     <ActiveTagFilter />
     <HiddenMatchesNote />
 

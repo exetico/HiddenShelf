@@ -9,6 +9,7 @@ import { appUrl } from "@/lib/appUrl";
 import { formatDate } from "@/lib/date";
 import { usePublicShareStore } from "@/stores/publicShare";
 import { backdropClose } from "@/lib/backdropClose";
+import { archivedCopyUrl } from "@/lib/wayback";
 
 // Everything about one link, with previous/next (buttons, swipe or arrow
 // keys) through the links on screen. See stores/linkDetails.js.
@@ -163,6 +164,22 @@ const backdrop = backdropClose(() => details.close());
           <button
             v-if="own"
             type="button"
+            class="p-2 rounded-md hover:bg-gray-100 dark:hover:bg-brand-800"
+            :class="link.read_later ? 'text-sky-600 dark:text-sky-400' : ''"
+            :title="link.read_later ? 'Mark as read' : 'Save to read later'"
+            :aria-label="link.read_later ? 'Mark as read' : 'Read later'"
+            :aria-pressed="Boolean(link.read_later)"
+            data-testid="details-read-later"
+            @click="appStore.toggleReadLater(link)"
+          >
+            <i
+              class="mdi text-xl leading-none"
+              :class="link.read_later ? 'mdi-book-clock' : 'mdi-book-clock-outline'"
+            ></i>
+          </button>
+          <button
+            v-if="own"
+            type="button"
             class="p-2 rounded-md hover:bg-gray-100 dark:hover:bg-brand-800 hover:text-red-600 dark:hover:text-red-400"
             title="Move to the trash (you can undo it)"
             aria-label="Move to trash"
@@ -206,6 +223,7 @@ const backdrop = backdropClose(() => details.close());
                   rel="noopener"
                   class="text-sm text-brand-600 dark:text-brand-300 break-all hover:underline"
                   :title="`Open ${link.url} in a new tab`"
+                  @click="appStore.noteOpened(link)"
                   >{{ link.url }}</a
                 >
               </div>
@@ -273,8 +291,20 @@ const backdrop = backdropClose(() => details.close());
             rel="noopener"
             class="flex-1 min-w-28 text-center px-3 py-2 rounded-md bg-brand-600 text-white hover:bg-brand-700 text-sm"
             title="Open the link in a new tab"
+            @click="appStore.noteOpened(link)"
           >
             <i class="mdi mdi-open-in-new" aria-hidden="true"></i> Open
+          </a>
+          <a
+            v-if="archivedCopyUrl(link.url)"
+            :href="archivedCopyUrl(link.url)"
+            target="_blank"
+            rel="noopener"
+            class="px-3 py-2 rounded-md border border-gray-300 dark:border-brand-700 text-sm"
+            title="Open the newest copy the Internet Archive has of this page, for when it's gone or changed"
+            data-testid="details-archived"
+          >
+            <i class="mdi mdi-history" aria-hidden="true"></i> Archive
           </a>
           <button
             type="button"

@@ -47,7 +47,7 @@ describe("Settings API", () => {
         headers: { Cookie: cookie },
       });
       const data = await json(res);
-      expect(data.settings).toEqual({ brand_color: "#112233", floating_search: false });
+      expect(data.settings).toEqual({ brand_color: "#112233", floating_search: false, saved_searches: [] });
     });
 
     it("requires authentication", async () => {
@@ -115,7 +115,7 @@ describe("Settings API", () => {
       const read = await json(
         await app.request("/api/user_settings", { headers: { Cookie: cookie } }),
       );
-      expect(read.settings).toEqual({ brand_color: "#123456", floating_search: false });
+      expect(read.settings).toEqual({ brand_color: "#123456", floating_search: false, saved_searches: [] });
 
       // An old client still sending it: ignored, not an error
       const res = await app.request("/api/user_settings", {
@@ -125,7 +125,7 @@ describe("Settings API", () => {
       });
       const data = await json(res);
       expect(data.success).toBe(true);
-      expect(data.settings).toEqual({ brand_color: "#654321", floating_search: false });
+      expect(data.settings).toEqual({ brand_color: "#654321", floating_search: false, saved_searches: [] });
     });
   });
 });
