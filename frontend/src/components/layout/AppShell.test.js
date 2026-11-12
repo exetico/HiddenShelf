@@ -42,7 +42,12 @@ describe("Floating search bar", () => {
     useAppStore().settings = { floating_search: true };
     const wrapper = mountShell();
     const bar = wrapper.find('[data-testid="floating-search"]');
-    expect(bar.classes()).toEqual(expect.arrayContaining(["md:hidden", "fixed", "bottom-0"]));
+    expect(bar.classes()).toEqual(expect.arrayContaining(["md:hidden", "fixed", "inset-x-2"]));
+    // Nothing fixed may touch the bottom edge: iPhone Safari tints its
+    // toolbar from such a layer (a black strip under the bar)
+    expect(bar.classes()).not.toContain("bottom-0");
+    expect(bar.classes()).not.toContain("inset-x-0");
+    expect(bar.classes().some((c) => c.startsWith("bottom-[max(0.5rem"))).toBe(true);
     expect(bar.find("div").classes()).toEqual(
       expect.arrayContaining(["backdrop-blur-2xl", "rounded-2xl"]),
     );
