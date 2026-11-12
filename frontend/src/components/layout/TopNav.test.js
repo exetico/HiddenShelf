@@ -229,9 +229,16 @@ describe("TopNav", () => {
       expect(button.attributes("title")).toBeTruthy();
     });
 
-    it("is left out when the floating search bar is on", () => {
-      useAppStore().settings = { floating_search: true };
-      expect(mountNav().find('[data-testid="nav-search-button"]').exists()).toBe(false);
+    it("focuses the floating search bar in place when that's on", async () => {
+      mockRoute.name = "dashboard";
+      const floating = document.createElement("input");
+      floating.dataset.testid = "floating-search-input";
+      document.body.appendChild(floating);
+      const wrapper = mountNav();
+      await wrapper.find('[data-testid="nav-search-button"]').trigger("click");
+      expect(document.activeElement).toBe(floating);
+      expect(mockPush).not.toHaveBeenCalled();
+      floating.remove();
     });
 
     it("focuses View's search box in place when you're on View", async () => {

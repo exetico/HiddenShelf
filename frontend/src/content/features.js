@@ -45,7 +45,7 @@ export const FEATURE_GROUPS = [
       {
         icon: "mdi-magnify",
         title: "Find anything fast",
-        text: "Search titles, URLs, descriptions and tags, with results as you type. On a computer the search box is ready as soon as the app opens and / jumps back to it; on a phone the magnifier in the top bar takes you there, or turn on a floating search bar at the bottom of the screen in Settings.",
+        text: "Search titles, URLs, descriptions and tags, with results as you type. On a computer the search box is ready as soon as the app opens and / jumps back to it; on a phone the magnifier in the top bar takes you there, or turn on a search bar at the bottom of the screen in Settings that tucks away while you scroll.",
         front: true,
       },
       {
