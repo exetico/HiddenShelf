@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, onUnmounted, ref, watch } from "vue";
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useAppStore } from "@/stores/app";
 import SearchField from "@/components/common/SearchField.vue";
@@ -13,11 +13,61 @@ const appStore = useAppStore();
 
 const searchText = computed({
   get: () => appStore.search,
-  set: (value) => {
+  set: async (value) => {
+    const was = appStore.search;
     appStore.search = value;
-    if (value && route.name !== "view" && route.name !== "edit") router.push({ name: "view" });
+    if (value && route.name !== "view" && route.name !== "edit") {
+      await router.push({ name: "view" });
+    }
+    // The first letter brings the results up to the top of the screen, past
+    // the filters above them; clearing goes back to the top of the page
+    if (value && !was) await showResults();
+    else if (!value && was) scrollToTop();
   },
 });
+
+// Results first: the count line ("Showing 5 of 65 links") lands just under
+// the top of the screen, with the matches right after it. Short results
+// would leave too little page to scroll that far, so the page gets just
+// enough room below them for as long as the search is on.
+const RESULTS = '[data-testid="link-count"]';
+function scrollBehavior() {
+  return window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth";
+}
+function main() {
+  return document.querySelector('[data-testid="app-main"]');
+}
+async function showResults() {
+  await nextTick();
+  const row = document.querySelector(RESULTS)?.parentElement;
+  if (!row) return;
+  const top = Math.max(0, row.getBoundingClientRect().top + window.scrollY - 8);
+  const shell = main();
+  if (shell) {
+    const needed = top + window.innerHeight - (shell.getBoundingClientRect().top + window.scrollY);
+    shell.style.minHeight = `${Math.ceil(needed)}px`;
+  }
+  holdY = null; // this scroll is ours, not the browser's
+  window.scrollTo({ top, behavior: scrollBehavior() });
+}
+function releaseRoom() {
+  const shell = main();
+  if (shell) shell.style.minHeight = "";
+}
+// The extra room goes as soon as the search is cleared, from anywhere
+watch(
+  () => appStore.search,
+  (value) => {
+    if (!value) releaseRoom();
+  },
+);
+watch(() => route.name, releaseRoom);
+
+function scrollToTop() {
+  releaseRoom();
+  holdY = null;
+  window.scrollTo({ top: 0, behavior: scrollBehavior() });
+}
 
 // When it shows. It must never slide in under a finger that was going for
 // a link, so it doesn't come back on its own in the middle of a page:
@@ -121,6 +171,7 @@ onMounted(() => {
   window.visualViewport?.addEventListener("scroll", updateKeyboard);
 });
 onUnmounted(() => {
+  releaseRoom();
   window.removeEventListener("scroll", onScroll);
   window.removeEventListener("scroll", holdScroll);
   window.visualViewport?.removeEventListener("resize", updateKeyboard);
@@ -164,19 +215,21 @@ onUnmounted(() => {
         @pointerdown="onPointerDown"
         @keydown.enter.prevent="close"
       />
-      <!-- Only while typing: closes the keyboard. Holding on to the focus
-           until the tap ends keeps it from moving away under the finger -->
+      <!-- Only while typing: closes the keyboard (so does the keyboard's
+           search key). Small, beside the clear icon. Holding on to the
+           focus until the tap ends keeps it from moving away under the finger -->
       <button
         v-if="focused"
         type="button"
-        class="shrink-0 h-12 px-4 text-base font-medium text-brand-700 dark:text-brand-200"
-        title="Done: close the keyboard"
+        class="shrink-0 w-11 h-12 -ml-1 mr-0.5 flex items-center justify-center text-gray-500 dark:text-brand-300 active:text-brand-700 dark:active:text-white"
+        title="Close the keyboard"
+        aria-label="Close the keyboard"
         data-testid="floating-search-done"
         @pointerdown.prevent
         @mousedown.prevent
         @click="close"
       >
-        Done
+        <i class="mdi mdi-keyboard-close-outline text-xl leading-none" aria-hidden="true"></i>
       </button>
     </div>
   </div>

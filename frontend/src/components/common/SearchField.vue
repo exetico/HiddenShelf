@@ -46,21 +46,28 @@ function onEscape(event) {
     />
     <!-- Drawn like the "/" hint so the two read as one family; the button
          itself is larger than the chip so it stays easy to tap -->
+    <!-- Phones: a round clear icon with a thumb-sized target (44px), as
+         people expect there. From md up: the Esc chip, drawn like the hint. -->
     <button
       v-if="model"
       type="button"
-      class="group absolute right-1 top-1/2 -translate-y-1/2 p-1 flex items-center"
+      class="group absolute right-0 inset-y-0 w-11 md:w-auto md:right-1 md:px-1 flex items-center justify-center"
       title="Clear the search (Esc)"
       aria-label="Clear the search"
       data-testid="search-clear"
       @click="clear"
     >
+      <i
+        class="md:hidden mdi mdi-close-circle text-xl leading-none text-gray-400 dark:text-brand-400 group-active:text-gray-600 dark:group-active:text-brand-200"
+        aria-hidden="true"
+        data-testid="search-clear-icon"
+      ></i>
       <span
-        class="flex items-center gap-0.5 px-1.5 rounded border border-gray-300 dark:border-brand-600 text-[10px] leading-4 font-sans text-gray-600 dark:text-brand-200 group-hover:bg-gray-100 group-hover:text-gray-900 dark:group-hover:bg-brand-700 dark:group-hover:text-white"
+        class="hidden md:flex items-center gap-0.5 px-1.5 rounded border border-gray-300 dark:border-brand-600 text-[10px] leading-4 font-sans text-gray-600 dark:text-brand-200 group-hover:bg-gray-100 group-hover:text-gray-900 dark:group-hover:bg-brand-700 dark:group-hover:text-white"
         data-testid="search-clear-chip"
       >
         <i class="mdi mdi-close leading-none" aria-hidden="true"></i>
-        <span class="hidden md:inline">Esc</span>
+        <span>Esc</span>
       </span>
     </button>
     <kbd

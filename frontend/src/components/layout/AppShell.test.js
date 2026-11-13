@@ -137,7 +137,7 @@ describe("Floating search bar", () => {
       expect(input).toEqual(expect.arrayContaining(["border-0!", "bg-transparent!"]));
     });
 
-    it("shows Done only while typing, and Done closes the keyboard", async () => {
+    it("shows a small close-keyboard icon only while typing, and it closes the keyboard", async () => {
       const input = wrapper.find("input").element;
       expect(wrapper.find('[data-testid="floating-search-done"]').exists()).toBe(false);
       input.focus();
@@ -203,6 +203,68 @@ describe("Floating search bar", () => {
       await nextTick();
       expect(bar().attributes("style") || "").not.toContain("bottom");
       Object.defineProperty(window, "visualViewport", { value: original, configurable: true });
+    });
+
+    it("is a compact icon, not a wide Done label", async () => {
+      wrapper.find("input").element.focus();
+      await nextTick();
+      const done = wrapper.find('[data-testid="floating-search-done"]');
+      expect(done.text()).toBe("");
+      expect(done.classes()).toContain("w-11");
+      expect(done.find(".mdi-keyboard-close-outline").exists()).toBe(true);
+    });
+
+    describe("results first", () => {
+      let shell, row, scrollTo;
+      beforeEach(() => {
+        // A page like View: filters, then the count row, then the results
+        shell = document.createElement("main");
+        shell.dataset.testid = "app-main";
+        shell.innerHTML = '<div class="row"><p data-testid="link-count">Showing 1 of 9 links</p></div>';
+        document.body.appendChild(shell);
+        row = shell.querySelector(".row");
+        row.getBoundingClientRect = () => ({ top: 420 });
+        shell.getBoundingClientRect = () => ({ top: 60 });
+        window.innerHeight = 740;
+        scrollTo = vi.spyOn(window, "scrollTo").mockImplementation(() => {});
+        mockRoute.name = "view";
+      });
+      afterEach(() => {
+        shell.remove();
+        scrollTo.mockRestore();
+      });
+
+      it("brings the results to the top on the first letter, with room to get there", async () => {
+        await wrapper.find("input").setValue("h");
+        await vi.advanceTimersByTimeAsync(0);
+        expect(scrollTo).toHaveBeenCalledWith({ top: 412, behavior: "smooth" });
+        expect(shell.style.minHeight).toBe(`${412 + 740 - 60}px`);
+        // More letters don't scroll again
+        scrollTo.mockClear();
+        await wrapper.find("input").setValue("ho");
+        await vi.advanceTimersByTimeAsync(0);
+        expect(scrollTo).not.toHaveBeenCalled();
+      });
+
+      it("goes back to the top and gives the room back when cleared", async () => {
+        await wrapper.find("input").setValue("h");
+        await vi.advanceTimersByTimeAsync(0);
+        await wrapper.find('[data-testid="search-clear"]').trigger("click");
+        await vi.advanceTimersByTimeAsync(0);
+        expect(scrollTo).toHaveBeenLastCalledWith({ top: 0, behavior: "smooth" });
+        expect(shell.style.minHeight).toBe("");
+      });
+
+      it("isn't undone by the keep-the-page-still guard while the keyboard opens", async () => {
+        wrapper.find("input").element.focus();
+        await nextTick();
+        await wrapper.find("input").setValue("h");
+        await vi.advanceTimersByTimeAsync(0);
+        scrollTo.mockClear();
+        window.scrollY = 412;
+        window.dispatchEvent(new Event("scroll"));
+        expect(scrollTo).not.toHaveBeenCalled();
+      });
     });
   });
 });

@@ -54,6 +54,19 @@ describe("SearchField", () => {
     wrapper.unmount();
   });
 
+  it("clears with a round icon and a 44px target on phones, the Esc chip from md up", async () => {
+    const wrapper = mountField();
+    await wrapper.find("input").setValue("a");
+    const clear = wrapper.find('[data-testid="search-clear"]');
+    expect(clear.classes()).toEqual(expect.arrayContaining(["w-11", "inset-y-0", "md:w-auto"]));
+    const icon = wrapper.find('[data-testid="search-clear-icon"]').classes();
+    expect(icon).toEqual(expect.arrayContaining(["md:hidden", "mdi-close-circle"]));
+    expect(wrapper.find('[data-testid="search-clear-chip"]').classes()).toEqual(
+      expect.arrayContaining(["hidden", "md:flex"]),
+    );
+    wrapper.unmount();
+  });
+
   it("draws the clear button in the same chip style as the hint", async () => {
     const wrapper = mountField({ hint: "/" });
     const hintClasses = wrapper.find("kbd").classes();
